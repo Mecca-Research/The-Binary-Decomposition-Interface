@@ -36,7 +36,7 @@ template <typename T>
     return true;
  }
 // --- Encoding Implementations --
-void encode_bool(BinaryData& buffer, bool value) { encode_u8(buffer, static_cast<uint8_t>(value)); }
+ void encode_bool(BinaryData& buffer, bool value) { encode_u8(buffer, static_cast<uint8_t>(value)); }
  void encode_i8(BinaryData& buffer, int8_t value) { append_bytes(buffer, value); }
  void encode_u8(BinaryData& buffer, uint8_t value) { append_bytes(buffer, value); }
  void encode_i16(BinaryData& buffer, int16_t value) { append_bytes(buffer, value); }
@@ -45,11 +45,16 @@ void encode_bool(BinaryData& buffer, bool value) { encode_u8(buffer, static_cast
  void encode_u32(BinaryData& buffer, uint32_t value) { append_bytes(buffer, value); }
  void encode_i64(BinaryData& buffer, int64_t value) { append_bytes(buffer, value); }
  void encode_u64(BinaryData& buffer, uint64_t value) { append_bytes(buffer, value); }
+ // For FLOAT16: Store as uint16_t. Actual conversion is complex or requires library.
+ // void encode_f16(BinaryData& buffer, /* some float16 type */ value) { append_bytes(buffer, /* convert to uint16_t */); }
  void encode_f32(BinaryData& buffer, float value) { append_bytes(buffer, value); } // Assumes IEEE 754 host
  void encode_f64(BinaryData& buffer, double value) { append_bytes(buffer, value); } // Assumes IEEE 754 host
  void encode_ptr(BinaryData& buffer, uintptr_t value) { append_bytes(buffer, value); } // Size depends on architecture
+ // Encode enums based on their underlying type (assuming standard enums, might need adjustment for enum class)
+ void encode_bdi_type(BinaryData& buffer, BDIType value) { encode_u8(buffer, static_cast<uint8_t>(value)); }
+ void encode_bdi_op_type(BinaryData& buffer, core::graph::BDIOperationType value) { encode_u16(buffer, static_cast<uint16_t>(value)); }
  // --- Decoding Implementations --
-bool decode_bool(const BinaryData& buffer, size_t& offset, bool& out_value) {
+ bool decode_bool(const BinaryData& buffer, size_t& offset, bool& out_value) {
  uint8_t int_val;
  if (!read_bytes(buffer, offset, int_val)) return false;
  out_value = (int_val != 0);
@@ -63,7 +68,24 @@ bool decode_bool(const BinaryData& buffer, size_t& offset, bool& out_value) {
  bool decode_u32(const BinaryData& buffer, size_t& offset, uint32_t& out_value) { return read_bytes(buffer, offset, out_value); }
  bool decode_i64(const BinaryData& buffer, size_t& offset, int64_t& out_value) { return read_bytes(buffer, offset, out_value); }
  bool decode_u64(const BinaryData& buffer, size_t& offset, uint64_t& out_value) { return read_bytes(buffer, offset, out_value); }
+ // bool decode_f16(const BinaryData& buffer, size_t& offset, /* some float16 type */ & out_value) { /* read uint16_t and convert */ return false; /*
+ Placeholder */}
  bool decode_f32(const BinaryData& buffer, size_t& offset, float& out_value) { return read_bytes(buffer, offset, out_value); }
  bool decode_f64(const BinaryData& buffer, size_t& offset, double& out_value) { return read_bytes(buffer, offset, out_value); }
  bool decode_ptr(const BinaryData& buffer, size_t& offset, uintptr_t& out_value) { return read_bytes(buffer, offset, out_value); }
+ // Decode enums
+ bool decode_bdi_type(const BinaryData& buffer, size_t& offset, BDIType& out_value) {
+    uint8_t raw_val;
+    if (!read_bytes(buffer, offset, raw_val)) return false;
+    out_value = static_cast<BDIType>(raw_val);
+    // TODO: Add validation check if raw_val is a valid enum value?
+    return true;
+ }
+ bool decode_bdi_op_type(const BinaryData& buffer, size_t& offset, core::graph::BDIOperationType& out_value) {
+     uint16_t raw_val;
+    if (!read_bytes(buffer, offset, raw_val)) return false;
+    out_value = static_cast<core::graph::BDIOperationType>(raw_val);
+    // TODO: Add validation check if raw_val is a valid enum value?
+    return true;
+ }
  } // namespace bdi::core::types
