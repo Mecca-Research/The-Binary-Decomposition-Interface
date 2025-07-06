@@ -12,6 +12,8 @@
  #include <cmath>
  #include <limits>
  #include <functional> // For std::function
+ #include "../verification/ProofVerifier.hpp" 
+ #include "../meta/MetadataStore.hpp"
  namespace bdi::runtime {
  // --- Type Conversion Helper --
  // Converts a value in a variant to the target C++ type, handling promotions/truncations.
@@ -84,16 +86,39 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
         throw std::runtime_error("Failed to initialize VM components.");
     }
  }
- BDIVirtualMachine::~BDIVirtualMachine() = default;
+ BDIVirtualMachine::~BDIVirtualMachine(MetadataStore& meta_store, 
+                      verification::ProofVerifier& proof_verifier, 
+                      size_t memory_size) = default;
+ : current_node_id_(0),
+      metadata_store_(&meta_store), // Store pointer
+      proof_verifier_(&proof_verifier), // Store pointer
+      memory_manager_(std::make_unique<MemoryManager>(memory_size)),
+      execution_context_(std::make_unique<ExecutionContext>())
+ {
+    if (!memory_manager_ || !execution_context_ || !metadata_store_ || !proof_verifier_) {
+        throw std::runtime_error("Failed to initialize VM components.");
+    }
+ }
  bool BDIVirtualMachine::execute(BDIGraph& graph, NodeID entry_node_id) { /* ... (no change needed) ... */ }
  bool BDIVirtualMachine::fetchDecodeExecuteCycle(BDIGraph& graph) { /* ... (no change needed) ... */ }
+    // ... (fetch node) ...
+    BDINode& current_node = node_opt.value().get();
+    // Pass graph context to executeNode
+    if (!executeNode(current_node, graph)) { // Pass graph here
+         return false;
+    }
+    // ... (determine next node) ...
+    return true;
+ }
  // --- Execute Node Implementation (Refactored for Variant & Core Ops) --
- bool BDIVirtualMachine::executeNode(BDINode& node) {
+ bool BDIVirtualMachine::executeNode(BDINode& node, BDIGraph& graph) { // Added graph param
     using OpType = core::graph::BDIOperationType;
     using BDIType = core::types::BDIType;
     using TypeSys = core::types::TypeSystem;
     ExecutionContext& ctx = *execution_context_;
-  case OpType::CTRL_CALL: {
+    try {
+        switch (node.operation) {
+        case OpType::CTRL_CALL: {
                 // 1. Evaluate and stage arguments
                 // Assume inputs 0..N-1 are arguments, Input N is Function Target (e.g., NodeID or FuncPtr)
                 // This convention needs to be defined for the CALL operation.
@@ -125,7 +150,7 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
                  // 2. Execution flow handled by determineNextNode
                  break;
             }
- // Inside determineNextNode:
+        // Inside determineNextNode:
         case core::graph::BDIOperationType::CTRL_CALL: {
              // Assume target function entry NodeID is in control_outputs[0]
              // Assume return address NodeID is in control_outputs[1] (Our convention)
@@ -158,6 +183,7 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
   case OpType::META_ASSERT: {
                  if (node.data_inputs.size() != 1) return false;
                  auto condition_opt = getInputValueTyped<bool>(ctx, node, 0);
+                 if (!condition_opt) return false; // Input error already printed
                  if (!condition_opt) {
                       std::cerr << "VM Error: ASSERT Node " << node.id << " condition input missing or invalid." << std::endl;
                      return false;
@@ -184,6 +210,24 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
                  // 4. If yes, get the hash/proof data
                  // 5. Call external ProofVerifier (to be implemented)
                  // 6. Return false if verification fails
+                 const MetadataVariant* meta = metadata_store_->getMetadata(node.metadata_handle);
+                 if (meta && std::holds_alternative<ProofTag>(*meta)) {
+                     const ProofTag& tag = std::get<ProofTag>(*meta);
+                     if (tag.system != ProofTag::ProofSystem::NONE) {
+                        std::cout << "  Op: VERIFY_PROOF for Node " << node.id << " (System: " << static_cast<int>(tag.system) << ")" << std::endl;
+                        // Call the verifier
+                        if (!proof_verifier_->verify(tag, graph, node.id)) {
+                             std::cerr << "VM Error: Proof verification FAILED for Node " << node.id << "." << std::endl;
+                            return false; // Halt on verification failure
+                        }
+                        // std::cout << "    Proof verification SUCCEEDED (Stub)." << std::endl;
+                     } else {
+                         // std::cout << "  Op: VERIFY_PROOF for Node " << node.id << " (No proof system specified in tag)." << std::endl;
+                     }
+                 } else {
+                      std::cerr << "VM Warning: META_VERIFY_PROOF Node " << node.id << " has no valid ProofTag metadata." << std::endl;
+                      // Fail? Or succeed trivially? For now, succeed.
+                 }
                  break;
             }
     // --- Visitor Pattern for Binary Operations --
