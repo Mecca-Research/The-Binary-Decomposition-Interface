@@ -3,8 +3,10 @@
  #include "../../core/payload/TypedPayload.hpp"
  #include "../../core/types/TypeSystem.hpp"
  #include "../../runtime/ExecutionContext.hpp" // For payload<->variant conversion
+ #include "../../runtime/BDIValueVariant.hpp" // For evaluation result
  #include <iostream>
  #include <variant>
+ #include <set> // To avoid duplicate rewiring
  namespace bdi::optimizer {
  using namespace bdi::core::graph;
  using namespace bdi::core::types;
@@ -33,6 +35,19 @@
  }
  // Attempts to evaluate a node if all its inputs are constant
  std::optional<BDIValueVariant> ConstantFolding::evaluateConstantNode(BDINode& node) {
+    // Get constant inputs
+    std::vector<BDIValueVariant> inputs;
+    for (const auto& input_ref : node.data_inputs) {
+        auto const_val = getConstantValueFromNode(input_ref.node_id); // Try direct lookup
+        if (!const_val) { // If not direct, check cache
+            auto cache_it = constant_values_.find(input_ref);
+            if (cache_it != constant_values_.end()) {
+                const_val = cache_it->second;
+            }
+        }
+        if (!const_val) return std::nullopt; // Input not constant
+        inputs.push_back(const_val.value());
+    }
     // Check if operation is suitable for folding
     bool foldable_op = false;
     switch (node.operation) {
@@ -72,18 +87,64 @@
             }
         }
     }
-    // --- Perform the evaluation (Simplified - reusing VM logic concepts) --
-    // This requires a standalone evaluation capability, similar to the VM's executeNode
-    // but operating directly on BDIValueVariants. This is non-trivial.
-    // For this example, we'll STUB the evaluation for ADD I32.
+    // --- Perform Evaluation (Needs to be robust) --
+    // Using a simple switch with manual type handling for demonstration
+    // Ideally, use the same robust logic as the VM, maybe factor it out?
     BDIValueVariant result_var = std::monostate{};
-    if (node.operation == BDIOperationType::ARITH_ADD && inputs.size() == 2) {
-         auto v1 = convertVariantTo<int32_t>(inputs[0]);
-         auto v2 = convertVariantTo<int32_t>(inputs[1]);
-         if (v1 && v2) {
-             result_var = v1.value() + v2.value();
-         }
+    try {
+        switch (node.operation) {
+            // Arithmetic
+            case BDIOperationType::ARITH_ADD:
+            case BDIOperationType::ARITH_SUB:
+            case BDIOperationType::ARITH_MUL:
+            case BDIOperationType::ARITH_DIV:
+            case BDIOperationType::ARITH_MOD: {
+                 if (inputs.size() != 2) break;
+                 // Simplified: Assume INT32 for demo
+                 auto v1 = convertVariantTo<int32_t>(inputs[0]);
+                 auto v2 = convertVariantTo<int32_t>(inputs[1]);
+                 if (v1 && v2) {
+                      if (node.operation == BDIOperationType::ARITH_ADD) result_var = *v1 + *v2;
+                      else if (node.operation == BDIOperationType::ARITH_SUB) result_var = *v1 - *v2;
+                      else if (node.operation == BDIOperationType::ARITH_MUL) result_var = *v1 * *v2;
+                      else if (node.operation == BDIOperationType::ARITH_DIV) { if (*v2 == 0) break; result_var = *v1 / *v2; }
+                      else if (node.operation == BDIOperationType::ARITH_MOD) { if (*v2 == 0) break; result_var = *v1 % *v2; }
+                 }
+                 break;
+            }
+            // Comparisons
+             case BDIOperationType::CMP_EQ:
+             case BDIOperationType::CMP_NE:
+             case BDIOperationType::CMP_LT:
+             case BDIOperationType::CMP_LE:
+             case BDIOperationType::CMP_GT:
+             case BDIOperationType::CMP_GE: {
+                  if (inputs.size() != 2) break;
+                  // Simplified: Assume INT32
+                  auto v1 = convertVariantTo<int32_t>(inputs[0]);
+                  auto v2 = convertVariantTo<int32_t>(inputs[1]);
+                  if (v1 && v2) {
+                       if (node.operation == BDIOperationType::CMP_EQ) result_var = bool(*v1 == *v2);
+                       else if (node.operation == BDIOperationType::CMP_NE) result_var = bool(*v1 != *v2);
+                       else if (node.operation == BDIOperationType::CMP_LT) result_var = bool(*v1 < *v2);
+                       else if (node.operation == BDIOperationType::CMP_LE) result_var = bool(*v1 <= *v2);
+                       else if (node.operation == BDIOperationType::CMP_GT) result_var = bool(*v1 > *v2);
+                       else if (node.operation == BDIOperationType::CMP_GE) result_var = bool(*v1 >= *v2);
+                  }
+                  break;
+             }
+            // --- Add cases for Bitwise, Logical, Conversions etc. --
+            default: break; // Cannot fold this operation
+        }
+    } catch (const std::exception& e) {
+         std::cerr << "ConstantFolding: Evaluation error for Node " << node.id << ": " << e.what() << std::endl;
+         return std::nullopt; // Evaluation failed
     }
+    if (std::holds_alternative<std::monostate>(result_var)) {
+        return std::nullopt; // Evaluation failed or not applicable
+    }
+    return result_var;
+ }
     // --- Implement evaluation logic for other foldable operations --
     else {
         // std::cout << "  Folding eval not implemented for op " << static_cast<int>(node.operation) << std::endl;
@@ -101,7 +162,17 @@
      std::cout << "  Folding node " << old_node_id << " to constant." << std::endl;
      // 1. Create Payload for the constant result
      TypedPayload constant_payload = ExecutionContext::variantToPayload(constant_result);
-     if (constant_payload.type == BDIType::UNKNOWN) {
+     if (constant_payload.type == BDIType::UNKNOWN) return;
+     NodeID new_const_node_id = current_graph_->addNode(BDIOperationType::META_NOP); // Use NOP as const provider
+     BDINode* new_const_node = current_graph_->getNodeMutable(new_const_node_id);
+     if (!new_const_node) { current_graph_->removeNode(new_const_node_id); return; }
+     new_const_node->payload = constant_payload;
+     // Copy output port definitions from original node (important for types!)
+     new_const_node->data_outputs = node_to_replace.data_outputs;
+     // Update output names if desired
+     for(auto& port_info : new_const_node->data_outputs) {
+         port_info.name += "_folded";
+     }
           std::cerr << "    Error: Failed to create payload for constant result." << std::endl;
           return;
      }
@@ -125,21 +196,31 @@
      }
      // 3. Find all consumers of the original node's output(s) and rewire them
      // Iterate through *all* nodes in the graph to find consumers
-     std::vector<NodeID> consumers_to_update;
-     for (auto& pair : *current_graph_) { // Iterate using graph's iterator
-         if (!pair.second) continue;
-         BDINode& potential_consumer = *(pair.second);
-         bool updated = false;
-         for (PortRef& input_ref : potential_consumer.data_inputs) {
-             // Check if this input comes from the node we are replacing
-             // Assume output port 0 for simplicity
-             if (input_ref.node_id == old_node_id && input_ref.port_index == 0) {
-                 input_ref.node_id = new_const_node_id; // Rewire to the new const node
-                 input_ref.port_index = 0; // Assuming new const node also uses output port 0
-                 updated = true;
-                 markGraphModified();
+     std::vector<std::pair<NodeID, PortIndex>> consumers_updated; // Track which inputs were updated
+     for (auto& graph_pair : *current_graph_) {
+         if (!graph_pair.second || graph_pair.first == old_node_id || graph_pair.first == new_const_node_id) continue;
+         BDINode& potential_consumer = *(graph_pair.second);
+         for (size_t input_idx = 0; input_idx < potential_consumer.data_inputs.size(); ++input_idx) {
+             PortRef& input_ref = potential_consumer.data_inputs[input_idx];
+             // Check if this input comes from any output port of the node we are replacing
+             if (input_ref.node_id == old_node_id) {
+                 // Rewire to the corresponding output port of the new const node
+                 // This assumes the new const node's outputs match the old one's
+                 if (input_ref.port_index < new_const_node->data_outputs.size()) {
+                    // std::cout << "    Rewiring consumer Node " << potential_consumer.id << " Input " << input_idx
+                    //           << " from " << old_node_id << " Port " << input_ref.port_index
+                    //           << " to " << new_const_node_id << " Port " << input_ref.port_index << std::endl;
+                     input_ref.node_id = new_const_node_id;
+                     // Port index remains the same assuming output structure is copied
+                     consumers_updated.push_back({potential_consumer.id, (PortIndex)input_idx});
+                     markGraphModified();
+                 } else {
+                     std::cerr << "    Warning: Consumer Node " << potential_consumer.id << " used invalid Port "
+                               << input_ref.port_index << " from folded Node " << old_node_id << std::endl;
+                 }
              }
          }
+     }
      // 4. Handle Control Flow - VERY Simplified
      // Connect control inputs of old node -> new const node
      // Connect new const node -> control outputs of old node
@@ -161,11 +242,41 @@
                 std::erase(succ_node->control_inputs, old_node_id);
            }
       }
-     // 5. Remove the original node (or mark it for removal by a dead code pass)
-     // Immediate removal can invalidate iterators if not careful.
-     // For simplicity here, we just remove it. Be cautious in real implementation.
-     std::cout << "    Removing original node " << old_node_id << std::endl;
-     current_graph_->removeNode(old_node_id); // This also cleans up dangling edges TO old node
+     // Rewire Control Flow
+     // Find predecessors and successors first to avoid issues with map iteration during modification
+     std::vector<NodeID> predecessors = node_to_replace.control_inputs;
+     std::vector<NodeID> successors = node_to_replace.control_outputs;
+     // Connect predecessors -> new_const_node -> successors
+     for (NodeID pred_id : predecessors) {
+         BDINode* pred_node = current_graph_->getNodeMutable(pred_id);
+         if (pred_node) {
+             // Remove edge pred->old
+             std::erase(pred_node->control_outputs, old_node_id);
+             // Add edge pred->new
+             current_graph_->connectControl(pred_id, new_const_node_id);
+         }
+     }
+      for (NodeID succ_id : successors) {
+         BDINode* succ_node = current_graph_->getNodeMutable(succ_id);
+         if (succ_node) {
+              // Remove edge old->succ
+             std::erase(succ_node->control_inputs, old_node_id);
+             // Add edge new->succ
+             current_graph_->connectControl(new_const_node_id, succ_id);
+         }
+     }
+     // 4. Mark old node for deletion (Requires DCE pass)
+     // For now, just change its type to avoid re-processing and disconnect inputs
+      //std::cout << "    Marking Node " << old_node_id << " as folded (NOP)." << std::endl;
+      node_to_replace.operation = BDIOperationType::META_NOP;
+      node_to_replace.data_inputs.clear();
+      node_to_replace.data_outputs.clear(); // Prevent it being used as source
+      node_to_replace.control_inputs.clear();
+      node_to_replace.control_outputs.clear();
+      node_to_replace.payload = {}; // Clear payload
+     // **DO NOT REMOVE NODE HERE** - Let a separate DCE pass handle removal
+     // current_graph_->removeNode(old_node_id); // <- Avoid this here!
+     markGraphModified(); // Mark change even if only marked for deletion
  }
  void ConstantFolding::visitGraph(BDIGraph& graph) {
     current_graph_ = &graph;
@@ -190,6 +301,19 @@
             // Try to evaluate the node
             std::optional<BDIValueVariant> result = evaluateConstantNode(node);
             if (result) {
+             replaceNodeWithConstant(node, result.value());
+                 changed_in_pass = true;
+                 // Note: Since we only mark for deletion, iteration can continue safely
+             }
+        }
+         if (!changed_in_pass) break; // No changes in this pass, stable
+         changed_overall = true;
+    }
+    if (changed_overall) {
+        markGraphModified(); // Mark modification for the engine
+    }
+    current_graph_ = nullptr;
+ }
                 // Successfully folded! Store result and replace the node
                 constant_values_[{node.id, 0}] = result.value(); // Cache constant result
                 replaceNodeWithConstant(node, result.value());
