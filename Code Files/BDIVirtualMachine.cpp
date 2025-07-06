@@ -93,6 +93,68 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
     using BDIType = core::types::BDIType;
     using TypeSys = core::types::TypeSystem;
     ExecutionContext& ctx = *execution_context_;
+  case OpType::CTRL_CALL: {
+                // 1. Evaluate and stage arguments
+                // Assume inputs 0..N-1 are arguments, Input N is Function Target (e.g., NodeID or FuncPtr)
+                // This convention needs to be defined for the CALL operation.
+                size_t num_args = node.data_inputs.size(); // Assume all inputs are args for now
+                ctx.next_arguments_.clear(); // Clear previous staged args
+                for (PortIndex i = 0; i < num_args; ++i) {
+                    auto arg_opt = ctx.getPortValue(node.data_inputs[i]);
+                    if (!arg_opt) {
+                         std::cerr << "VM Error: Missing argument " << i << " for CALL Node " << node.id << std::endl;
+                        return false;
+                     }
+                    ctx.setNextArgument(i, arg_opt.value());
+                }
+                // 2. Execution flow handled by determineNextNode
+                break;
+            }
+            case OpType::CTRL_RETURN: {
+                // 1. Get return value (assume from Input 0 if present)
+                 if (node.data_inputs.size() > 0) {
+                      auto ret_val_opt = ctx.getPortValue(node.data_inputs[0]);
+                      if (!ret_val_opt) {
+                          std::cerr << "VM Error: Missing return value input for RETURN Node " << node.id << std::endl;
+                          return false; // Require input if specified? Or allow void return?
+                      }
+                      ctx.setCurrentReturnValue(ret_val_opt.value());
+                 } else {
+                      ctx.setCurrentReturnValue(std::monostate{}); // Void return
+                 }
+                 // 2. Execution flow handled by determineNextNode
+                 break;
+            }
+ // Inside determineNextNode:
+        case core::graph::BDIOperationType::CTRL_CALL: {
+             // Assume target function entry NodeID is in control_outputs[0]
+             // Assume return address NodeID is in control_outputs[1] (Our convention)
+             if (node.control_outputs.size() < 2) {
+                  std::cerr << "VM Error: CALL Node " << node.id << " requires at least 2 control outputs (Target, Return Address)." << std::endl;
+                  next_id = 0; // Halt
+             } else {
+                 NodeID call_target = node.control_outputs[0];
+                 NodeID return_address = node.control_outputs[1];
+                 ctx.pushCallFrame(return_address); // Pushes frame with staged args
+                 next_id = call_target; // Jump to function
+             }
+             break;
+        }
+        case core::graph::BDIOperationType::CTRL_RETURN: {
+            auto frame_opt = ctx.popCallFrame(); // Pops frame, stores return value in ctx.last_return_value_
+            if (frame_opt) {
+                next_id = frame_opt.value().return_node_id; // Jump back
+                // How does the caller get the return value?
+                // Convention: The node representing the CALL operation itself can have an output port.
+                // The VM needs to associate the last_return_value_ with the *original call node's* output port.
+                // This requires tracking the call node ID across the call. Complex.
+                // Simpler alternative: Caller explicitly retrieves from context or a dedicated "return value register".
+            } else {
+                std::cerr << "VM Warning: RETURN executed with empty call stack. Halting." << std::endl;
+                next_id = 0;
+            }
+            break;
+        }
   case OpType::META_ASSERT: {
                  if (node.data_inputs.size() != 1) return false;
                  auto condition_opt = getInputValueTyped<bool>(ctx, node, 0);
