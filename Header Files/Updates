@@ -1,4 +1,4 @@
-// File: bdi/core/types/TypeSystem.cpp
+ // File: bdi/core/types/TypeSystem.cpp
  // (Currently, all methods in TypeSystem.hpp are static inline or basic checks,
  // so a separate .cpp might not be strictly necessary unless more complex,
  // non-template logic or state (like a dynamic type registry) is added later.)
