@@ -116,8 +116,9 @@ void ExecutionContext::pushCall(NodeID return_node_id) {
     call_stack_.clear();
  }
  // --- Call Stack Frame --
-void ExecutionContext::pushCallFrame(NodeID return_node_id) {
+void ExecutionContext::pushCallFrame(NodeID return_node_id) { // << MODIFIED
     CallFrame new_frame;
+    new_frame.caller_node_id = caller_node_id; // Store caller ID
     new_frame.return_node_id = return_node_id;
     new_frame.arguments = std::move(next_arguments_); // Move staged arguments into frame
     next_arguments_.clear(); // Clear staging area
@@ -131,7 +132,7 @@ void ExecutionContext::pushCallFrame(NodeID return_node_id) {
     CallFrame frame = std::move(call_stack_.back());
     call_stack_.pop_back();
     last_return_value_ = frame.return_value; // Store frame's return value
-    return frame;
+    return frame; // Return the whole frame including caller ID
  }
  bool ExecutionContext::isCallStackEmpty() const {
     return call_stack_.empty();
