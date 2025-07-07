@@ -79,6 +79,7 @@ class OptimizerTest : public ::testing::Test {
         builder = std::make_unique<GraphBuilder>(meta_store, "OptimizerTestGraph");
         // Add passes in desired order
         engine.addPass(std::make_unique<ConstantFolding>());
+        engine.addPass(std::make_unique<DeadCodeElimination>()); // Add DCE pass
         // engine.addPass(std::make_unique<DeadCodeElimination>()); // Add DCE later
     }
     void TearDown() override {
@@ -223,6 +224,50 @@ class OptimizerTest : public ::testing::Test {
           }
       }
       EXPECT_TRUE(sub_node_exists); // SUB should still be there
+ TEST_F(OptimizerTest, DCEA) {
+    NodeID start = builder->addNode(OpType::META_START);
+    NodeID current = start;
+    NodeID c2 = addConst(int32_t{2}, current);
+    NodeID c3 = addConst(int32_t{3}, current);
+    NodeID c_unused = addConst(int32_t{99}, current); // This constant is unused
+    // add1 = 2 + 3 (= 5) -> Folds to const 5
+    NodeID add1 = builder->addNode(OpType::ARITH_ADD);
+    builder->defineDataOutput(add1, 0, BDIType::INT32);
+    builder->connectControl(current, add1);
+    builder->connectData(c2, 0, add1, 0);
+    builder->connectData(c3, 0, add1, 1);
+    current = add1;
+    // Use the result of add1 (which becomes const 5)
+    NodeID neg_node = builder->addNode(OpType::ARITH_NEG);
+    builder->defineDataOutput(neg_node, 0, BDIType::INT32);
+    builder->connectControl(current, neg_node);
+    builder->connectData(add1, 0, neg_node, 0); // -> Folds to const -5
+    current = neg_node;
+    NodeID end = builder->addNode(OpType::META_END); // Essential node
+    builder->connectControl(current, end);
+    auto graph = builder->finalizeGraph();
+    ASSERT_NE(graph, nullptr);
+    size_t initial_node_count = graph->getNodeCount(); // Start, c2, c3, c_unused, add1, neg, end = 7
+    // Run optimizer (Folding + DCE)
+    bool changed = engine.run(*graph, 5);
+    ASSERT_TRUE(changed);
+    // Expect: START -> new_const_-5 -> END
+    // Nodes c2, c3, c_unused, add1 (folded), neg (folded) should be gone.
+    EXPECT_EQ(graph->getNodeCount(), 3);
+    // Verify remaining nodes and connections
+    NodeID final_const_id = 0;
+     for (const auto& pair : *graph) {
+         if (pair.second->operation == OpType::META_NOP && !pair.second->payload.data.empty()) {
+             final_const_id = pair.first;
+             break;
+         }
+     }
+     ASSERT_NE(final_const_id, 0);
+     EXPECT_EQ(graph->getNode(final_const_id).value().get().payload.getAs<int32_t>(), -5); // Check final result
+     EXPECT_EQ(graph->getNode(start).value().get().control_outputs[0], final_const_id);
+     EXPECT_EQ(graph->getNode(final_const_id).value().get().control_outputs[0], end);
+     EXPECT_EQ(graph->getNode(end).value().get().control_inputs[0], final_const_id);
+ }
     // --- TODO: Future Test with Branch Elimination Pass --
     // Add a specific Branch Elimination pass to the engine
     // engine.addPass(std::make_unique<ConstantBranchElimination>());
