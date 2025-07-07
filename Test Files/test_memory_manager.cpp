@@ -81,3 +81,69 @@
     EXPECT_FALSE(manager.freeRegion(id)); // Freeing again should fail
  }
     uintptr_t base_addr = region_info.value().base_address;
+ TEST(MemoryManagerTest, FreeListAllocationAndFree) {
+    MemoryManager manager(100); // Small memory for testing fragmentation
+    // Alloc A (30 bytes)
+    auto id_A_opt = manager.allocateRegion(30);
+    ASSERT_TRUE(id_A_opt.has_value());
+    auto info_A = manager.getRegionInfo(*id_A_opt);
+    ASSERT_TRUE(info_A.has_value());
+    EXPECT_EQ(info_A->base_address, 0);
+    EXPECT_EQ(manager.getUsedSize(), 30);
+    // Alloc B (40 bytes)
+    auto id_B_opt = manager.allocateRegion(40);
+    ASSERT_TRUE(id_B_opt.has_value());
+    auto info_B = manager.getRegionInfo(*id_B_opt);
+    ASSERT_TRUE(info_B.has_value());
+    EXPECT_EQ(info_B->base_address, 30);
+    EXPECT_EQ(manager.getUsedSize(), 70);
+    // Alloc C (20 bytes)
+    auto id_C_opt = manager.allocateRegion(20);
+    ASSERT_TRUE(id_C_opt.has_value());
+    auto info_C = manager.getRegionInfo(*id_C_opt);
+    ASSERT_TRUE(info_C.has_value());
+    EXPECT_EQ(info_C->base_address, 70);
+    EXPECT_EQ(manager.getUsedSize(), 90); // 10 bytes free at the end
+    // Free B (middle block)
+    ASSERT_TRUE(manager.freeRegion(*id_B_opt));
+    EXPECT_EQ(manager.getUsedSize(), 50); // 30 (A) + 20 (C) = 50 used
+    EXPECT_FALSE(manager.getRegionInfo(*id_B_opt).has_value()); // B should be gone
+    // Try Alloc D (50 bytes) - Should fail (largest free block is 40)
+    auto id_D_opt_fail = manager.allocateRegion(50);
+    EXPECT_FALSE(id_D_opt_fail.has_value());
+    EXPECT_EQ(manager.getUsedSize(), 50);
+    // Try Alloc D (40 bytes) - Should succeed in B's old spot
+    auto id_D_opt_ok = manager.allocateRegion(40);
+    ASSERT_TRUE(id_D_opt_ok.has_value());
+    auto info_D = manager.getRegionInfo(*id_D_opt_ok);
+    ASSERT_TRUE(info_D.has_value());
+    EXPECT_EQ(info_D->base_address, 30); // Should reuse B's spot
+    EXPECT_EQ(manager.getUsedSize(), 90); // Back to 90 used
+    // Free A
+    ASSERT_TRUE(manager.freeRegion(*id_A_opt));
+    EXPECT_EQ(manager.getUsedSize(), 60); // 40(D) + 20(C)
+    // Free C
+    ASSERT_TRUE(manager.freeRegion(*id_C_opt));
+    EXPECT_EQ(manager.getUsedSize(), 40); // Only D left
+    // Free D
+    ASSERT_TRUE(manager.freeRegion(*id_D_opt_ok));
+    EXPECT_EQ(manager.getUsedSize(), 0); // Should be empty
+ }
+ TEST(MemoryManagerTest, FreeListMerge) {
+    MemoryManager manager(100);
+    auto id_A = manager.allocateRegion(20).value(); // 0-19
+    auto id_B = manager.allocateRegion(30).value(); // 20-49
+    auto id_C = manager.allocateRegion(10).value(); // 50-59
+    EXPECT_EQ(manager.getUsedSize(), 60);
+    // Free A and C, leaving B in the middle
+    ASSERT_TRUE(manager.freeRegion(id_A)); // Free block: [0, 20)
+    ASSERT_TRUE(manager.freeRegion(id_C)); // Free blocks: [0, 20), [50, 10) -> total size 30
+    EXPECT_EQ(manager.getUsedSize(), 30); // Only B left
+    // Free B - this should merge all blocks into one [0, 100) block
+    ASSERT_TRUE(manager.freeRegion(id_B));
+    EXPECT_EQ(manager.getUsedSize(), 0);
+    // Try allocating the whole space now
+    auto id_D = manager.allocateRegion(100);
+    ASSERT_TRUE(id_D.has_value());
+    EXPECT_EQ(manager.getUsedSize(), 100);
+ }
