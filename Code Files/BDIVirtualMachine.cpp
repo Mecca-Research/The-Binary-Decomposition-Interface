@@ -151,16 +151,21 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
                  break;
             }
         // Inside determineNextNode:
+        NodeID BDIVirtualMachine::determineNextNode(BDINode& node) {
+         ExecutionContext& ctx = *execution_context_;
+         NodeID next_id = 0;
+         switch (node.operation) {
         case core::graph::BDIOperationType::CTRL_CALL: {
              // Assume target function entry NodeID is in control_outputs[0]
              // Assume return address NodeID is in control_outputs[1] (Our convention)
-             if (node.control_outputs.size() < 2) {
+             if (node.control_outputs.size() < 2) { /* ... error ... */ next_id = 0; }
                   std::cerr << "VM Error: CALL Node " << node.id << " requires at least 2 control outputs (Target, Return Address)." << std::endl;
                   next_id = 0; // Halt
              } else {
                  NodeID call_target = node.control_outputs[0];
                  NodeID return_address = node.control_outputs[1];
-                 ctx.pushCallFrame(return_address); // Pushes frame with staged args
+                 // Push frame, including THIS node's ID as the caller
+                 ctx.pushCallFrame(node.id, return_address); // Pushes frame with staged args
                  next_id = call_target; // Jump to function
              }
              break;
@@ -169,18 +174,74 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
             auto frame_opt = ctx.popCallFrame(); // Pops frame, stores return value in ctx.last_return_value_
             if (frame_opt) {
                 next_id = frame_opt.value().return_node_id; // Jump back
+             // --- Retrieve and Store Return Value --
+                if (frame.return_value.has_value()) {
+                    // Get the original CALL node
+                     auto caller_node_opt = current_graph_->getNode(frame.caller_node_id); // Need graph access
+                     if (caller_node_opt) {
+                         // Set the output port of the CALL node (Convention: Port 0)
+                         if (!setOutputValueVariant(ctx, caller_node_opt.value().get(), 0, frame.return_value.value())) {
+                              std::cerr << "VM Warning: Failed to set return value on CALL Node " << frame.caller_node_id << std::endl;
+                         }
                 // How does the caller get the return value?
                 // Convention: The node representing the CALL operation itself can have an output port.
                 // The VM needs to associate the last_return_value_ with the *original call node's* output port.
                 // This requires tracking the call node ID across the call. Complex.
                 // Simpler alternative: Caller explicitly retrieves from context or a dedicated "return value register".
-            } else {
+                // Need to pass graph to determineNextNode or make graph member/accessible
+                // Simplest: Pass graph to executeNode and determineNextNode
+                // Updated method signatures:
+                // bool BDIVirtualMachine::executeNode(BDINode& node, BDIGraph& graph);
+                // NodeID BDIVirtualMachine::determineNextNode(BDINode& node, BDIGraph& graph);
+                     } else {
+                         std::cerr << "VM Warning: Original CALL node " << frame.caller_node_id << " not found for return value." << std::endl;
+                     }
+                } // else: void return, do nothing
+             } else {
                 std::cerr << "VM Warning: RETURN executed with empty call stack. Halting." << std::endl;
                 next_id = 0;
             }
             break;
         }
-  case OpType::META_ASSERT: {
+        // ... default case ...
+    }
+    return next_id;
+ }
+     // Modify fetchDecodeExecuteCycle accordingly:
+ bool BDIVirtualMachine::fetchDecodeExecuteCycle(BDIGraph& graph) { // Pass graph
+    // ... (fetch node) ...
+    BDINode& current_node = node_opt.value().get();
+    if (!executeNode(current_node, graph)) { // Pass graph
+         return false;
+    }
+    NodeID next_id = determineNextNode(current_node, graph); // Pass graph
+    current_node_id_ = next_id;
+    return true;
+ }
+ // Add graph access to determineNextNode if needed (e.g., to get caller node)
+ NodeID BDIVirtualMachine::determineNextNode(BDINode& node, BDIGraph& graph) { // Added graph
+    // ... existing logic ...
+     case core::graph::BDIOperationType::CTRL_RETURN: {
+            auto frame_opt = ctx.popCallFrame();
+            if (frame_opt) {
+                const auto& frame = frame_opt.value();
+                next_id = frame.return_node_id;
+                if (frame.return_value.has_value()) {
+                     auto caller_node_opt = graph.getNodeMutable(frame.caller_node_id); // Get mutable node from graph
+                     if (caller_node_opt) {
+                        if (!setOutputValueVariant(ctx, *caller_node_opt, 0, frame.return_value.value())) {
+                             // ... error ...
+                        }
+                     } // ... else error ...
+                }
+            } // ... else error / halt ...
+            break;
+        }
+    // ...
+    return next_id;
+ }
+                
+   case OpType::META_ASSERT: {
                  if (node.data_inputs.size() != 1) return false;
                  auto condition_opt = getInputValueTyped<bool>(ctx, node, 0);
                  if (!condition_opt) return false; // Input error already printed
