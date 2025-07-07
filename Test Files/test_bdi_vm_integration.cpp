@@ -164,11 +164,14 @@
  // --- Test Fixture for VM Tests --
 class BDIVMIntegrationTest : public ::testing::Test {
  protected:
+    MetadataStore meta_store; // Add metastore instance
     std::unique_ptr<GraphBuilder> builder;
     std::unique_ptr<BDIVirtualMachine> vm;
+    std::unique_ptr<verification::StubProofVerifier> proof_verifier; // Add stub verifier
     void SetUp() override {
-        builder = std::make_unique<GraphBuilder>("VMIntegrationTestGraph");
-        vm = std::make_unique<BDIVirtualMachine>(1024 * 1024); // 1MB Memory
+        builder = std::make_unique<GraphBuilder>(meta_store, "VMIntegrationTestGraph");
+        proof_verifier = std::make_unique<verification::StubProofVerifier>(); // Create stub
+        vm = std::make_unique<BDIVirtualMachine>(meta_store, *proof_verifier, 1024 * 1024); // Pass references
     }
     void TearDown() override {
         builder.reset();
@@ -437,25 +440,70 @@ TEST_F(BDIVMIntegrationTest, ConversionOps) {
     builder->connectControl(current, call_node);
     builder->connectData(c7, 0, call_node, 0); // Pass c7 as argument 0
     current = call_node; // Next node logically after CALL completes
-    NodeID after_call = builder->addNode(OpType::META_NOP); // Where execution should resume
-    builder->connectControl(main_current, after_call);
-    main_current = after_call;
+    // CALL Node - defines output port 0 for return value
+    NodeID call_node = builder->addNode(OpType::CTRL_CALL);
+    builder->defineDataOutput(call_node, 0, BDIType::INT32); // Expect INT32 return
+    builder->connectControl(current, call_node);
+    builder->connectData(c7, 0, call_node, 0); // Pass c7 as argument 0
+    current = call_node; // Control flow continues *after* call returns
+    NodeID after_call_use_result = builder->addNode(OpType::ARITH_ADD); // Use the return value
+    builder->defineDataOutput(after_call_use_result, 0, BDIType::INT32);
+    builder->connectControl(current, after_call_use_result);
+    builder->connectData(call_node, 0, after_call_use_result, 0); // Input 0 = Return value from CALL
+    // Add another constant to add to the return value
+    NodeID c1 = addConst(int32_t{1}, current); // Need careful control flow for this
+    builder->connectData(c1, 0, after_call_use_result, 1); // Input 1 = Const 1
+    // Ensure const node C1 executes before the final ADD
+    builder->connectControl(call_node, c1); // Execute C1 after CALL returns conceptually
+    builder->connectControl(c1, after_call_use_result); // Then execute the final ADD
+    current = after_call_use_result;
     NodeID main_end = builder->addNode(OpType::META_END);
-    builder->connectControl(main_current, main_end);
-    // Finalize graphs
-    auto func_graph = func_builder.finalizeGraph(); // Not used directly by VM yet
+    builder->connectControl(current, main_end);
     auto main_graph = builder->finalizeGraph();
     ASSERT_NE(main_graph, nullptr);
-    // Manually set call target and return address (since func graph isn't loaded/linked yet)
-    auto call_node_ref = graph->getNodeMutable(call_node);
-    ASSERT_TRUE(call_node_ref != nullptr);
-    call_node_ref->control_outputs.push_back(func_start); // Target = conceptual func_start
-    call_node_ref->control_outputs.push_back(after_call); // Return = after_call
-    // This is highly simplified! A real system needs function loading/linking.
+    // --- Build Function Graph (Conceptual: Returns input + 5) --
+    // We need to add this function's nodes TO THE SAME GRAPH and connect the CALL
+    GraphBuilder func_builder(*builder); // Use same builder to add to main graph
+    NodeID func_start = func_builder.addNode(OpType::META_START, "FuncStart"); // Give it a name
+    NodeID func_current = func_start;
+    // Define function input port (matches argument source)
+    func_builder.defineDataOutput(func_start, 0, BDIType::INT32);
+    NodeID func_c5 = addConst(int32_t{5}, func_current); // Function's internal constant
+    NodeID func_add = func_builder.addNode(OpType::ARITH_ADD);
+    func_builder.defineDataOutput(func_add, 0, BDIType::INT32);
+    func_builder.connectControl(func_current, func_add);
+    func_builder.connectData(func_start, 0, func_add, 0); // Use Func Arg 0
+    func_builder.connectData(func_c5, 0, func_add, 1);
+    func_current = func_add;
+    NodeID func_ret = func_builder.addNode(OpType::CTRL_RETURN);
+    func_builder.connectControl(func_current, func_ret);
+    func_builder.connectData(func_add, 0, func_ret, 0); // Connect result of ADD to RETURN input
+    // --- Finalize Connections in Main Graph --
     auto call_node_ref = main_graph->getNodeMutable(call_node);
     ASSERT_TRUE(call_node_ref != nullptr);
-    call_node_ref->control_outputs.push_back(func_start); // Target = func_start (conceptually)
-    call_node_ref->control_outputs.push_back(after_call); // Return = after_call
+    call_node_ref->control_outputs.push_back(func_start);   // Target = func_start
+    call_node_ref->control_outputs.push_back(c1); // Return goes to node C1 (before final ADD)
+    // Pre-populate context for main graph constants
+    vm->getExecutionContext()->setPortValue(c7, 0, BDIValueVariant{int32_t{7}});
+    vm->getExecutionContext()->setPortValue(c1, 0, BDIValueVariant{int32_t{1}});
+    // Pre-populate function constant node
+    vm->getExecutionContext()->setPortValue(func_c5, 0, BDIValueVariant{int32_t{5}});
+    // *** Argument Loading Simulation (Still requires VM modification) ***
+    // The VM needs to load arg from CALL input (c7) and set func_start's output before executing func_start
+    // Manually simulate this for the test:
+    vm->getExecutionContext()->setPortValue(func_start, 0, BDIValueVariant{int32_t{7}});
+    // Execute the main graph
+    ASSERT_TRUE(vm->execute(*main_graph, main_start));
+    // Check final result after call and add
+    auto final_result_opt = vm->getExecutionContext()->getPortValue(after_call_use_result, 0);
+    ASSERT_TRUE(final_result_opt.has_value());
+    // Expected: Call(7) -> Returns 12. Final Add = 12 + 1 = 13.
+    EXPECT_EQ(convertVariantTo<int32_t>(final_result_opt.value()).value(), 13);
+    // Check that the call node itself received the return value on its output port
+    auto call_output_opt = vm->getExecutionContext()->getPortValue(call_node, 0);
+    ASSERT_TRUE(call_output_opt.has_value());
+    EXPECT_EQ(convertVariantTo<int32_t>(call_output_opt.value()).value(), 12);
+ }
     // Pre-populate context
     vm->getExecutionContext()->setPortValue(c7, 0, BDIValueVariant{int32_t{7}});
     vm->getExecutionContext()->setPortValue(c10, 0, BDIValueVariant{int32_t{10}});
@@ -491,7 +539,7 @@ TEST_F(BDIVMIntegrationTest, ConversionOps) {
     // We call this manually after popCallFrame in the test for now.
     ASSERT_TRUE(vm->getExecutionContext()->getLastReturnValue().has_value());
     ASSERT_TRUE(setOutputValueVariant(*vm->getExecutionContext(), *graph->getNodeMutable(call_node), 0, vm->getExecutionContext()
->getLastReturnValue().value()));
+    >getLastReturnValue().value()));
     // Check the output value of the original CALL node
     auto call_output_opt = vm->getExecutionContext()->getPortValue(call_node, 0);
     ASSERT_TRUE(call_output_opt.has_value());
