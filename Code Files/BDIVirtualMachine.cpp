@@ -6,18 +6,20 @@
  #include "../core/types/TypeSystem.hpp"
  #include "../core/payload/TypedPayload.hpp"
  #include "BDIValueVariant.hpp" // Include the variant
+ #include "../verification/ProofVerifier.hpp" 
+ #include "../meta/MetadataStore.hpp"
+ #include "VMTypeOperations.hpp" // Include the new operation helpers
  #include <iostream>
  #include <stdexcept>
  #include <variant>
  #include <cmath>
  #include <limits>
  #include <functional> // For std::function
- #include "../verification/ProofVerifier.hpp" 
- #include "../meta/MetadataStore.hpp"
  namespace bdi::runtime {
  // --- Type Conversion Helper --
  // Converts a value in a variant to the target C++ type, handling promotions/truncations.
  // Returns std::nullopt on failure.
+ // ... Constructor, Destructor, execute, fetchDecodeExecuteCycle ...
  template <typename TargetType>
  std::optional<TargetType> convertVariantTo(const BDIValueVariant& value_var) {
     using Type = core::types::BDIType;
@@ -118,6 +120,149 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
     ExecutionContext& ctx = *execution_context_;
     try {
         switch (node.operation) {
+    // --- Input Gathering --
+    std::vector<BDIValueVariant> inputs;
+    inputs.reserve(node.data_inputs.size());
+    for (size_t i = 0; i < node.data_inputs.size(); ++i) {
+        auto input_var_opt = ctx.getPortValue(node.data_inputs[i]);
+        if (!input_var_opt) {
+            std::cerr << "VM Error: Missing input " << i << " for Node " << node.id << std::endl;
+            return false;
+        }
+        inputs.push_back(input_var_opt.value());
+    }
+    // --- Operation Dispatch --
+    BDIValueVariant result_var = std::monostate{}; // Default result is error/void
+    bool op_success = true;
+    try {
+        switch (node.operation) {
+            // Meta & Control Flow (mostly handled elsewhere or simple)
+            case OpType::META_NOP: break;
+            case OpType::META_START: break;
+            case OpType::META_END: return true; // Signal success, next node handled later
+            case OpType::CTRL_JUMP: break;
+            case OpType::CTRL_BRANCH_COND: break; // Condition checked in determineNextNode
+            case OpType::CTRL_CALL: break; // Args staged here, jump handled later
+            case OpType::CTRL_RETURN: { // Set return value
+                 if (!inputs.empty()) { ctx.setCurrentReturnValue(inputs[0]); }
+                 else { ctx.setCurrentReturnValue(std::monostate{}); }
+                 break;
+            }
+             case OpType::META_ASSERT: {
+                 if (inputs.empty()) { op_success = false; break; }
+                 auto condition = vm_ops::convertValue<bool>(inputs[0]);
+                 if (!condition || !condition.value()) {
+                      std::cerr << "VM ASSERTION FAILED: Node " << node.id << "." << std::endl;
+                      // ... (retrieve metadata) ...
+                      op_success = false;
+                 }
+                 break;
+            }
+             case OpType::META_VERIFY_PROOF: {
+                 // ... (Implementation using proof_verifier_) ...
+                 op_success = true; // Assume stub passes
+                 break;
+            }
+            // Arithmetic (Use helpers)
+            case OpType::ARITH_ADD: if (inputs.size()==2) result_var = vm_ops::performAddition(inputs[0], inputs[1]); else op_success = false; break;
+            case OpType::ARITH_SUB: if (inputs.size()==2) result_var = vm_ops::performSubtraction(inputs[0], inputs[1]); else op_success = false; break; //
+ Need to implement performSubtraction
+            case OpType::ARITH_MUL: if (inputs.size()==2) result_var = vm_ops::performMultiplication(inputs[0], inputs[1]); else op_success = false;
+ break;// Need to implement performMultiplication
+            // ... other arithmetic ops ...
+             // Comparisons (Use helpers)
+             case OpType::CMP_EQ: if (inputs.size() == 2) result_var = vm_ops::performComparisonEQ(inputs[0], inputs[1]); else op_success = false; break;
+             case OpType::CMP_LT: if (inputs.size() == 2) result_var = vm_ops::performComparisonLT(inputs[0], inputs[1]); else op_success = false; break; //
+ Need performComparisonLT
+             // ... other comparison ops ...
+             // Bitwise (Use helpers)
+             case OpType::BIT_AND: if (inputs.size()==2) result_var = vm_ops::performBitwiseAND(inputs[0], inputs[1]); else op_success = false; break; //
+ Need performBitwiseAND
+             // ... other bitwise ops ...
+             // Logical (Use helpers)
+              case OpType::LOGIC_AND: if (inputs.size()==2) result_var = vm_ops::performLogicalAND(inputs[0], inputs[1]); else op_success = false; break;
+ // Need performLogicalAND
+              case OpType::LOGIC_NOT: if (inputs.size()==1) result_var = vm_ops::performLogicalNOT(inputs[0]); else op_success = false; break; // Need
+ performLogicalNOT
+              // ... other logical ops ...
+            // Memory
+            case OpType::MEM_LOAD: {
+                 if (inputs.size() != 1 || node.data_outputs.empty()) { op_success = false; break; }
+                 auto address_opt = vm_ops::convertValue<uintptr_t>(inputs[0]);
+                 if (!address_opt) { op_success = false; break; }
+                 BDIType load_type = node.getOutputType(0);
+                 size_t load_size = core::types::getBdiTypeSize(load_type);
+                 if (load_size == 0 && load_type != BDIType::VOID) { op_success = false; break; }
+                 core::payload::TypedPayload loaded_payload(load_type, core::types::BinaryData(load_size));
+                 if (!memory_manager_->readMemory(address_opt.value(), loaded_payload.data.data(), load_size)) {
+                     op_success = false; break;
+                 }
+                 result_var = ExecutionContext::payloadToVariant(loaded_payload);
+                 break;
+            }
+             case OpType::MEM_STORE: {
+                 if (inputs.size() != 2) { op_success = false; break; }
+                 auto address_opt = vm_ops::convertValue<uintptr_t>(inputs[0]);
+                 if (!address_opt) { op_success = false; break; }
+                 // Input 1 is the value variant to store
+                 core::payload::TypedPayload payload_to_store = ExecutionContext::variantToPayload(inputs[1]);
+                 if (payload_to_store.type == BDIType::UNKNOWN) { op_success = false; break; }
+                 if (!memory_manager_->writeMemory(address_opt.value(), payload_to_store.data.data(), payload_to_store.data.size())) {
+                     op_success = false;
+                 }
+                 // Store has no output variant (result_var remains monostate)
+                 break;
+            }
+             case OpType::MEM_ALLOC: {
+                 if (inputs.size() != 1 || node.data_outputs.empty()) { op_success = false; break; }
+                 auto size_opt = vm_ops::convertValue<uint64_t>(inputs[0]); // Size typically uint64
+                 if (!size_opt) { op_success = false; break; }
+                 auto region_id_opt = memory_manager_->allocateRegion(static_cast<size_t>(*size_opt));
+                 if (!region_id_opt) { op_success = false; break; }
+                 auto region_info = memory_manager_->getRegionInfo(*region_id_opt);
+                 if (!region_info) { op_success = false; break; } // Should not happen
+                 result_var = region_info.value().base_address; // Return base address as uintptr_t
+                 break;
+             }
+             // Conversions
+             case OpType::CONV_INT_TO_FLOAT: case OpType::CONV_FLOAT_TO_INT:
+             case OpType::CONV_EXTEND_SIGN: case OpType::CONV_EXTEND_ZERO:
+             case OpType::CONV_TRUNC: case OpType::CONV_BITCAST:
+             {
+                  if (inputs.size() != 1 || node.data_outputs.empty()) { op_success = false; break; }
+                  BDIType target_type = node.getOutputType(0);
+                  result_var = vm_ops::performConversion(inputs[0], target_type); // Use helper
+                  break;
+             }
+            // Default
+            default:
+                std::cerr << "VM Error: UNIMPLEMENTED/UNKNOWN Operation Type (" << static_cast<int>(node.operation) << ") for Node " << node.id
+ << std::endl;
+                op_success = false;
+        }
+    } catch (const std::exception& e) { /* ... */ }
+    // --- Store Result --
+    // Only store if the operation produced a non-monostate result AND expects an output
+     if (op_success && !node.data_outputs.empty() && !std::holds_alternative<std::monostate>(result_var)) {
+         if (!setOutputValueVariant(ctx, node, 0, result_var)) { // Assume output port 0 for now
+             op_success = false; // Failed to set output
+         }
+     } else if (op_success && !node.data_outputs.empty() && node.getOutputType(0) != BDIType::VOID) {
+         // Operation succeeded but didn't produce a value for a non-void output port? Error.
+         if (!std::holds_alternative<std::monostate>(result_var) && getBDIType(result_var) == BDIType::VOID && node.getOutputType(0) !=
+ BDIType::VOID) {
+             // Handle void result assignment if needed, currently error
+             std::cerr << "VM Error: Operation for Node " << node.id << " produced VOID for non-VOID output port 0." << std::endl;
+             op_success = false;
+         } else if (std::holds_alternative<std::monostate>(result_var)) {
+             // std::cerr << "VM Debug: Operation for Node " << node.id << " succeeded but produced no value (monostate) for output port 0." << std::endl;
+              // Decide if this is an error based on operation semantics
+         }
+     } else if (!op_success && std::holds_alternative<std::monostate>(result_var)) {
+         // Operation failed and result is monostate, this is expected error path
+     }
+    return op_success;
+ }
         case OpType::CTRL_CALL: {
                 // 1. Evaluate and stage arguments
                 // Assume inputs 0..N-1 are arguments, Input N is Function Target (e.g., NodeID or FuncPtr)
