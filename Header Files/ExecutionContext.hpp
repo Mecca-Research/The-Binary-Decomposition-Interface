@@ -56,11 +56,12 @@
  };
     // --- Call Stack Frame --
     struct CallFrame {
+        NodeID caller_node_id; // << ADDED: ID of the CTRL_CALL node
         NodeID return_node_id;
         std::unordered_map<PortIndex, BDIValueVariant> arguments;
         std::optional<BDIValueVariant> return_value = std::nullopt;
     };
-    void pushCallFrame(NodeID return_node_id);
+    void pushCallFrame(NodeID caller_node_id, NodeID return_node_id); // << MODIFIED
     std::optional<CallFrame> popCallFrame(); // Returns the whole frame
     bool isCallStackEmpty() const;
     void clear(); // Also clears args/return value state
