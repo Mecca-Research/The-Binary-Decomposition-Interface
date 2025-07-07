@@ -398,7 +398,15 @@ TEST_F(BDIVMIntegrationTest, ConversionOps) {
     EXPECT_EQ(convertVariantTo<int32_t>(vm->getExecutionContext()->getPortValue(f2i_node, 0).value()).value(), 123);
  }
  // --- CALL/RETURN Tests --
-TEST_F(BDIVMIntegrationTest, CallReturnSimple) {
+ TEST_F(BDIVMIntegrationTest, CallReturnWithValue) {
+    // --- Build Function Graph (Conceptual: Returns input + 5) --
+    // We won't actually execute this graph directly, but define its nodes
+    // for the main graph's context.
+    NodeID func_start = 100; // Arbitrary IDs for function nodes
+    NodeID func_input_arg = func_start; // Assume arg is available at func_start output 0
+    NodeID func_const5 = 101;
+    NodeID func_add = 102;
+    NodeID func_ret = 103;
     // --- Build Function Subgraph --
     GraphBuilder func_builder("AddFunc");
     NodeID func_start = func_builder.addNode(OpType::META_START); // Function entry point
@@ -420,12 +428,15 @@ TEST_F(BDIVMIntegrationTest, CallReturnSimple) {
     // --- Build Main Graph --
     NodeID main_start = builder->addNode(OpType::META_START);
     NodeID main_current = main_start;
+    NodeID c7 = addConst(int32_t{7}, current); // Argument to pass
     NodeID c10 = addConstNode(*builder, TypedPayload::createFrom(int32_t{10}), main_current);
     NodeID c20 = addConstNode(*builder, TypedPayload::createFrom(int32_t{20}), main_current);
     // Node to trigger call (needs target and return path)
     NodeID call_node = builder->addNode(OpType::CTRL_CALL);
-    builder->connectControl(main_current, call_node);
-    main_current = call_node; // Control technically transfers, then returns
+    builder->defineDataOutput(call_node, 0, BDIType::INT32); // Define output for return value
+    builder->connectControl(current, call_node);
+    builder->connectData(c7, 0, call_node, 0); // Pass c7 as argument 0
+    current = call_node; // Next node logically after CALL completes
     NodeID after_call = builder->addNode(OpType::META_NOP); // Where execution should resume
     builder->connectControl(main_current, after_call);
     main_current = after_call;
@@ -436,18 +447,59 @@ TEST_F(BDIVMIntegrationTest, CallReturnSimple) {
     auto main_graph = builder->finalizeGraph();
     ASSERT_NE(main_graph, nullptr);
     // Manually set call target and return address (since func graph isn't loaded/linked yet)
+    auto call_node_ref = graph->getNodeMutable(call_node);
+    ASSERT_TRUE(call_node_ref != nullptr);
+    call_node_ref->control_outputs.push_back(func_start); // Target = conceptual func_start
+    call_node_ref->control_outputs.push_back(after_call); // Return = after_call
     // This is highly simplified! A real system needs function loading/linking.
     auto call_node_ref = main_graph->getNodeMutable(call_node);
     ASSERT_TRUE(call_node_ref != nullptr);
     call_node_ref->control_outputs.push_back(func_start); // Target = func_start (conceptually)
     call_node_ref->control_outputs.push_back(after_call); // Return = after_call
     // Pre-populate context
+    vm->getExecutionContext()->setPortValue(c7, 0, BDIValueVariant{int32_t{7}});
     vm->getExecutionContext()->setPortValue(c10, 0, BDIValueVariant{int32_t{10}});
     vm->getExecutionContext()->setPortValue(c20, 0, BDIValueVariant{int32_t{20}});
     // Simulate passing arguments to the function start node
-    vm->getExecutionContext()->setPortValue(func_start, 0, BDIValueVariant{int32_t{10}}); // Arg A
-    vm->getExecutionContext()->setPortValue(func_start, 1, BDIValueVariant{int32_t{20}}); // Arg B
+    vm->getExecutionContext()->setPortValue(func_start, 0, BDIValueVariant{int32_t{7}});  // Arg A
+    vm->getExecutionContext()->setPortValue(func_start, 1, BDIValueVariant{int32_t{10}}); // Arg B
+    vm->getExecutionContext()->setPortValue(func_start, 2, BDIValueVariant{int32_t{20}}); // Arg C
     // Execute
+    // --- Simulate Function Execution (Hack within Test) --
+    // Normally the VM would jump. Here, we manually populate the expected result
+    // as if the function (func_add) had run and set the return value before RETURN.
+    // This tests if the VM correctly retrieves `last_return_value_` and puts it
+    // onto the output port of the original CALL node upon return.
+    BDIValueVariant func_result = BDIValueVariant{int32_t{7 + 5}}; // Expected result
+    vm->getExecutionContext()->setCurrentReturnValue(func_result); // Manually set expected return value
+    // --- Manually simulate stack pop & jump back --
+    // Push a dummy frame to simulate being inside the call
+    vm->getExecutionContext()->pushCallFrame(call_node, after_call);
+    // Pop the frame, which stores return value into last_return_value_
+    auto popped_frame = vm->getExecutionContext()->popCallFrame();
+    ASSERT_TRUE(popped_frame.has_value());
+    ASSERT_EQ(popped_frame.value().caller_node_id, call_node);
+    ASSERT_EQ(popped_frame.value().return_node_id, after_call);
+    // --- Execute the 'after_call' section --
+    // We need to manually set the next node ID to where RETURN would go
+    // and ensure the VM sets the CALL node's output.
+    // This requires modification to how the VM handles RETURN completion.
+    // Let's modify the VM slightly for this test: add a way to set output post-return.
+    // *** VM Modification needed ***
+    // Add method like: vm->applyReturnValueToCaller(NodeID caller_node_id, PortIndex output_port_idx)
+    // This method would take ctx.getLastReturnValue() and call setOutputValueVariant.
+    // We call this manually after popCallFrame in the test for now.
+    ASSERT_TRUE(vm->getExecutionContext()->getLastReturnValue().has_value());
+    ASSERT_TRUE(setOutputValueVariant(*vm->getExecutionContext(), *graph->getNodeMutable(call_node), 0, vm->getExecutionContext()
+>getLastReturnValue().value()));
+    // Check the output value of the original CALL node
+    auto call_output_opt = vm->getExecutionContext()->getPortValue(call_node, 0);
+    ASSERT_TRUE(call_output_opt.has_value());
+    EXPECT_EQ(convertVariantTo<int32_t>(call_output_opt.value()).value(), 12);
+    // Check execution proceeds correctly after call (run remaining graph)
+    // We need to set the VM's current node to 'after_call' manually here.
+    vm->setCurrentNodeId(after_call); // Need a setter for this
+    // ASSERT_TRUE(vm->executeRemaining()); // Need a way to continue execution
     // We need to execute BOTH graphs conceptually, or merge them.
     // For this test, we'll "inline" the function execution logic within the VM execution of CALL/RETURN.
     // The VM needs modification to handle jumping between graph concepts or loading functions.
@@ -458,5 +510,7 @@ TEST_F(BDIVMIntegrationTest, CallReturnSimple) {
     // Check function result (needs mechanism to retrieve it)
     // EXPECT_EQ(convertVariantTo<int32_t>(vm->getExecutionContext()->getPortValue(func_add, 0).value()).value(), 30);
     // Mark test as incomplete due to VM limitations
-    GTEST_SKIP() << "Skipping CALL/RETURN test - requires VM function loading/linking mechanism.";
+    GTEST_SKIP() << "Skipping CALL/RETURN test - requires VM function loading/linking mechanism, requires VM modifications for result propagation.";
  }
+ // TODO: Add tests for BinaryEncoding functions directly
+ // TODO: Add tests for META_VERIFY_PROOF stub
