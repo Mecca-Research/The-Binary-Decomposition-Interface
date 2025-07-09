@@ -133,9 +133,16 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
     // --- Operation Dispatch --
     BDIValueVariant result_var = std::monostate{}; // Default result is error/void
     bool op_success = true;
-    try {
+    try {   // Wrap entire switch in try block
             // Call appropriate vm_ops function based on OpType
         switch (node.operation) {
+            // --- Use vm_ops functions --
+            case OpType::ARITH_ADD: if(inputs.size()==2) result_var = vm_ops::performAddition(inputs[0], inputs[1]); else op_success = false; break;
+            // ... All other Arithmetic, Bitwise, Comparison, Logical ops call vm_ops::perform... ...
+            case OpType::BIT_SHL: if(inputs.size()==2) result_var = vm_ops::performBitwiseSHL(inputs[0], inputs[1]); else op_success = false; break;
+            case OpType::BIT_SHR: if(inputs.size()==2) result_var = vm_ops::performBitwiseSHR(inputs[0], inputs[1]); else op_success = false; break;
+            case OpType::BIT_ASHR: if(inputs.size()==2) result_var = vm_ops::performBitwiseASHR(inputs[0], inputs[1]); else op_success = false; break;
+            case OpType::CMP_EQ: if(inputs.size()==2) result_var = vm_ops::performComparisonEQ(inputs[0], inputs[1]); else op_success = false; break;
             // Meta & Control Flow (mostly handled elsewhere or simple)
             case OpType::META_NOP: break;
             case OpType::META_START: break; { // Implement Argument Loading
@@ -243,14 +250,20 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
             case OpType::MEM_LOAD: {
                  if (inputs.size() != 1 || node.data_outputs.empty()) { op_success = false; break; }
                  auto address_opt = vm_ops::convertValue<uintptr_t>(inputs[0]);
+                 uintptr_t address = convertValueOrThrow<uintptr_t>(inputs[0]); // Use throw version
                  if (!address_opt) { op_success = false; break; }
                  BDIType load_type = node.getOutputType(0);
                  size_t load_size = core::types::getBdiTypeSize(load_type);
-                 if (load_size == 0 && load_type != BDIType::VOID) { op_success = false; break; }
+                 if (load_size == 0 && load_type != BDIType::VOID) throw BDIExecutionError("Cannot load zero-size type"); { op_success = false; break; }
                  core::payload::TypedPayload loaded_payload(load_type, core::types::BinaryData(load_size));
                  if (!memory_manager_->readMemory(address_opt.value(), loaded_payload.data.data(), load_size)) {
                      op_success = false; break;
                  }
+                 TypedPayload loaded_payload(load_type, BinaryData(load_size));
+                 if (!memory_manager_->readMemory(address, loaded_payload.data.data(), load_size)) throw BDIExecutionError("Memory read failed");
+                 result_var = ExecutionContext::payloadToVariant(loaded_payload); // Static call ok
+                 if (std::holds_alternative<std::monostate>(result_var) && load_type != BDIType::VOID) throw BDIExecutionError("Payload to variant
+ conversion failed");
                  result_var = ExecutionContext::payloadToVariant(loaded_payload);
                  break;
             }
@@ -260,21 +273,22 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
                  if (!address_opt) { op_success = false; break; }
                  // Input 1 is the value variant to store
                  core::payload::TypedPayload payload_to_store = ExecutionContext::variantToPayload(inputs[1]);
-                 if (payload_to_store.type == BDIType::UNKNOWN) { op_success = false; break; }
-                 if (!memory_manager_->writeMemory(address_opt.value(), payload_to_store.data.data(), payload_to_store.data.size())) {
+                 if (payload_to_store.type == BDIType::UNKNOWN) throw BDIExecutionError("Variant to payload conversion failed for store"); { op_success = false; break; }
+                 if (!memory_manager_->writeMemory(address_opt.value(), payload_to_store.data.data(), payload_to_store.data.size())) throw BDIExecutionError("Memory
+ write failed"); {
                      op_success = false;
                  }
                  // Store has no output variant (result_var remains monostate)
-                 break;
+                 break; // No result_var
             }
              case OpType::MEM_ALLOC: {
                  if (inputs.size() != 1 || node.data_outputs.empty()) { op_success = false; break; }
-                 auto size_opt = vm_ops::convertValue<uint64_t>(inputs[0]); // Size typically uint64
+                 auto size_opt = vm_ops::convertValueOrThrow<uint64_t>(inputs[0]); // Size typically uint64
                  if (!size_opt) { op_success = false; break; }
-                 auto region_id_opt = memory_manager_->allocateRegion(static_cast<size_t>(*size_opt));
-                 if (!region_id_opt) { op_success = false; break; }
+                 auto region_id_opt = memory_manager_->allocateRegion(static_cast<size_t>(alloc_size));
+                 if (!region_id_opt) throw BDIExecutionError("Memory allocation failed"); { op_success = false; break; }
                  auto region_info = memory_manager_->getRegionInfo(*region_id_opt);
-                 if (!region_info) { op_success = false; break; } // Should not happen
+                 if (!region_info) throw BDIExecutionError("Internal error getting region info after alloc"); { op_success = false; break; } // Should not happen
                  result_var = region_info.value().base_address; // Return base address as uintptr_t
                  break;
              }
@@ -740,7 +754,13 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
              case OpType::CONV_EXTEND_ZERO: // Example: UINT16 -> UINT32
              case OpType::CONV_TRUNC:       // Example: INT64 -> INT32
              case OpType::CONV_BITCAST:     // Reinterpret bits
-             {
+            {
+                  if (inputs.size() != 1 || node.data_outputs.empty()) { op_success = false; break; }
+                  BDIType target_type = node.getOutputType(0);
+                  result_var = vm_ops::performBitcast(inputs[0], target_type);
+                  break;
+                }
+            {
                  if (node.data_inputs.size() != 1 || node.data_outputs.size() != 1) return false;
                  auto input_val_opt = ctx.getPortValue(node.data_inputs[0]);
                  if (!input_val_opt) return false;
@@ -773,6 +793,36 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
                 break;
             // --- Default --
             default:
+               throw BDIExecutionError("Unknown or unimplemented BDI Operation Type: " + std::to_string(static_cast<int>(node.operation)));
+        }
+    } catch (const BDIExecutionError& e) {
+        std::cerr << "VM Execution Error (Node " << node.id << ", Op " << static_cast<int>(node.operation) << "): " << e.what() << std::endl;
+        op_success = false;
+    } catch (const std::exception& e) {
+        std::cerr << "VM Unexpected Exception (Node " << node.id << ", Op " << static_cast<int>(node.operation) << "): " << e.what() << std::endl;
+        op_success = false;
+    } catch (...) {
+        std::cerr << "VM Unknown Exception (Node " << node.id << ", Op " << static_cast<int>(node.operation) << ")" << std::endl;
+        op_success = false;
+    }
+    // --- Store Result --
+    if (op_success && !node.data_outputs.empty()) {
+         // Store monostate only if output is VOID
+         if (std::holds_alternative<std::monostate>(result_var) && node.getOutputType(0) != BDIType::VOID) {
+             // Operation logically succeeded but produced no value for non-void output? Error.
+             // std::cerr << "VM Error: Op Node " << node.id << " succeeded but produced no value for non-VOID output 0." << std::endl;
+             // op_success = false; // Decide if this should fail execution
+         } else if (!std::holds_alternative<std::monostate>(result_var)) {
+             if (!setOutputValueVariant(ctx, node, 0, result_var)) { // Assume output port 0
+                 op_success = false; // Failed to set output
+             }
+         }
+          // If output is VOID and result is monostate, success.
+    } else if (!op_success && std::holds_alternative<std::monostate>(result_var)) {
+        // Op failed and produced monostate - expected error path, op_success is already false.
+    }
+    return op_success;
+ }
                 std::cerr << "VM Error: UNIMPLEMENTED/UNKNOWN Operation Type (" << static_cast<int>(node.operation) << ") for Node " << node.id
  << std::endl;
                 return false;
