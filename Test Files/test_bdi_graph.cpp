@@ -91,3 +91,24 @@
     // Clean up temporary file
     std::filesystem::remove(temp_filename);
  }
+ TEST_F(BDIGraphSerializationTest, VariousPayloadTypes) { // Use fixture if desired
+    MetadataStore meta_store;
+    GraphBuilder builder(meta_store, "PayloadTypeTest");
+    NodeID start = builder.addNode(OpType::META_START);
+    NodeID current = start;
+    NodeID n_i32 = addConstNode(builder, TypedPayload::createFrom(int32_t{-123}), current);
+    NodeID n_f64 = addConstNode(builder, TypedPayload::createFrom(double{1.23e45}), current);
+    NodeID n_bool = addConstNode(builder, TypedPayload::createFrom(bool{true}), current);
+    NodeID n_u64 = addConstNode(builder, TypedPayload::createFrom(uint64_t{0xFFEEDDCCBBAA9988}), current);
+    NodeID end = builder.addNode(OpType::META_END);
+    builder.connectControl(current, end); // Connect last const node to end
+    auto original_graph = builder.finalizeGraph();
+    // ... (Serialize to file/stream) ...
+    // ... (Deserialize from file/stream) ...
+    // ... (ASSERT graph is not null) ...
+    // Verify payloads
+    EXPECT_EQ(deserialized_graph->getNode(n_i32).value().get().payload.getAs<int32_t>(), -123);
+    EXPECT_EQ(deserialized_graph->getNode(n_f64).value().get().payload.getAs<double>(), 1.23e45);
+    EXPECT_EQ(deserialized_graph->getNode(n_bool).value().get().payload.getAs<bool>(), true);
+    EXPECT_EQ(deserialized_graph->getNode(n_u64).value().get().payload.getAs<uint64_t>(), 0xFFEEDDCCBBAA9988);
+ }
