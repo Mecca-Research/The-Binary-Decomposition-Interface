@@ -173,17 +173,17 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
                  op_success = true; // Assume stub passes
                  break;
             }
-            // Arithmetic (Use helpers)
-            case OpType::ARITH_ADD: if (inputs.size()==2) result_var = vm_ops::performAddition(inputs[0], inputs[1]); else op_success = false; break;
-            case OpType::ARITH_SUB: if (inputs.size()==2) result_var = vm_ops::performSubtraction(inputs[0], inputs[1]); else op_success = false; break; //
+             // Arithmetic (Use helpers)
+             case OpType::ARITH_ADD: if (inputs.size()==2) result_var = vm_ops::performAddition(inputs[0], inputs[1]); else op_success = false; break;
+             case OpType::ARITH_SUB: if (inputs.size()==2) result_var = vm_ops::performSubtraction(inputs[0], inputs[1]); else op_success = false; break; //
  Need to implement performSubtraction
-            case OpType::ARITH_MUL: if (inputs.size()==2) result_var = vm_ops::performMultiplication(inputs[0], inputs[1]); else op_success = false;
+             case OpType::ARITH_MUL: if (inputs.size()==2) result_var = vm_ops::performMultiplication(inputs[0], inputs[1]); else op_success = false;
  break;// Need to implement performMultiplication
-            case OpType::ARITH_DIV: if (inputs.size()==2) result_var = vm_ops::performDivision(inputs[0], inputs[1]); else op_success = false; break;
-            case OpType::ARITH_MOD: if (inputs.size()==2) result_var = vm_ops::performModulo(inputs[0], inputs[1]); else op_success = false; break;
-            case OpType::ARITH_NEG: if (inputs.size()==1) result_var = vm_ops::performNegation(inputs[0]); else op_success = false; break;
-            case OpType::ARITH_ABS: if (inputs.size()==1) result_var = vm_ops::performAbsolute(inputs[0]); else op_success = false; break
-            // ... other arithmetic ops ...
+             case OpType::ARITH_DIV: if (inputs.size()==2) result_var = vm_ops::performDivision(inputs[0], inputs[1]); else op_success = false; break;
+             case OpType::ARITH_MOD: if (inputs.size()==2) result_var = vm_ops::performModulo(inputs[0], inputs[1]); else op_success = false; break;
+             case OpType::ARITH_NEG: if (inputs.size()==1) result_var = vm_ops::performNegation(inputs[0]); else op_success = false; break;
+             case OpType::ARITH_ABS: if (inputs.size()==1) result_var = vm_ops::performAbsolute(inputs[0]); else op_success = false; break
+             // ... other arithmetic ops ...
              // Comparisons (Use helpers)
              case OpType::CMP_EQ: if (inputs.size() == 2) result_var = vm_ops::performComparisonEQ(inputs[0], inputs[1]); else op_success = false; break;
              case OpType::CMP_NE: if (inputs.size()==2) result_var = vm_ops::performComparisonNE(inputs[0], inputs[1]); else op_success = false; break; //
@@ -209,10 +209,35 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
              // Logical (Use helpers)
               case OpType::LOGIC_AND: if (inputs.size()==2) result_var = vm_ops::performLogicalAND(inputs[0], inputs[1]); else op_success = false; break;
  // Need performLogicalAND
-              case OpType::LOGIC_OR:  if (inputs.size()==2) result_var = vm_ops::performLogicalOR(inputs[0], inputs[1]); else op_success = false; break;
-              case OpType::LOGIC_XOR: if (inputs.size()==2) result_var = vm_ops::performLogicalXOR(inputs[0], inputs[1]); else op_success = false; break;
-              case OpType::LOGIC_NOT: if (inputs.size()==1) result_var = vm_ops::performLogicalNOT(inputs[0]); else op_success = false; break; // Need
+             case OpType::LOGIC_OR:  if (inputs.size()==2) result_var = vm_ops::performLogicalOR(inputs[0], inputs[1]); else op_success = false; break;
+             case OpType::LOGIC_XOR: if (inputs.size()==2) result_var = vm_ops::performLogicalXOR(inputs[0], inputs[1]); else op_success = false; break;
+             case OpType::LOGIC_NOT: if (inputs.size()==1) result_var = vm_ops::performLogicalNOT(inputs[0]); else op_success = false; break; // Need
  performLogicalNOT
+             // Conversions
+             case OpType::CONV_INT_TO_FLOAT: case OpType::CONV_FLOAT_TO_INT:
+             case OpType::CONV_EXTEND_SIGN: case OpType::CONV_EXTEND_ZERO:
+             case OpType::CONV_TRUNC:
+             {
+                  if (inputs.size() != 1 || node.data_outputs.empty()) { op_success = false; break; }
+                  BDIType target_type = node.getOutputType(0);
+                  result_var = vm_ops::performConversion(inputs[0], target_type);
+                  break;
+             }
+             case OpType::CONV_BITCAST:
+             {
+                  if (inputs.size() != 1 || node.data_outputs.empty()) { op_success = false; break; }
+                  BDIType target_type = node.getOutputType(0);
+                  result_var = vm_ops::performBitcast(inputs[0], target_type);
+                  break;
+             }
+            // ... other ops ...
+            default: /* ... Error ... */ op_success = false;
+        }
+    } catch (const std::exception& e) { /* ... Error Handling ...*/ op_success = false; }
+    // --- Store Result --
+    // ... (Logic remains the same) ...
+    return op_success;
+ }
               // ... other logical ops ...
             // Memory
             case OpType::MEM_LOAD: {
