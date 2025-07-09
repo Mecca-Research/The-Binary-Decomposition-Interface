@@ -1,4 +1,3 @@
-// File: bdi/runtime/BDIVirtualMachine.cpp 
  #include "BDIVirtualMachine.hpp"
  #include "ExecutionContext.hpp"
  #include "MemoryManager.hpp"
@@ -125,7 +124,7 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
     inputs.reserve(node.data_inputs.size());
     for (size_t i = 0; i < node.data_inputs.size(); ++i) {
         auto input_var_opt = ctx.getPortValue(node.data_inputs[i]);
-        if (!input_var_opt) {
+        if (!input_var_opt) { /* ... Error ... */ return false; }
             std::cerr << "VM Error: Missing input " << i << " for Node " << node.id << std::endl;
             return false;
         }
@@ -135,15 +134,26 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
     BDIValueVariant result_var = std::monostate{}; // Default result is error/void
     bool op_success = true;
     try {
+            // Call appropriate vm_ops function based on OpType
         switch (node.operation) {
             // Meta & Control Flow (mostly handled elsewhere or simple)
             case OpType::META_NOP: break;
-            case OpType::META_START: break;
+            case OpType::META_START: break; { // Implement Argument Loading
+              if (!ctx.isCallStackEmpty()) {
+                   for (PortIndex i = 0; i < node.data_outputs.size(); ++i) {
+                        auto arg_opt = ctx.getCurrentArgument(i);
+                        if (arg_opt) { setOutputValueVariant(ctx, node, i, arg_opt.value()); }
+                        // else: Argument not provided, output port remains unset
+                     }
+                 } // else: Global start node, no arguments to load
+                 break;
+            }
             case OpType::META_END: return true; // Signal success, next node handled later
-            case OpType::CTRL_JUMP: break;
+            case OpType::CTRL_JUMP: break; // Handled by determineNextNode
             case OpType::CTRL_BRANCH_COND: break; // Condition checked in determineNextNode
-            case OpType::CTRL_CALL: break; // Args staged here, jump handled later
-            case OpType::CTRL_RETURN: { // Set return value
+            case OpType::CTRL_CALL: break; // Args staged here by determineNextNode, jump/flow handled later
+            case OpType::CTRL_RETURN: { if (!inputs.empty()) ctx.setCurrentReturnValue(inputs[0]); else ctx.setCurrentReturnValue(std::monostate{});
+     break; } // Flow handled later
                  if (!inputs.empty()) { ctx.setCurrentReturnValue(inputs[0]); }
                  else { ctx.setCurrentReturnValue(std::monostate{}); }
                  break;
@@ -169,19 +179,38 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
  Need to implement performSubtraction
             case OpType::ARITH_MUL: if (inputs.size()==2) result_var = vm_ops::performMultiplication(inputs[0], inputs[1]); else op_success = false;
  break;// Need to implement performMultiplication
+            case OpType::ARITH_DIV: if (inputs.size()==2) result_var = vm_ops::performDivision(inputs[0], inputs[1]); else op_success = false; break;
+            case OpType::ARITH_MOD: if (inputs.size()==2) result_var = vm_ops::performModulo(inputs[0], inputs[1]); else op_success = false; break;
+            case OpType::ARITH_NEG: if (inputs.size()==1) result_var = vm_ops::performNegation(inputs[0]); else op_success = false; break;
+            case OpType::ARITH_ABS: if (inputs.size()==1) result_var = vm_ops::performAbsolute(inputs[0]); else op_success = false; break
             // ... other arithmetic ops ...
              // Comparisons (Use helpers)
              case OpType::CMP_EQ: if (inputs.size() == 2) result_var = vm_ops::performComparisonEQ(inputs[0], inputs[1]); else op_success = false; break;
+             case OpType::CMP_NE: if (inputs.size()==2) result_var = vm_ops::performComparisonNE(inputs[0], inputs[1]); else op_success = false; break; //
+ Need NE helper
              case OpType::CMP_LT: if (inputs.size() == 2) result_var = vm_ops::performComparisonLT(inputs[0], inputs[1]); else op_success = false; break; //
  Need performComparisonLT
+             case OpType::CMP_LE: if (inputs.size()==2) result_var = vm_ops::performComparisonLE(inputs[0], inputs[1]); else op_success = false; break; //
+ Need LE helper
+             case OpType::CMP_GT: if (inputs.size()==2) result_var = vm_ops::performComparisonGT(inputs[0], inputs[1]); else op_success = false; break; //
+ Need GT helper
+             case OpType::CMP_GE: if (inputs.size()==2) result_var = vm_ops::performComparisonGE(inputs[0], inputs[1]); else op_success = false; break; //
+ Need GE helper
              // ... other comparison ops ...
              // Bitwise (Use helpers)
              case OpType::BIT_AND: if (inputs.size()==2) result_var = vm_ops::performBitwiseAND(inputs[0], inputs[1]); else op_success = false; break; //
  Need performBitwiseAND
+             case OpType::BIT_OR:  if (inputs.size()==2) result_var = vm_ops::performBitwiseOR(inputs[0], inputs[1]); else op_success = false; break;
+             case OpType::BIT_XOR: if (inputs.size()==2) result_var = vm_ops::performBitwiseXOR(inputs[0], inputs[1]); else op_success = false; break;
+             case OpType::BIT_NOT: if (inputs.size()==1) result_var = vm_ops::performBitwiseNOT(inputs[0]); else op_success = false; break;
+             case OpType::BIT_SHL: if (inputs.size()==2) result_var = vm_ops::performBitwiseSHL(inputs[0], inputs[1]); else op_success = false; break;
+             // ... Add SHR, ASHR etc. ...
              // ... other bitwise ops ...
              // Logical (Use helpers)
               case OpType::LOGIC_AND: if (inputs.size()==2) result_var = vm_ops::performLogicalAND(inputs[0], inputs[1]); else op_success = false; break;
  // Need performLogicalAND
+              case OpType::LOGIC_OR:  if (inputs.size()==2) result_var = vm_ops::performLogicalOR(inputs[0], inputs[1]); else op_success = false; break;
+              case OpType::LOGIC_XOR: if (inputs.size()==2) result_var = vm_ops::performLogicalXOR(inputs[0], inputs[1]); else op_success = false; break;
               case OpType::LOGIC_NOT: if (inputs.size()==1) result_var = vm_ops::performLogicalNOT(inputs[0]); else op_success = false; break; // Need
  performLogicalNOT
               // ... other logical ops ...
@@ -231,16 +260,18 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
              {
                   if (inputs.size() != 1 || node.data_outputs.empty()) { op_success = false; break; }
                   BDIType target_type = node.getOutputType(0);
+                  // TODO: Need specific logic for BITCAST, EXTEND, TRUNC based on input/output types
+                  // For now, just use the general conversion helper
                   result_var = vm_ops::performConversion(inputs[0], target_type); // Use helper
                   break;
              }
             // Default
-            default:
+            default: /* ... Error ... */ op_success = false;
                 std::cerr << "VM Error: UNIMPLEMENTED/UNKNOWN Operation Type (" << static_cast<int>(node.operation) << ") for Node " << node.id
  << std::endl;
                 op_success = false;
         }
-    } catch (const std::exception& e) { /* ... */ }
+    } catch (const std::exception& e) { /* ... */ op_success = false; }
     // --- Store Result --
     // Only store if the operation produced a non-monostate result AND expects an output
      if (op_success && !node.data_outputs.empty() && !std::holds_alternative<std::monostate>(result_var)) {
@@ -249,15 +280,25 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
          }
      } else if (op_success && !node.data_outputs.empty() && node.getOutputType(0) != BDIType::VOID) {
          // Operation succeeded but didn't produce a value for a non-void output port? Error.
+         // Only try to store if op succeeded and produced non-error result
          if (!std::holds_alternative<std::monostate>(result_var) && getBDIType(result_var) == BDIType::VOID && node.getOutputType(0) !=
  BDIType::VOID) {
              // Handle void result assignment if needed, currently error
              std::cerr << "VM Error: Operation for Node " << node.id << " produced VOID for non-VOID output port 0." << std::endl;
              op_success = false;
          } else if (std::holds_alternative<std::monostate>(result_var)) {
+                 if (!setOutputValueVariant(ctx, node, 0, result_var)) { // Assume output 0
+                 op_success = false; // Failed to set output
              // std::cerr << "VM Debug: Operation for Node " << node.id << " succeeded but produced no value (monostate) for output port 0." << std::endl;
-              // Decide if this is an error based on operation semantics
+             // Decide if this is an error based on operation semantics
+            }
+         } else if (node.getOutputType(0) != BDIType::VOID) {
+             // Operation succeeded but produced monostate for non-void output? Error.
+             std::cerr << "VM Error: Op Node " << node.id << " succeeded but produced no value for non-VOID output 0." << std::endl;
+             op_success = false;
          }
+          // If output is VOID and result is monostate, that's fine.
+    }
      } else if (!op_success && std::holds_alternative<std::monostate>(result_var)) {
          // Operation failed and result is monostate, this is expected error path
      }
