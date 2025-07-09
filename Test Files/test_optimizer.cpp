@@ -143,6 +143,11 @@ class OptimizerTest : public ::testing::Test {
     // Nodes c2, c3, c5, add1, mul1 should be marked as NOP/deleted by DCE later
     // After folding alone, intermediate nodes might still exist but be NOPs
     // Let's count non-trivial nodes
+    void SetUp() override {
+        builder = std::make_unique<GraphBuilder>(meta_store, "OptimizerTestGraph");
+        engine.addPass(std::make_unique<ConstantFolding>());
+        engine.addPass(std::make_unique<DeadCodeElimination>()); // Ensure DCE is added here
+    }
     size_t final_active_nodes = 0;
     NodeID final_const_id = 0;
     for(const auto& pair : *graph) {
