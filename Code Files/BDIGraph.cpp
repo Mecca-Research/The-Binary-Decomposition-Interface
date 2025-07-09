@@ -1,12 +1,12 @@
-// File: bdi/core/graph/BDIGraph.cpp
  #include "BDIGraph.hpp"
- #include "../types/BinaryEncoding.hpp" // Include encoders/decoders
+ #include "BinaryEncoding.hpp" // Include encoders/decoders
  #include <stdexcept>
  #include <vector>
  #include <algorithm>
  #include <fstream> // For serialization
  #include <iostream> // For serialization debugging
  namespace bdi::core::graph {
+ using namespace bdi::core::types; // Make encoders/decoders directly accessible
  // --- Graph Modification --
 NodeID BDIGraph::addNode(std::unique_ptr<BDINode> node) {
     if (!node) {
@@ -134,8 +134,133 @@ bool BDIGraph::validateGraph() const {
  // - Efficient encoding of variable-size data (e.g., length prefixes)
  // - Potentially handling pointers/references carefully if graph is loaded at different address
  bool BDIGraph::serialize(std::ostream& os) const {
-    const uint32_t MAGIC_NUMBER = 0xDEADBEEF;
-    const uint16_t VERSION = 1;
+    const uint32_t MAGIC_NUMBER = 0xDEADBEEF2; // V3 Magic
+    const uint16_t VERSION = 3; // V3 
+    // Use BinaryData buffer for intermediate encoding
+    BinaryData header_buffer, name_buffer, count_buffer, node_buffer;
+    encode_u32(header_buffer, MAGIC_NUMBER);
+    encode_u16(header_buffer, VERSION);
+    uint32_t name_len = static_cast<uint32_t>(name_.length());
+    encode_u32(name_buffer, name_len);
+    // Append string bytes directly after length
+    const auto* name_bytes = reinterpret_cast<const std::byte*>(name_.c_str());
+    name_buffer.insert(name_buffer.end(), name_bytes, name_bytes + name_len);
+    uint64_t node_count = nodes_.size();
+    encode_u64(count_buffer, node_count);
+    // Write header, name, count
+    os.write(reinterpret_cast<const char*>(header_buffer.data()), header_buffer.size());
+    os.write(reinterpret_cast<const char*>(name_buffer.data()), name_buffer.size());
+    os.write(reinterpret_cast<const char*>(count_buffer.data()), count_buffer.size());
+    if (!os) return false;
+    for (const auto& pair : nodes_) {
+        node_buffer.clear(); // Clear buffer for each node
+        const BDINode& node = *(pair.second);
+        encode_u64(node_buffer, node.id);
+        encode_bdi_op_type(node_buffer, node.operation); // Use specific encoder
+        encode_u64(node_buffer, node.metadata_handle);
+        encode_u64(node_buffer, node.region_id);
+        encode_bdi_type(node_buffer, node.payload.type); // Use specific encoder
+        uint64_t payload_size = node.payload.data.size();
+        encode_u64(node_buffer, payload_size);
+        if (payload_size > 0) {
+            node_buffer.insert(node_buffer.end(), node.payload.data.begin(), node.payload.data.end());
+        }
+        uint32_t data_inputs_count = static_cast<uint32_t>(node.data_inputs.size());
+        encode_u32(node_buffer, data_inputs_count);
+        for (const auto& port_ref : node.data_inputs) {
+             encode_u64(node_buffer, port_ref.node_id);
+             encode_u32(node_buffer, port_ref.port_index);
+        }
+        uint32_t data_outputs_count = static_cast<uint32_t>(node.data_outputs.size());
+        encode_u32(node_buffer, data_outputs_count);
+        for (const auto& port_info : node.data_outputs) {
+            encode_bdi_type(node_buffer, port_info.type);
+            uint32_t port_name_len = static_cast<uint32_t>(port_info.name.length());
+            encode_u32(node_buffer, port_name_len);
+            const auto* port_name_bytes = reinterpret_cast<const std::byte*>(port_info.name.c_str());
+            node_buffer.insert(node_buffer.end(), port_name_bytes, port_name_bytes + port_name_len);
+        }
+        auto write_nodeid_vector = [&](const std::vector<NodeID>& vec) {
+            uint32_t count = static_cast<uint32_t>(vec.size());
+            encode_u32(node_buffer, count);
+            for (const NodeID& id : vec) {
+                encode_u64(node_buffer, id);
+            }
+        };
+        write_nodeid_vector(node.control_inputs);
+        write_nodeid_vector(node.control_outputs);
+        // Write node data to stream
+        os.write(reinterpret_cast<const char*>(node_buffer.data()), node_buffer.size());
+        if (!os) return false;
+    }
+    return os.good();
+ }
+ // --- Deserialization (Updated to use BinaryEncoding) --
+std::unique_ptr<BDIGraph> BDIGraph::deserialize(std::istream& is) {
+     const uint32_t EXPECTED_MAGIC_NUMBER = 0xBADBEEF2;
+     const uint16_t SUPPORTED_VERSION = 3;
+     // Helper to read directly into a variable using decoders
+     auto read_field = [&is]<typename T>(T& field) {
+         BinaryData buffer(sizeof(T));
+         is.read(reinterpret_cast<char*>(buffer.data()), sizeof(T));
+         if (!is) return false;
+         size_t offset = 0;
+         // Find the right decode function
+              if constexpr (std::is_same_v<T, bool>)      { return decode_bool(buffer, offset, field); }
+              else if constexpr (std::is_same_v<T, int8_t>)    { return decode_i8(buffer, offset, field); }
+              // ... other primitive types ...
+              else if constexpr (std::is_same_v<T, uint64_t>)  { return decode_u64(buffer, offset, field); }
+              else if constexpr (std::is_same_v<T, BDIType>)   { return decode_bdi_type(buffer, offset, field); }
+              else if constexpr (std::is_same_v<T, BDIOperationType>) { return decode_bdi_op_type(buffer, offset, field); }
+              else { return false; /* Unsupported direct read */ }
+     };
+     uint32_t magic_number;
+     uint16_t version;
+     if (!read_field(magic_number) || !read_field(version)) return nullptr;
+     if (magic_number != EXPECTED_MAGIC_NUMBER || version != SUPPORTED_VERSION) { /* ... error ... */ return nullptr; }
+     uint32_t name_len;
+     if (!read_field(name_len)) return nullptr;
+     std::string graph_name(name_len, '\0');
+     is.read(&graph_name[0], name_len); if (!is) return nullptr;
+     auto graph = std::make_unique<BDIGraph>(graph_name);
+     uint64_t node_count;
+     if (!read_field(node_count)) return nullptr;
+     uint64_t max_id_seen = 0;
+     for (uint64_t i = 0; i < node_count; ++i) {
+         NodeID node_id; BDIOperationType op_type; MetadataHandle meta_handle; RegionID region_id_val;
+         if (!read_field(node_id) || !read_field(op_type) || !read_field(meta_handle) || !read_field(region_id_val)) return nullptr;
+         max_id_seen = std::max(max_id_seen, node_id);
+         auto node = std::make_unique<BDINode>(node_id, op_type);
+         node->metadata_handle = meta_handle; node->region_id = region_id_val;
+         BDIType payload_type; uint64_t payload_size;
+         if (!read_field(payload_type) || !read_field(payload_size)) return nullptr;
+         node->payload.type = payload_type;
+         if (payload_size > 0) { node->payload.data.resize(payload_size); is.read(reinterpret_cast<char*>(node->payload.data.data()), payload_size); if (!is)
+ return nullptr; }
+         uint32_t data_inputs_count; if (!read_field(data_inputs_count)) return nullptr;
+         node->data_inputs.resize(data_inputs_count);
+         for (uint32_t j = 0; j < data_inputs_count; ++j) { if (!read_field(node->data_inputs[j].node_id) || !read_field(node->data_inputs[j].port_index)) return
+ nullptr; }
+         uint32_t data_outputs_count; if (!read_field(data_outputs_count)) return nullptr;
+         node->data_outputs.resize(data_outputs_count);
+         for (uint32_t j = 0; j < data_outputs_count; ++j) {
+             uint32_t port_name_len;
+             if (!read_field(node->data_outputs[j].type) || !read_field(port_name_len)) return nullptr;
+             node->data_outputs[j].name.resize(port_name_len);
+             is.read(&node->data_outputs[j].name[0], port_name_len); if (!is) return nullptr;
+         }
+         auto read_nodeid_vector = [&](std::vector<NodeID>& vec) {
+             uint32_t count; if (!read_field(count)) return false; vec.resize(count);
+             for (uint32_t k = 0; k < count; ++k) { if (!read_field(vec[k])) return false; } return true;
+         };
+         if (!read_nodeid_vector(node->control_inputs)) return nullptr;
+         if (!read_nodeid_vector(node->control_outputs)) return nullptr;
+         graph->nodes_[node_id] = std::move(node);
+     }
+     graph->next_node_id_ = max_id_seen + 1;
+     if (!is) return nullptr; // Check final stream state
+     return graph;
+ }
     // 1. Header
     os.write(reinterpret_cast<const char*>(&MAGIC_NUMBER), sizeof(MAGIC_NUMBER));
     os.write(reinterpret_cast<const char*>(&VERSION), sizeof(VERSION));
