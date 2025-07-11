@@ -1,7 +1,7 @@
- #include "ASTToIR.hpp"
- #include "DSLCoreTypes.hpp" // For specific node types if DSLExpression holds them 
+#include "ASTToIR.hpp"
+#include "DSLCoreTypes.hpp" // For specific node types if DSLExpression holds them 
 #include <stdexcept>
- #include <iostream> // Keep for debug/info logs, replace errors 
+#include <iostream> // Keep for debug/info logs, replace errors 
 namespace ir::ir { 
 // --- ASTToIR --- 
 ASTToIR::ASTToIR(TypeChecker& type_checker) : type_checker_(type_checker) {} 
