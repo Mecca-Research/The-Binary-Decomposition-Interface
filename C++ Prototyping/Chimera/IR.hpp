@@ -7,14 +7,23 @@
 #include <memory> 
 #include <string> 
 #include <cstdint>
- #include <map> 
+#include <map> 
 #include <optional> 
 namespace ir::ir { 
 // --- IR Node Structure --- 
+/** 
+ * @brief Represents Intermediate Representation codes for Chimera operations. 
+ * These are higher-level than BDI operations and closer to source constructs. 
+ */ 
 using IRNodeId = uint64_t; 
 enum class IROpCode { 
     // Meta 
-    ENTRY, EXIT, PARAM, RETURN_VALUE, SCOPE_BEGIN, SCOPE_END, 
+    ENTRY,        //!< Function or graph entry point.  
+    EXIT,         //!< Function or graph exit point (no return value).       
+    PARAM,        //!< Represents a function input parameter.      
+    RETURN_VALUE, //!< Represents the value returned by a function (takes one input).  
+    SCOPE_BEGIN, 
+    SCOPE_END, 
     // Literals/Symbols 
     LOAD_CONST, LOAD_SYMBOL, 
     // Memory/State 
@@ -31,20 +40,31 @@ enum class IROpCode {
     ANNOTATION_MARKER 
 }; 
 // Represents a reference to an output value of another IR node 
+/** 
+ * @brief Represents a reference to a value produced by another ChiIR node's output. 
+ * Includes the source node ID, the specific output port index, and the expected type. 
+ */ 
 struct IRValueRef { 
-    IRNodeId node_id = 0; 
-    uint32_t output_index = 0; // Typically 0 for single-output nodes 
-    std::shared_ptr<ChimeraType> type = nullptr; // Type of the value being referenced 
+    IRNodeId node_id = 0; //!< ID of the node producing the value. 
+    uint32_t output_index = 0; //!< Index of the output port on the source node. 
+    std::shared_ptr<ChimeraType> type = nullptr; //!< Resolved ChimeraType of the value.  
     bool operator==(const IRValueRef&) const = default; 
 }; 
+/** 
+ * @brief Represents a node in the Chimera Intermediate Representation graph. 
+ * 
+ * IR nodes represent operations, control flow constructs, or data references 
+ * at a level higher than BDI but lower than the source AST. They carry type 
+ * information and links to source annotations. 
+ */ 
 struct IRNode { 
-    IRNodeId id; 
-    IROpCode opcode; 
-    std::string label; // Optional debug label 
+    IRNodeId id; //!< Unique identifier for this node. 
+    IROpCode opcode; //!< The operation this node performs. 
+    std::string label; //!< Optional debug label 
     // Inputs/Operands represented as references to previous node outputs 
-    std::vector<IRValueRef> inputs; 
+    std::vector<IRValueRef> inputs; //!< Values consumed by this node. 
     // Type of the primary output value produced by this node 
-    std::shared_ptr<ChimeraType> output_type = nullptr;
+    std::shared_ptr<ChimeraType> output_type = nullptr; //!< Type of the primary value produced.
     // Operation specific data 
     std::variant< 
         std::monostate, 
@@ -59,8 +79,11 @@ struct IRNode {
     std::vector<IRNodeId> control_successors; // Explicit successors needed? 
     // Source mapping and annotations 
     // SourceLocation source_loc; 
-    std::vector<ParsedAnnotation> annotations; // Annotations parsed earlier 
-    // Basic validation 
+    std::vector<ParsedAnnotation> annotations; //!< Annotations from source code. 
+    /** 
+     * @brief Performs basic validation checks on the node structure. 
+     * @return True if the node appears structurally valid, false otherwise. 
+     */  
     bool validate() const; 
 }; 
 // --- IR Graph Structure --- 
