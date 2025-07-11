@@ -1,10 +1,10 @@
-#ifndef CHIMERA_FRONTEND_DSL_DSLCORETYPES_HPP 
-#define CHIMERA_FRONTEND_DSL_DSLCORETYPES_HPP 
+#ifndef DSLCORETYPES_HPP 
+#define DSLCORETYPES_HPP 
 #include <string> 
 #include <vector> 
 #include <variant> 
 #include <memory> // For potential smart pointers 
-namespace chimera::frontend::dsl { 
+namespace ::dsl { 
 // --- Basic DSL Elements --- 
 // Represents a symbolic identifier within a DSL 
 struct Symbol { 
@@ -52,14 +52,25 @@ std::unique_ptr<DSLExpression> value_expr; // The definition body or value
 }; 
 // Represents the overall structure of a DSL expression/statement 
 // This is a simplified AST node representation for DSL content 
+struct IDSLSpecificASTNode { 
+virtual ~IDSLSpecificASTNode() = default; 
+// Add common fields like source location? 
+virtual std::string getNodeTypeName() const = 0; // For identification/debugging 
+}; 
+// Make DSLExpression potentially hold these specific nodes 
 struct DSLExpression { 
 using Content = std::variant< 
 std::monostate, 
          Symbol, 
          DSLLiteral, 
-         DSLOperation, 
+         DSLOperation, // Keep for core Chimera ops? Or replace? 
          DSLExpressionSequence, 
-         DSLDefinition 
+         DSLDefinition, 
+std::shared_ptr<IDSLSpecificASTNode> // Hold pointer to specific node 
+     >; 
+     Content content; 
+// ... source location etc. ... 
+}; 
 // Add other expression types: IfExpr, LambdaExpr, MatchExpr etc. 
      >; 
      Content content; 
@@ -71,7 +82,17 @@ std::monostate,
 struct DSLOperatorDefinition {
     Operator op; 
 // Parameters: Expected argument types/patterns 
-// Mapping: How this operator translates to ChiIR or BDI (e.g., function name, BDI op sequence) 
+// Mapping: How this operator translates to IR or BDI (e.g., function name, BDI op sequence) 
+// --- ArithmeticExpr inherits from IDSLSpecificASTNode --- 
+// (in ArithmeticMapper.hpp or separate AST file) 
+struct ArithmeticExpr : IDSLSpecificASTNode { 
+    ArithOp op; 
+int32_t value = 0; 
+std::unique_ptr<ArithmeticExpr> lhs = nullptr;
+ std::unique_ptr<ArithmeticExpr> rhs = nullptr;
+ // ... constructors ... 
+std::string getNodeTypeName() const override { return "ArithmeticExpr"; } 
+};
 // Type signature: Result type based on input types 
 // Constraints: Pre/post conditions 
 }; 
@@ -82,6 +103,18 @@ struct DSLSpecification {
 std::vector<DSLOperatorDefinition> operator_definitions; 
 // Rules for type checking within the DSL 
 }; 
-// Mapping rules to ChiIR/BDI 
+// Mapping rules to IR/BDI 
+// --- IDSLMapper Interface Update --- 
+class IDSLMapper { 
+public: 
+virtual ~IDSLMapper() = default; 
+// Map takes the specific DSL node type it understands 
+// The compiler (IRToBDI) needs to downcast based on DSL registry info 
+virtual bdi::core::graph::NodeID mapToBDI(const IDSLSpecificASTNode* dsl_node, // Take base pointer 
+                                             bdi::frontend::api::GraphBuilder& builder, 
+                                             bdi::core::graph::NodeID& current_control_node) = 0; 
+// Optionally, provide a function to check if this mapper handles a given node type name 
+virtual bool handlesNodeType(const std::string& node_type_name) const = 0; 
+}; 
 } // namespace chimera::frontend::dsl 
 #endif // CHIMERA_FRONTEND_DSL_DSLCORETYPES_HPP 
