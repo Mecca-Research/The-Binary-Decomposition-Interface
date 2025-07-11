@@ -68,7 +68,6 @@ template <typename T>
  bool decode_i64(const BinaryData& buffer, size_t& offset, int64_t& out_value) { return read_bytes(buffer, offset, out_value); }
  bool decode_u64(const BinaryData& buffer, size_t& offset, uint64_t& out_value) { return read_bytes(buffer, offset, out_value); }
  // bool decode_f16(const BinaryData& buffer, size_t& offset, /* some float16 type */ & out_value) { /* read uint16_t and convert */ return false; /*
- Placeholder */}
  bool decode_f32(const BinaryData& buffer, size_t& offset, float& out_value) { return read_bytes(buffer, offset, out_value); }
  bool decode_f64(const BinaryData& buffer, size_t& offset, double& out_value) { return read_bytes(buffer, offset, out_value); }
  bool decode_ptr(const BinaryData& buffer, size_t& offset, uintptr_t& out_value) { return read_bytes(buffer, offset, out_value); }
