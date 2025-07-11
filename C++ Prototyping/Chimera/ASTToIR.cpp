@@ -72,7 +72,7 @@ IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckConte
               else if constexpr (std::is_same_v<T, DSLLiteral>) { result_node_id = convertLiteral(arg, context, current_cfg_node); } 
               else if constexpr (std::is_same_v<T, DSLOperation>) { result_node_id = convertOperation(arg, context, current_cfg_node); } 
               else if constexpr (std::is_same_v<T, DSLExpressionSequence>) { result_node_id = convertSequence(arg, context, current_cfg_node);
-              else if constexpr (std::is_same_v<T, DSLDefinition>) { convertDefinition(arg, context, current_cfg_node); result_node_id = 0; /*
+              else if constexpr (std::is_same_v<T, DSLDefinition>) { convertDefinition(arg, context, current_cfg_node); result_node_id = 0; 
               else if constexpr (std::is_same_v<T, std::shared_ptr<IDSLSpecificASTNode>>) { result_node_id = convertDSLBlock(arg.get(), contex
               else { throw std::runtime_error("ASTToIR: Unknown expression variant type."); } 
      }, expr->content); 
