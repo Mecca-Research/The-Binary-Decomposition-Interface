@@ -10,8 +10,9 @@
     META_START,         // Graph entry point
     META_END,           // Graph exit point / return
     META_COMMENT,       // Holds descriptive text (in payload/metadata)
-META_ASSERT,        // Assert a condition (input bool must be true)
+    META_ASSERT,        // Assert a condition (input bool must be true)
     META_VERIFY_PROOF,  // Verify associated ProofTag
+    META_CONST,         // Represents a compile-time constant value (in payload)
     // Memory Operations
     MEM_ALLOC,          // Allocate memory region (size/type in payload/input)
     MEM_FREE,           // Free memory region (ref input)
