@@ -1,19 +1,36 @@
-#include "ArithmeticMapper.hpp" 
-#include "../../core/graph/OperationTypes.hpp" 
-#include "../../core/types/BDITypes.hpp" 
-#include "../../core/payload/TypedPayload.hpp" 
-#include "../../runtime/ExecutionContext.hpp" // For payload<->variant conversion 
+#include "ArithmeticMapperTOBDI.hpp" 
+#include "OperationTypes.hpp" 
+#include "BDITypes.hpp" 
+#include "TypedPayload.hpp" 
+#include "ExecutionContext.hpp" // For payload<->variant conversion 
 #include <stdexcept>
- namespace bdi::frontend::dsl { 
+namespace bdi::frontend::dsl { 
 // Remove previous mapToGraph definition if it existed 
 // Implementation of mapToBDI using the base class interface signature is complex 
 // because the base class doesn't know about ArithmeticExpr. 
 // Option 1: Use std::any_cast inside mapToBDI (as done previously) 
 // Option 2: Create a specific public method and have users call that. 
 // Let's assume Option 1 for now. 
-core::graph::NodeID ArithmeticMapper::mapToBDI(const DSLExpression& dsl_expr, 
+bdi::core::graph::NodeID ArithmeticMapper::mapToBDI(const IDSLSpecificASTNode* dsl_node, 
                                               bdi::frontend::api::GraphBuilder& builder, 
                                               bdi::core::graph::NodeID& current_control_node) { 
+// Safely cast the base pointer to the specific type this mapper handles 
+const auto* expr = dynamic_cast<const ArithmeticExpr*>(dsl_node); 
+if (!expr) { 
+throw std::runtime_error("ArithmeticMapper received incompatible DSL node type"); 
+    }
+ // Call the recursive helper with the correctly typed pointer 
+return mapExpression(expr, builder, current_control_node); 
+} 
+// The recursive mapExpression remains largely the same, but now receives ArithmeticExpr* directly 
+bdi::core::graph::NodeID ArithmeticMapper::mapExpression(const ArithmeticExpr* expr, 
+                                                      bdi::frontend::api::GraphBuilder& builder, 
+                                                      bdi::core::graph::NodeID& current_control_node) { 
+// ... (Implementation remains the same as before, using expr->lhs, expr->rhs etc.) ... 
+if (!expr) return 0; 
+switch (expr->op) { /* ... cases as before ... */ } 
+return 0; // Should not be reached 
+}
 // Helper recursive lambda (captures builder and control node by reference) 
 std::function<NodeID(const ArithmeticExpr*)> mapRec = 
          [&](const ArithmeticExpr* expr) -> NodeID { 
