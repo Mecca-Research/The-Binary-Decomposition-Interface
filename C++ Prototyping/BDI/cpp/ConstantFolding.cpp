@@ -16,21 +16,25 @@
     if (!current_graph_) return std::nullopt;
     auto node_opt = current_graph_->getNode(node_id);
     if (!node_opt) return std::nullopt;
+    // ... (Check cache first) ... 
     const BDINode& node = node_opt.value();
     // Define what constitutes a "constant" node for this pass
     // Option 1: Specific META_CONST operation type (preferred)
     // if (node.operation == BDIOperationType::META_CONST) { ... }
     // Option 2: Use NOP nodes with payloads (as used in tests)
+    // Check for new META_CONST type 
     if (node.operation == BDIOperationType::META_NOP && node.payload.isValid() && node.payload.type != BDIType::VOID) {
         return ExecutionContext::payloadToVariant(node.payload);
     }
+    // Keep NOP check for backward compatibility or specific cases? Remove if META_CONST is sole method. 
+    // if (node.operation == BDIOperationType::META_NOP && ... ) { ... } 
     // Option 3: Check if the output value is already known constant from previous folding
     PortRef output_port = {node_id, 0}; // Assume single output port 0 for simplicity
     auto it = constant_values_.find(output_port);
     if (it != constant_values_.end()) {
         return it->second;
     }
-    return std::nullopt;
+    return std::nullopt; // Not a recognized constant node 
  }
  // Attempts to evaluate a node if all its inputs are constant
  std::optional<BDIValueVariant> ConstantFolding::evaluateConstantNode(BDINode& node) {
@@ -155,6 +159,7 @@
     return result_var;
  }
  // Replaces the node with a constant, rewiring consumers
+ // Update replaceNodeWithConstant 
  void ConstantFolding::replaceNodeWithConstant(BDINode& node_to_replace, const BDIValueVariant& constant_result) {
      if (!current_graph_) return;
      NodeID old_node_id = node_to_replace.id;
@@ -184,6 +189,18 @@
          return;
      }
      new_const_node->payload = constant_payload;
+     // 3. Create the new constant node using META_CONST 
+     NodeID new_const_node_id = current_graph_->addNode(BDIOperationType::META_CONST); // Use META_CONST 
+     BDINode* new_const_node = current_graph_->getNodeMutable(new_const_node_id);
+     if (!new_const_node) {
+         std::cerr << "    Error: Failed to create new constant node." << std::endl;
+         current_graph_->removeNode(new_const_node_id); // Clean up potentially added node
+         return;
+     }
+     // ... (set payload, copy outputs as before) ... 
+     // ... (rewire consumers as before) ... 
+     // ... (rewire control flow as before) ... 
+     // ... (mark old node for deletion / NOP as before) ... 
      // Define the output port matching the original node's output type
      // Assume single output port 0 for simplicity
      if (!node_to_replace.data_outputs.empty()) {
