@@ -375,13 +375,19 @@ inline BDIValueVariant performAddition(const BDIValueVariant& lhs_var, const BDI
  range, signedness ... */ return std::monostate{}; }
  // ... Implement OR, XOR, NOT, Shifts ...
  // Shifts
+ // Note: C++ shift behavior for negative values or amounts >= width is potentially UB/implementation-defined. 
+ // BDI should define precise semantics if needed (e.g., always mask shift amount). 
  inline BDIValueVariant performBitwiseSHL(const BDIValueVariant& l, const BDIValueVariant& r) {
     BDIType type1 = getBDIType(l);
     if (!TypeSystem::isInteger(type1)) throw BDIExecutionError("Shift value must be integer");
+    // Use unsigned int for shift amount, check range? 
     auto shift_amount_opt = convertValue<unsigned int>(r); // Convert shift amount to unsigned int
     if (!shift_amount_opt) throw BDIExecutionError("Invalid shift amount type");
     unsigned int shift = shift_amount_opt.value();
     // Check for undefined behavior (shifting >= width)
+    // Check shift range? (C++ standard UB if >= width) 
+    // size_t width = getBdiTypeSize(type1) * 8; 
+    // if (shift >= width) throw BDIExecutionError("Shift amount >= bit width"); 
     if (shift >= getBdiTypeSize(type1) * 8) throw BDIExecutionError("Shift amount greater than or equal to bit width");
     return performNumericBitwiseUnaryOp(l, [shift](auto a){ return a << shift; }, true);
  }
@@ -409,13 +415,30 @@ inline BDIValueVariant performAddition(const BDIValueVariant& lhs_var, const BDI
      if (shift >= getBdiTypeSize(type1) * 8) throw BDIExecutionError("Shift amount greater than or equal to bit width");
      // C++ >> is arithmetic for signed types.
      return performNumericBitwiseUnaryOp(l, [shift](auto a){
-         if constexpr (std::is_integral_v<decltype(a)>) {
-            return a >> shift;
+            if constexpr (std::is_integral_v<decltype(a)>) { 
+            using UnsignedT = std::make_unsigned_t<decltype(a)>; 
+            return static_cast<decltype(a)>( static_cast<UnsignedT>(a) >> shift ); 
          } else throw BDIExecutionError("ASHR requires integers"); }, true);
  }  
+ inline BDIValueVariant performBitwiseASHR(const BDIValueVariant& l, const BDIValueVariant& r) { // Arithmetic Shift Right 
+     BDIType type1 = getBDIType(l); 
+     if (!TypeSystem::isInteger(type1)) throw BDIExecutionError("Shift value must be integer"); 
+     auto shift_amount_opt = convertValue<unsigned int>(r); 
+     if (!shift_amount_opt) throw BDIExecutionError("Invalid shift amount type"); 
+     unsigned int shift = shift_amount_opt.value(); 
+     // if (shift >= getBdiTypeSize(type1) * 8) throw BDIExecutionError("Shift amount >= bit width"); 
+     // C++ >> is arithmetic for signed types, logical for unsigned. 
+     // We want arithmetic ONLY for signed types here. 
+     return performNumericBitwiseUnaryOp(l, [shift](auto a){ 
+         if constexpr (std::is_integral_v<decltype(a)> && std::is_signed_v<decltype(a)>) {
+         return a >> shift; // Signed type -> arithmetic shift 
+ }   else if constexpr (std::is_integral_v<decltype(a)> && !std::is_signed_v<decltype(a)>) { 
+     // Explicitly do logical shift for unsigned if ASHR is called on it? Or error? Error is safer. 
+     throw BDIExecutionError("ASHR called on unsigned type"); 
+ }   else throw BDIExecutionError("ASHR requires integers"); }, true); 
  // Comparison (returns bool variant)
  template <typename Operation>
- BDIValueVariant performComparison(const BDIValueVariant& lhs_var, const BDIValueVariant& rhs_var, Operation op_lambda) {
+BDIValueVariant performComparison(const BDIValueVariant& lhs_var, const BDIValueVariant& rhs_var, Operation op_lambda) {
      // Similar promotion logic as numeric binary ops
      BDIType type1 = getBDIType(lhs_var);
      BDIType type2 = getBDIType(rhs_var);
