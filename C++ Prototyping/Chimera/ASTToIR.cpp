@@ -61,11 +61,15 @@ std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLDefinition* func_def,
      return std::move(current_graph_); 
 } 
 // Recursive Conversion Helpers 
+// struct DSLLoopExpr { DSLExpression condition; DSLExpressionSequence body; }; 
+// struct DSLFuncDefExpr { DSLDefinition signature; DSLExpressionSequence body; }; // Simplified 
+// struct DSLAssignmentExpr { Symbol target; DSLExpression value; }; 
 IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
      if (!expr) return 0; 
      IRNodeId result_node_id = 0; // ID of node producing the value of this expression 
      auto chimera_type = type_checker_.checkExpression(expr, context); // Get type first 
      std::visit([&](auto&& arg) { 
+     // ... (Literal, Symbol, Operation cases) ... 
          using T = std::decay_t<decltype(arg)>; 
               if constexpr (std::is_same_v<T, std::monostate>) { /* No node */ }
               else if constexpr (std::is_same_v<T, Symbol>) { result_node_id = convertSymbolLoad(arg, context, current_cfg_node); } 
@@ -73,12 +77,143 @@ IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckConte
               else if constexpr (std::is_same_v<T, DSLOperation>) { result_node_id = convertOperation(arg, context, current_cfg_node); } 
               else if constexpr (std::is_same_v<T, DSLExpressionSequence>) { result_node_id = convertSequence(arg, context, current_cfg_node);
               else if constexpr (std::is_same_v<T, DSLDefinition>) { convertDefinition(arg, context, current_cfg_node); result_node_id = 0; 
+              // Handle different kinds of definitions 
+              // if (isFunctionDefinition(arg)) { convertFunctionDefinition(arg, context, current_cfg_node); } 
+              // else { convertVariableDefinition(arg, context, current_cfg_node); } 
+              result_node_id = 0; // Definitions usually don't produce a value node directly 
+              } 
+              // Example: Handling an assignment AST node 
+              // else if constexpr (std::is_same_v<T, DSLAssignmentExpr>) { 
+              //    result_node_id = convertAssignment(arg, context, current_cfg_node); 
+              // } 
+              // Example: Handling a loop AST node 
+              // else if constexpr (std::is_same_v<T, DSLLoopExpr>) { // e.g., a 'while' loop 
+              //    result_node_id = convertWhileLoop(arg, context, current_cfg_node); 
+              // }                                       
               else if constexpr (std::is_same_v<T, std::shared_ptr<IDSLSpecificASTNode>>) { result_node_id = convertDSLBlock(arg.get(), contex
               else { throw std::runtime_error("ASTToIR: Unknown expression variant type."); } 
      }, expr->content); 
      // Attach annotations from AST node to resulting IR node(s) if applicable 
      // if (result_node_id != 0 && expr->hasAnnotations()) { ... getNode(result_node_id)->annotations = ... } 
      return result_node_id; 
+} 
+IRNodeId ASTToIR::convertVariableDefinition(const DSLDefinition& def, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node)
+ // 1. Convert the initializer expression (value_expr) 
+    IRNodeId value_node_id = convertNode(def.value_expr.get(), context, current_cfg_node); 
+if (value_node_id == 0) throw std::runtime_error("Cannot convert initializer for variable " + 
+def.name.name); 
+auto* value_ir_node = getNode(value_node_id); 
+if (!value_ir_node || !value_ir_node->output_type) throw std::runtime_error("Initializer node invalid"); 
+// 2. (Optional) Resolve type annotation if present and check compatibility 
+std::shared_ptr<ChimeraType> var_type = value_ir_node->output_type; 
+if (def.type_expr) { 
+// var_type = type_checker_.resolveTypeExpr(def.type_expr.get(), context); 
+// if (!type_checker_.checkTypeCompatibility(*var_type, *value_ir_node->output_type, context)) { /* Error */ } 
+    }
+ // 3. Add symbol to context *with its type* 
+    context.addSymbol(
+ def.name.name, var_type);   
+    // 4. Create IR Node for Storage (if necessary) 
+    // Depending on strategy: 
+    //   - Variables might just be SSA values (represented by the node producing them). 
+    //   - Mutable variables might require explicit ALLOC_MEM + STORE_MEM IR nodes. 
+    // Let's assume mutable requires ALLOC/STORE for now. 
+    if (/* variable is mutable? Check annotations or language rules */ true) { 
+         // a. Create ALLOC_MEM node 
+         IRNodeId alloc_node_id = current_graph_->addNode(IROpCode::ALLOC_MEM, "alloc_" + def.name.name); 
+         auto* alloc_node = getNode(alloc_node_id); 
+         alloc_node->output_type = std::make_shared<ChimeraType>(); // Type should be a pointer/ref type 
+         // alloc_node->operation_data = var_type; // Store allocated type info 
+         current_graph_->addEdge(current_cfg_node, alloc_node_id); // Alloc happens after previous step 
+         current_cfg_node = alloc_node_id; 
+         // b. Create STORE_MEM node 
+          IRNodeId store_node_id = current_graph_->addNode(IROpCode::STORE_MEM, "store_" + def.name.name); 
+          auto* store_node = getNode(store_node_id); 
+          store_node->inputs.push_back({alloc_node_id, 0, alloc_node->output_type}); // Input 0: Address 
+          store_node->inputs.push_back({value_node_id, 0, value_ir_node->output_type}); // Input 1: Value 
+          store_node->operation_data = def.name; // Store symbol being stored for clarity 
+          current_graph_->addEdge(current_cfg_node, store_node_id); // Store happens after alloc 
+          current_cfg_node = store_node_id; 
+          // Store address associated with symbol in context for later LOAD_SYMBOL 
+          // context.addSymbolAddress(def.name.name, alloc_node_id); // Need mechanism in CheckContext 
+    } else { 
+        // Immutable variable: just associate symbol name with the value-producing node ID 
+        // context.addSymbolValueNode(def.name.name, value_node_id); // Need mechanism 
+    }
+    return 0; // Definition itself doesn't produce a value usable by next expression 
+} 
+IRNodeId ASTToIR::convertAssignment(const DSLAssignmentExpr& assign_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_n
+     // 1. Convert the RHS value expression 
+     IRNodeId value_node_id = convertNode(assign_expr.value.get(), context, current_cfg_node); 
+     if (value_node_id == 0) throw std::runtime_error("Cannot convert RHS of assignment"); 
+     auto* value_ir_node = getNode(value_node_id); 
+     if (!value_ir_node || !value_ir_node->output_type) throw std::runtime_error("RHS node invalid"); 
+     // 2. Look up the target variable's type and address/value node 
+     const Symbol& target_symbol = assign_expr.target; 
+     auto target_type = context.lookupSymbol(target_symbol.name); 
+     if (!target_type) throw std::runtime_error("Assignment to undeclared variable: " + target_symbol.name); 
+     // Check if mutable? context.isMutable(target_symbol.name)? Requires enhancement. 
+     // Check type compatibility 
+     if (!type_checker_.checkTypeCompatibility(*target_type, *value_ir_node->output_type, context)) { 
+           throw std::runtime_error("Type mismatch in assignment to: " + target_symbol.name); 
+     } 
+     // 3. Create STORE_MEM IR node (assuming mutable variables use memory) 
+     // IRNodeId target_addr_node_id = context.getSymbolAddressNode(target_symbol.name); // Need mechanism 
+     IRNodeId store_node_id = current_graph_->addNode(IROpCode::STORE_MEM, "assign_" + target_symbol.name); 
+     auto* store_node = getNode(store_node_id); 
+     // store_node->inputs.push_back({target_addr_node_id, 0, /* pointer type */}); // Input 0: Address 
+     store_node->inputs.push_back({value_node_id, 0, value_ir_node->output_type}); // Input 1: Value 
+     store_node->operation_data = target_symbol; 
+     current_graph_->addEdge(current_cfg_node, store_node_id); // Store happens after RHS calculation 
+     current_cfg_node = store_node_id; 
+     // Assignment expression value? Usually void or the assigned value itself. Let's say void. 
+     return 0; 
+} 
+IRNodeId ASTToIR::convertWhileLoop(const DSLLoopExpr& loop_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
+     // Structure: 
+     // ... code before loop ... 
+     // -> LOOP_HEADER (Jump Target) 
+     // -> Convert Condition Expression 
+     // -> BRANCH_COND (condition result) 
+     //      |      \ 
+     //      |       -> EXIT_LOOP (Jump Target) 
+     //      -> LOOP_BODY_START 
+     //      -> Convert Body Sequence 
+     //      -> JUMP back to LOOP_HEADER 
+     // -> EXIT_LOOP (Merge Point) 
+     // ... code after loop ... 
+     IRNodeId loop_header_id = current_graph_->addNode(IROpCode::JUMP, "loop_header"); // Acts as label/merge 
+     current_graph_->addEdge(current_cfg_node, loop_header_id); // Edge into loop check 
+     // Convert Condition 
+     IRNodeId cond_cfg_node = loop_header_id; // Start condition check from header 
+     IRNodeId cond_value_node_id = convertNode(&loop_expr.condition, context, cond_cfg_node); 
+     if (cond_value_node_id == 0 || getNode(cond_value_node_id)->output_type->getBaseBDIType() != BDIType::BOOL) { 
+         throw std::runtime_error("Loop condition must evaluate to boolean"); 
+     } 
+     // Create Branch 
+     IRNodeId branch_node_id = current_graph_->addNode(IROpCode::BRANCH_COND, "loop_branch"); 
+     auto* branch_node = getNode(branch_node_id); 
+     branch_node->inputs.push_back({cond_value_node_id, 0, getNode(cond_value_node_id)->output_type}); 
+     current_graph_->addEdge(cond_cfg_node, branch_node_id); // Connect condition result to branch 
+     // Create Loop Body Scope and Convert Body 
+     TypeChecker::CheckContext body_context;  
+     body_context.parent_scope = std::make_shared<TypeChecker::CheckContext>(context); 
+     IRNodeId body_start_cfg_node = branch_node_id; // Control enters body from branch (true path) 
+     IRNodeId body_end_node = convertNode(&loop_expr.body, body_context, body_start_cfg_node); // Assuming body is a sequence 
+// Add Jump from end of body back to header 
+     IRNodeId back_jump_node_id = current_graph_->addNode(IROpCode::JUMP, "loop_back_jump"); 
+auto* back_jump_node = getNode(back_jump_node_id); 
+// back_jump_node->operation_data = loop_header_id; // Store target (Alternative way) 
+     current_graph_->addEdge(body_end_node, back_jump_node_id); // Connect body end to jump 
+     current_graph_->addEdge(back_jump_node_id, loop_header_id); // Connect jump to header 
+// Create Exit Node (Merge Point) 
+     IRNodeId exit_loop_node_id = current_graph_->addNode(IROpCode::JUMP, "loop_exit"); // Acts as merge label 
+// Connect Branch false path to exit node 
+// Need to store targets in BRANCH node operation_data or successors 
+// branch_node->operation_data = std::pair<IRNodeId, IRNodeId>{ body_start_cfg_node_after_branch , exit_loop_node_id }; 
+      current_graph_->addEdge(branch_node_id, exit_loop_node_id); // Add edge conceptually for false path 
+     current_cfg_node = exit_loop_node_id; // Continue code generation after the loop exit 
+return 0; // Loops typically don't produce a single value node 
 } 
 IRNodeId ASTToIR::convertLiteral(const DSLLiteral& literal, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
      IRNodeId node_id = current_graph_->addNode(IROpCode::LOAD_CONST); 
