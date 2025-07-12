@@ -103,7 +103,7 @@ Proof-Carrying Code: Embed formal verification directly into the executable arti
  learning update is potentially verifiable via the ledger.
  
  BDI and the Emergence of Intelligence
- Crucially, BDI provides the architectural plumbing necessary for the Composable Intelligent Systems envisioned previously. While traditional systems
+ BDI provides the architectural plumbing necessary for Composable Intelligent Systems envisioned. While traditional systems
  simulate intelligence using high-level code running on opaque runtimes, BDI allows the core dynamics of adaptation and reasoning to be represented and
  executed at the substrate level:
  Learning isn't just changing weights in a high-level library; it's a verifiable BDI graph transformation triggered by feedback, modifying node payloads
