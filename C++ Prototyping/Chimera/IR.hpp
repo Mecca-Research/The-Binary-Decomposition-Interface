@@ -11,6 +11,7 @@
 #include <optional> 
 namespace ir::ir { 
 // --- IR Node Structure --- 
+// ... ChiIRNodeId, ChiIROpCode ... 
 /** 
  * @brief Represents Intermediate Representation codes for Chimera operations. 
  * These are higher-level than BDI operations and closer to source constructs. 
@@ -58,6 +59,7 @@ struct IRValueRef {
  * information and links to source annotations. 
  */ 
 struct IRNode { 
+    // ... id, opcode, label, inputs, output_type ... 
     IRNodeId id; //!< Unique identifier for this node. 
     IROpCode opcode; //!< The operation this node performs. 
     std::string label; //!< Optional debug label 
@@ -69,10 +71,10 @@ struct IRNode {
     std::variant< 
         std::monostate, 
         BDIValueVariant,        // For LOAD_CONST (stores runtime value) 
-        Symbol,                 // For LOAD_SYMBOL, DEFINE_FUNC name 
+        Symbol,                 // For LOAD_SYMBOL, DEFINE_FUNC name, PARAM 
         Operator,               // For BINARY_OP, UNARY_OP 
-        IRNodeId,               // For JUMP, BRANCH targets, CALL target 
-        std::pair<IRNodeId, IRNodeId> // For BRANCH true/false targets 
+        IRNodeId,               // For JUMP, BRANCH targets, CALL target, RETURN source (value node)  
+        std::pair<IRNodeId, IRNodeId> // BRANCH_COND targets (true_target_node, false_target_node)
         // Add structures for ALLOC_MEM (size, type), DSL_BLOCK (dsl_name, content) etc. 
     > operation_data; 
     // Control flow links (could be part of operation_data for jumps/branches) 
@@ -94,6 +96,17 @@ public:
     IRNodeId addNode(IROpCode opcode, std::string label = ""); 
     bool addEdge(IRNodeId from, IRNodeId to); // Control flow edge 
     // Add methods for setting node inputs, data, type, annotations etc. 
+    // ... ChiIRGraph ... (addEdge might populate successors) 
+    bool ChiIRGraph::addEdge(ChiIRNodeId from, ChiIRNodeId to) { 
+    auto from_node = getNode(from); 
+    auto to_node = getNode(to); // Ensure target exists 
+    if (from_node && to_node) { 
+    from_node->control_successors.push_back(to); 
+    // Optionally add predecessor link to 'to_node' if needed 
+    return true; 
+    }
+    return false; 
+}
     IRNode* getNode(IRNodeId id); 
     const IRNode* getNode(IRNodeId id) const; 
     // Entry/Exit points? 
@@ -124,5 +137,6 @@ IRNodeId convertOperation(const DSLOperation& op, TypeChecker::CheckContext& con
 IRNodeId convertDefinition(const DSLDefinition& def, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node); 
 // ... other helpers ... 
 }; 
+// ... ASTToChiIR ... 
 } // namespace ir::ir 
 #endif // IR_IR_HPP 
