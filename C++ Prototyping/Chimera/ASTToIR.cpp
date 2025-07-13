@@ -1,13 +1,25 @@
 #include "ASTToIR.hpp"
 #include "DSLCoreTypes.hpp" // For specific node types if DSLExpression holds them 
 #include <stdexcept>
+#include <vector> 
+#include <map> 
 #include <iostream> // Keep for debug/info logs, replace errors 
 namespace ir::ir { 
+// --- Assuming DSLExpression content variant includes --- 
+// struct DSLLoopExpr { std::unique_ptr<DSLExpression> condition; std::unique_ptr<DSLExpression> body; }; // e.g., While 
+// struct DSLFuncDefExpr { DSLDefinition signature; std::unique_ptr<DSLExpression> body; /* Maybe DSLExpressionSequence */ }; 
+// struct DSLFuncCallExpr { Symbol function_name; std::vector<std::unique_ptr<DSLExpression>> arguments; }; 
+// struct DSLAssignmentExpr { Symbol target; std::unique_ptr<DSLExpression> value; }; 
+// struct DSLReturnExpr { std::unique_ptr<DSLExpression> value; }; // Optional value 
 // --- ASTToIR --- 
 ASTToIR::ASTToIR(TypeChecker& type_checker) : type_checker_(type_checker) {} 
+std::unique_ptr<IRGraph> ASTToChiIR::convertFunction(const DSLFuncDefExpr& func_def, TypeChecker::CheckContext& parent_context) { 
 std::unique_ptr<IRGraph> ASTToIR::convertExpression(const DSLExpression* root_expr, TypeChecker::CheckContext& context) { 
-    current_graph_ = std::make_unique<IRGraph>("ir_from_expr"); 
+    current_graph_ = std::make_unique<IRGraph>("ir_from_expr"),(func_def.signature.name.name); 
     next_node_id_ = 1; 
+    TypeChecker::CheckContext func_context; 
+    func_context.parent_scope = std::make_shared<TypeChecker::CheckContext>(parent_context); 
+    // Add function symbol itself to parent context? Depends on scope rules. 
     IRNodeId entry_cfg_node = current_graph_->addNode(IROpCode::ENTRY, "entry"); 
     current_graph_->entry_node_id_ = entry_cfg_node; // Mark entry 
     IRNodeId last_expr_node = convertNode(root_expr, context, entry_cfg_node); 
@@ -39,25 +51,31 @@ std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLDefinition* func_def,
      IRNodeId entry_node = current_graph_->addNode(IROpCode::ENTRY, "func_entry"); 
      current_graph_->entry_node_id_ = entry_node; 
      IRNodeId current_cfg_node = entry_node; 
-     // 2. Create PARAM nodes for parameters 
+     // 2. Resolve signature types & Create PARAM nodes 
+     std::vector<std::shared_ptr<ChimeraType>> param_types; 
      // Assuming func_def has a structure for parameters like std::vector<Symbol> params; 
      // for(size_t i = 0; i < func_def->parameters.size(); ++i) { 
      //     const auto& param_symbol = func_def->parameters[i]; 
      //     auto param_type = type_checker_.resolveTypeExpr(func_def->parameter_types[i], parent_context); // Resolve type 
+     //     param_types.push_back(param_type); 
      //     IRNodeId param_node_id = current_graph_->addNode(IROpCode::PARAM, param_symbol.name); 
      //     auto* param_ir_node = getNode(param_node_id); 
      //     param_ir_node->output_type = param_type; 
      //     param_ir_node->operation_data = param_symbol; // Store symbol info 
-     //     func_context.addSymbol(param_symbol.name, param_type); // Add to function scope 
+     //     param_ir_node->operation_data = static_cast<uint32_t>(i); // Store param index in op_data? 
+     //     func_context.addSymbol(param_symbol.name, param_type true, true, 0, param_node_id}); // Add to function scope (as immutable parameter) 
      //     current_graph_->addEdge(current_cfg_node, param_node_id); // Link control flow 
      //     current_cfg_node = param_node_id; 
      // } 
+     // Store function type in context? func_context.addSymbol(func_def.signature.name.name, make_function_type(param_types, return_type)); 
      // 3. Convert function body 
      // Assume body is in func_def->value_expr (might be sequence) 
      IRNodeId last_body_node = convertNode(func_def->value_expr.get(), func_context, current_cfg_node); 
-     // 4. Ensure RETURN nodes are handled 
-     // If the last node wasn't explicitly RETURN, add one? Or rely on checkExpression to add RETURN_VALUE? 
+     // 4. Ensure proper termination (implicit RETURN for void functions?) 
      // For now, assume convertNode adds RETURN_VALUE if needed by sequence semantics. 
+     // If the last node isn't a RETURN or other terminator, add one? Depends on language semantics. Or rely on checkExpression to add RETURN_VALUE?
+     // Store function graph mapping? 
+     // function_graphs_[func_def.signature.name.name] = current_graph_.get(); // Store raw ptr? Or manage elsewhere. 
      return std::move(current_graph_); 
 } 
 // Recursive Conversion Helpers 
@@ -144,6 +162,12 @@ if (def.type_expr) {
 } 
 IRNodeId ASTToIR::convertAssignment(const DSLAssignmentExpr& assign_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_n
      // 1. Convert the RHS value expression 
+     // ... (Check target symbol type and mutability in context) ... 
+     // ... (Convert RHS value expression -> value_node_id) ... 
+     // Find target variable info (assuming mutable needs memory) 
+     // SymbolInfo target_info = context.lookupSymbolInfo(assign_expr.target.name); 
+     // if (!target_info.is_mutable) throw BDIExecutionError("Cannot assign to immutable variable"); 
+     // IRNodeId addr_node_id = target_info.allocation_node_id; // Get node that provided address 
      IRNodeId value_node_id = convertNode(assign_expr.value.get(), context, current_cfg_node); 
      if (value_node_id == 0) throw std::runtime_error("Cannot convert RHS of assignment"); 
      auto* value_ir_node = getNode(value_node_id); 
@@ -151,7 +175,7 @@ IRNodeId ASTToIR::convertAssignment(const DSLAssignmentExpr& assign_expr, TypeCh
      // 2. Look up the target variable's type and address/value node 
      const Symbol& target_symbol = assign_expr.target; 
      auto target_type = context.lookupSymbol(target_symbol.name); 
-     if (!target_type) throw std::runtime_error("Assignment to undeclared variable: " + target_symbol.name); 
+     if (!target_type) throw std::runtime_error("Assignment to undeclared variable: " + target_symbol.name, assign_expr.target.name); 
      // Check if mutable? context.isMutable(target_symbol.name)? Requires enhancement. 
      // Check type compatibility 
      if (!type_checker_.checkTypeCompatibility(*target_type, *value_ir_node->output_type, context)) { 
@@ -159,14 +183,14 @@ IRNodeId ASTToIR::convertAssignment(const DSLAssignmentExpr& assign_expr, TypeCh
      } 
      // 3. Create STORE_MEM IR node (assuming mutable variables use memory) 
      // IRNodeId target_addr_node_id = context.getSymbolAddressNode(target_symbol.name); // Need mechanism 
-     IRNodeId store_node_id = current_graph_->addNode(IROpCode::STORE_MEM, "assign_" + target_symbol.name); 
+     IRNodeId store_node_id = current_graph_->addNode(IROpCode::STORE_MEM, "assign_" + target_symbol.name, assign_expr.target.name); 
      auto* store_node = getNode(store_node_id); 
-     // store_node->inputs.push_back({target_addr_node_id, 0, /* pointer type */}); // Input 0: Address 
-     store_node->inputs.push_back({value_node_id, 0, value_ir_node->output_type}); // Input 1: Value 
-     store_node->operation_data = target_symbol; 
+     // store_node->inputs.push_back({target_addr_node_id, 0, /* pointer type */}); // Input 0: Address Source
+     store_node->inputs.push_back({value_node_id, 0, getNode(value_node_id)->output_type}); // Input 1: Value Source
+     store_node->operation_data = assign_expr.target; // Store target symbol for BDI conversion 
      current_graph_->addEdge(current_cfg_node, store_node_id); // Store happens after RHS calculation 
      current_cfg_node = store_node_id; 
-     // Assignment expression value? Usually void or the assigned value itself. Let's say void. 
+     // Assignment expression value? Usually void or the assigned value itself.
      return 0; 
 } 
 IRNodeId ASTToIR::convertWhileLoop(const DSLLoopExpr& loop_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
@@ -204,6 +228,7 @@ IRNodeId ASTToIR::convertWhileLoop(const DSLLoopExpr& loop_expr, TypeChecker::Ch
      TypeChecker::CheckContext body_context;  
      body_context.parent_scope = std::make_shared<TypeChecker::CheckContext>(context); 
      IRNodeId body_entry_placeholder = branch_node_id; // We'll actually start body exec after branch node 
+     IRNodeId body_entry_node_id = current_graph_->addNode(ChiIROpCode::SCOPE_BEGIN, "loop_body_entry"); // Placeholder for scope start 
      IRNodeId body_start_cfg_node = branch_node_id; // Control enters body from branch (true path) 
      IRNodeId body_end_node = convertNode(&loop_expr.body, body_context, body_entry_placeholder, body_start_cfg_node); // Assuming body is a sequence, Body CFG starts here 
      // Add Jump from end of body back to header 
@@ -280,6 +305,52 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
          current_cfg_node = assign_node_id; 
          return assign_node_id; // Return assign node ID (or 0 if no value?) 
      } 
+         IRNodeId ASTToIR::convertFunctionCall(const DSLFuncCallExpr& call_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_nod
+         // 1. Lookup function signature in context 
+         // FunctionType func_type = context.lookupFunctionType(call_expr.function_name.name); 
+         // if (!func_type) throw BDIExecutionError("Call to undefined function: " + call_expr.function_name.name); 
+         // 2. Convert arguments recursively 
+         std::vector<IRValueRef> arg_refs; 
+         IRNodeId last_arg_cfg_node = current_cfg_node; 
+         // if (call_expr.arguments.size() != func_type.argument_types.size()) throw BDIExecutionError("Argument count mismatch for call to " + cal
+         for(size_t i=0; i < call_expr.arguments.size(); ++i) { 
+         IRNodeId arg_node_id = convertNode(call_expr.arguments[i].get(), context, last_arg_cfg_node); 
+         auto* arg_node = getNode(arg_node_id); 
+         // Check arg type against func_type.argument_types[i] 
+         // if(!type_checker_.checkTypeCompatibility(*func_type.argument_types[i], *arg_node->output_type, context)) { throw ... } 
+         arg_refs.push_back({arg_node_id, 0, arg_node->output_type}); 
+     }
+         // 3. Create CALL IR node 
+         IRNodeId call_node_id = current_graph_->addNode(IROpCode::CALL, "call_" + call_expr.function_name.name); 
+         auto* node = getNode(call_node_id); 
+         node->inputs = std::move(arg_refs); 
+         node->operation_data = call_expr.function_name; // Store function name/ID 
+         // node->output_type = func_type.return_type; // Set expected return type 
+         // 4. Connect control flow 
+         current_graph_->addEdge(last_arg_cfg_node, call_node_id); 
+         current_cfg_node = call_node_id; 
+         return call_node_id; // Returns node representing the call itself (its output holds return value) 
+     } 
+         IRNodeId ASTToIR::convertReturn(const DSLReturnExpr& ret_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
+         IRNodeId ret_val_node_id = 0; 
+         std::shared_ptr<ChimeraType> ret_type = make_scalar(BDIType::VOID); 
+         if (ret_expr.value) { // If there is a return value 
+         ret_val_node_id = convertNode(ret_expr.value.get(), context, current_cfg_node); 
+         auto* val_node = getNode(ret_val_node_id); 
+         if (!val_node || !val_node->output_type) throw BDIExecutionError("Invalid return value expression"); 
+         ret_type = val_node->output_type; 
+         current_cfg_node = ret_val_node_id; // CFG node before RETURN is the value node 
+     }
+         // TODO: Check ret_type against context.expected_return_type 
+         IRNodeId ret_node_id = current_graph_->addNode(ChiIROpCode::RETURN_VALUE, "return"); 
+         auto* node = getNode(ret_node_id); 
+         if (ret_val_node_id != 0) { // If returning a value 
+         node->inputs.push_back({ret_val_node_id, 0, ret_type}); 
+     } 
+         current_graph_->addEdge(current_cfg_node, ret_node_id); 
+         current_cfg_node = 0; // Return terminates this control flow path 
+         return ret_node_id; 
+     }       
      // Example: If/Else - Assume AST `DSLOperation{"if", {Cond, TrueBranch, FalseBranch}}` (Branches are Sequences) 
      else if (op_name == "if" && op.arguments.size() >= 2) { 
           // Node for condition already created in arg_refs[0] 
@@ -288,7 +359,9 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           // Create BRANCH node 
           IRNodeId branch_node_id = current_graph_->addNode(IROpCode::BRANCH_COND, "if_branch"); 
           auto* branch_node = getNode(branch_node_id); 
-          branch_node->inputs.push_back(arg_refs[0]); // Condition input 
+          branch_node->inputs.push_back(arg_refs[0]); // Condition input
+          branch_node->operation_data = std::pair<IRNodeId, IRNodeId>{body_entry_node_id, exit_loop_node_id}; 
+          // Connect control from branch after condition evaluation 
           current_graph_->addEdge(last_arg_cfg_node, branch_node_id); // Control flow after condition eval 
           // Convert True Branch 
           IRNodeId true_branch_start_cfg = branch_node_id; // Control starts from branch 
@@ -298,7 +371,22 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           IRNodeId false_branch_start_cfg = branch_node_id; 
           if (op.arguments.size() > 2) {
                false_branch_end_node = convertNode(op.arguments[2].get(), context, false_branch_start_cfg); 
-          } 
+          // Convert Loop Body 
+          TypeChecker::CheckContext body_context; // New scope for body 
+          body_context.parent_scope = std::make_shared<TypeChecker::CheckContext>(context); 
+          IRNodeId body_cfg_node = body_entry_node_id; // Start body CFG from entry placeholder 
+          current_graph_->addEdge(branch_node_id, body_cfg_node); // True path from branch goes to body entry 
+          IRNodeId body_end_node = convertNode(loop_expr.body.get(), body_context, body_cfg_node); 
+          // Jump back to header 
+          IRNodeId back_jump_node_id = current_graph_->addNode(IROpCode::JUMP, "loop_back_jump"); 
+          auto* back_jump_node = getNode(back_jump_node_id); 
+          back_jump_node->operation_data = loop_header_id; // Target is header 
+          current_graph_->addEdge(body_end_node, back_jump_node_id); // Connect body end to jump 
+          // Connect Branch false path to exit node 
+          current_graph_->addEdge(branch_node_id, exit_loop_node_id); // False path goes to exit 
+          current_cfg_node = exit_loop_node_id; // Continue code gen after loop 
+          return 0; 
+     } 
           // Create Merge Node (if necessary) 
           // Set branch targets (Successors) 
           branch_node->control_successors.push_back(body_entry_placeholder == branch_node_id ? // If body is empty, need first real node 
@@ -306,11 +394,11 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
                                   : getNode(body_entry_placeholder)->control_successors[0]);   // True Path: First node generated 
           branch_node->control_successors.push_back(exit_loop_node_id); // False Path: Exit loop 
           current_cfg_node = exit_loop_node_id; // Continue code generation after the loop exit 
-         return 0; // Loops don't produce a value 
+          return 0; // Loops don't produce a value 
      } 
      // Similar logic needs to be implemented for If/Else using BRANCH_COND and merge points. 
      // Function Calls: Create CALL node, link arguments, CFG edge to CALL, CFG edge from CALL to successor. 
-    // Function Defs: Convert body, ensure RETURN nodes exist.
+     // Function Defs: Convert body, ensure RETURN nodes exist.
           IRNodeId merge_node_id = current_graph_->addNode(IROpCode::JUMP, "if_merge"); // Use JUMP as simple merge 
           // Connect branch targets (True -> True Branch Start, False -> False Branch Start) - Handled by BRANCH node data 
           branch_node->operation_data = std::pair<IRNodeId, IRNodeId>{ 
@@ -334,7 +422,7 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
      else { 
          // Determine IR opcode based on op_name (e.g., BINARY_OP, UNARY_OP) 
          IROpCode op_code = (op.arguments.size() == 2) ? IROpCode::BINARY_OP : 
-                               (op.arguments.size() == 1) ? IROpCode::UNARY_OP : IROpCode::CALL; // Basic guess 
+                            (op.arguments.size() == 1) ? IROpCode::UNARY_OP : IROpCode::CALL; // Basic guess 
          IRNodeId op_node_id = current_graph_->addNode(op_code, op_name); 
          auto* node = getNode(op_node_id); 
          node->inputs = std::move(arg_refs); 
@@ -422,7 +510,7 @@ bool IRToBDI::convertNode(const IRNode& ir_node) {
      bdi_node_id = builder_.addNode(bdi_op, ir_node.label); 
      ir_to_bdi_node_map_[ir_node.id] = bdi_node_id; 
      // Set Payload for CONST 
- if (ir_node.opcode == IROpCode::LOAD_CONST) { 
+     if (ir_node.opcode == IROpCode::LOAD_CONST) { 
           if (const auto* val_var = std::get_if<BDIValueVariant>(&ir_node.operation_data)) { 
               builder_.setNodePayload(bdi_node_id, ExecutionContext::variantToPayload(*val_var)); 
           } else return false;
