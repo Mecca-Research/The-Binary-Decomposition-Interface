@@ -25,7 +25,8 @@ BasicRewardFeedbackAdapter::BasicRewardFeedbackAdapter(PortRef reward_signal_por
              auto current_f32_opt = vm_ops::convertValue<float>(current_val_opt.value()); 
              if (current_f32_opt) { 
                  float delta_value = learning_rate_ * reward; // Simple update 
-                 pending_updates_.push_back({target_param_node, BDIValueVariant{delta_value}});          
+                 pending_updates_.push_back({target_param_node, BDIValueVariant{delta_value}}); 
+    //std::cout << "  -> Pending update for Node " << target_param_node << ": Add Delta " << delta_value << std::endl; 
     // 1. Get the reward signal
     auto reward_var_opt = context.getPortValue(reward_port_);
     if (!reward_var_opt) {
