@@ -21,8 +21,9 @@
  using namespace bdi::core::types;
  using namespace bdi::core::payload;
  // --- Conversion Helper (with Overflow/Precision Checks) --
-template <typename TargetType>
-TargetType convertValueOrThrow(const BDIValueVariant& value_var, const std::string& context_msg = "") {
+ // ... (ensure all helpers throw BDIExecutionError on failure instead of returning monostate) 
+ template <typename TargetType>
+ TargetType convertValueOrThrow(const BDIValueVariant& value_var, const std::string& context_msg = "") {
  std::optional<TargetType> convertValue(const BDIValueVariant& value_var) {
     // ... (Implementation of convertVariantTo from previous step) ...
     // Should handle standard numeric conversions, potentially bool<->int
@@ -235,12 +236,14 @@ inline BDIValueVariant performAddition(const BDIValueVariant& lhs_var, const BDI
     }
     #define HANDLE_PROMOTED_BINARY_OP(CppType) \
         case core::payload::MapCppTypeToBdiType<CppType>::value: { \
+            /* Use Or Throw version for conversion */ \ 
             auto v1 = convertValueOrThrow<CppType>(lhs_var); \
             auto v2 = convertValueOrThrow<CppType>(rhs_var); \
+            /* Lambda might throw (e.g., div by zero) */ \ 
             if (v1 && v2) return BDIValueVariant{op_lambda(*v1, *v2)}; \
             break; \
         }
-    switch(result_type) {
+    switch(result_type) { /* Cases */ }
         HANDLE_PROMOTED_BINARY_OP(int8_t) HANDLE_PROMOTED_BINARY_OP(uint8_t)
         HANDLE_PROMOTED_BINARY_OP(int16_t) HANDLE_PROMOTED_BINARY_OP(uint16_t)
         HANDLE_PROMOTED_BINARY_OP(int32_t) HANDLE_PROMOTED_BINARY_OP(uint32_t)
@@ -249,11 +252,14 @@ inline BDIValueVariant performAddition(const BDIValueVariant& lhs_var, const BDI
         default: break;
     }
     #undef HANDLE_PROMOTED_BINARY_OP
+    // If switch doesn't return/throw, it's an internal error 
+    throw BDIExecutionError("Internal Error: Unhandled promoted type in binary op final dispatch"); 
     throw BDIExecutionError("Unhandled promoted type in binary op");
+    // Apply similar try/throw logic within other helpers (unary, comparison, conversion etc.) 
     return std::monostate{};
  }
     // Use if constexpr to dispatch based on promoted type
-    if (result_type == BDIType::INT32) {
+    if (result_type == BDIType::INT32) { 
         auto v1 = convertValue<int32_t>(lhs_var); auto v2 = convertValue<int32_t>(rhs_var);
         if (v1 && v2) return op_lambda(*v1, *v2);
     } else if (result_type == BDIType::INT64) {
