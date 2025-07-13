@@ -170,7 +170,7 @@ IRNodeId ASTToIR::convertAssignment(const DSLAssignmentExpr& assign_expr, TypeCh
      return 0; 
 } 
 IRNodeId ASTToIR::convertWhileLoop(const DSLLoopExpr& loop_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
-     // Structure: 
+     // Structure: -> Header -> Condition -> Branch -> Body -> Jump -> Header  
      // ... code before loop ... 
      // -> LOOP_HEADER (Jump Target) 
      // -> Convert Condition Expression 
@@ -182,38 +182,44 @@ IRNodeId ASTToIR::convertWhileLoop(const DSLLoopExpr& loop_expr, TypeChecker::Ch
      //      -> JUMP back to LOOP_HEADER 
      // -> EXIT_LOOP (Merge Point) 
      // ... code after loop ... 
+     //      -> Exit Merge <-/ 
      IRNodeId loop_header_id = current_graph_->addNode(IROpCode::JUMP, "loop_header"); // Acts as label/merge 
      current_graph_->addEdge(current_cfg_node, loop_header_id); // Edge into loop check 
      // Convert Condition 
-     IRNodeId cond_cfg_node = loop_header_id; // Start condition check from header 
+     // Condition - control flow starts from header 
+     IRNodeId cond_cfg_node = loop_header_id = current_graph_->addNode(ChiIROpCode::JUMP, "loop_header");  // Start condition check from header 
+     current_graph_->addEdge(current_cfg_node, loop_header_id); // Edge into loop check 
      IRNodeId cond_value_node_id = convertNode(&loop_expr.condition, context, cond_cfg_node); 
      if (cond_value_node_id == 0 || getNode(cond_value_node_id)->output_type->getBaseBDIType() != BDIType::BOOL) { 
          throw std::runtime_error("Loop condition must evaluate to boolean"); 
      } 
      // Create Branch 
+     // Branch - control flow comes from end of condition evaluation 
      IRNodeId branch_node_id = current_graph_->addNode(IROpCode::BRANCH_COND, "loop_branch"); 
      auto* branch_node = getNode(branch_node_id); 
      branch_node->inputs.push_back({cond_value_node_id, 0, getNode(cond_value_node_id)->output_type}); 
      current_graph_->addEdge(cond_cfg_node, branch_node_id); // Connect condition result to branch 
+     // Loop Body - control flow starts conceptually AFTER branch (on true path) 
      // Create Loop Body Scope and Convert Body 
      TypeChecker::CheckContext body_context;  
      body_context.parent_scope = std::make_shared<TypeChecker::CheckContext>(context); 
+     IRNodeId body_entry_placeholder = branch_node_id; // We'll actually start body exec after branch node 
      IRNodeId body_start_cfg_node = branch_node_id; // Control enters body from branch (true path) 
-     IRNodeId body_end_node = convertNode(&loop_expr.body, body_context, body_start_cfg_node); // Assuming body is a sequence 
-// Add Jump from end of body back to header 
+     IRNodeId body_end_node = convertNode(&loop_expr.body, body_context, body_entry_placeholder, body_start_cfg_node); // Assuming body is a sequence, Body CFG starts here 
+     // Add Jump from end of body back to header 
      IRNodeId back_jump_node_id = current_graph_->addNode(IROpCode::JUMP, "loop_back_jump"); 
-auto* back_jump_node = getNode(back_jump_node_id); 
-// back_jump_node->operation_data = loop_header_id; // Store target (Alternative way) 
+     auto* back_jump_node = getNode(back_jump_node_id); 
+     // back_jump_node->operation_data = loop_header_id; // Store target (Alternative way) 
      current_graph_->addEdge(body_end_node, back_jump_node_id); // Connect body end to jump 
      current_graph_->addEdge(back_jump_node_id, loop_header_id); // Connect jump to header 
-// Create Exit Node (Merge Point) 
-     IRNodeId exit_loop_node_id = current_graph_->addNode(IROpCode::JUMP, "loop_exit"); // Acts as merge label 
-// Connect Branch false path to exit node 
-// Need to store targets in BRANCH node operation_data or successors 
-// branch_node->operation_data = std::pair<IRNodeId, IRNodeId>{ body_start_cfg_node_after_branch , exit_loop_node_id }; 
-      current_graph_->addEdge(branch_node_id, exit_loop_node_id); // Add edge conceptually for false path 
+     // Create Exit Node (Merge Point) 
+     IRNodeId exit_loop_node_id = current_graph_->addNode(IROpCode::JUMP, "loop_exit"); // Merge point after loop, Acts as merge label 
+     // Connect Branch false path to exit node 
+     // Need to store targets in BRANCH node operation_data or successors 
+     // branch_node->operation_data = std::pair<IRNodeId, IRNodeId>{ body_start_cfg_node_after_branch , exit_loop_node_id }; 
+     current_graph_->addEdge(branch_node_id, exit_loop_node_id); // Add edge conceptually for false path 
      current_cfg_node = exit_loop_node_id; // Continue code generation after the loop exit 
-return 0; // Loops typically don't produce a single value node 
+     return 0; // Loops typically don't produce a single value node 
 } 
 IRNodeId ASTToIR::convertLiteral(const DSLLiteral& literal, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
      IRNodeId node_id = current_graph_->addNode(IROpCode::LOAD_CONST); 
@@ -294,6 +300,17 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
                false_branch_end_node = convertNode(op.arguments[2].get(), context, false_branch_start_cfg); 
           } 
           // Create Merge Node (if necessary) 
+          // Set branch targets (Successors) 
+          branch_node->control_successors.push_back(body_entry_placeholder == branch_node_id ? // If body is empty, need first real node 
+                                  (getNode(body_end_node) ? body_end_node : back_jump_node_id) // Find start of actual body code
+                                  : getNode(body_entry_placeholder)->control_successors[0]);   // True Path: First node generated 
+          branch_node->control_successors.push_back(exit_loop_node_id); // False Path: Exit loop 
+          current_cfg_node = exit_loop_node_id; // Continue code generation after the loop exit 
+         return 0; // Loops don't produce a value 
+     } 
+     // Similar logic needs to be implemented for If/Else using BRANCH_COND and merge points. 
+     // Function Calls: Create CALL node, link arguments, CFG edge to CALL, CFG edge from CALL to successor. 
+    // Function Defs: Convert body, ensure RETURN nodes exist.
           IRNodeId merge_node_id = current_graph_->addNode(IROpCode::JUMP, "if_merge"); // Use JUMP as simple merge 
           // Connect branch targets (True -> True Branch Start, False -> False Branch Start) - Handled by BRANCH node data 
           branch_node->operation_data = std::pair<IRNodeId, IRNodeId>{ 
