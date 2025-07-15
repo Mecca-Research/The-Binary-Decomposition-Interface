@@ -13,7 +13,7 @@ namespace ir::ir {
 // struct DSLReturnExpr { std::unique_ptr<DSLExpression> value; }; // Optional value 
 // --- ASTToIR --- 
 ASTToIR::ASTToIR(TypeChecker& type_checker) : type_checker_(type_checker) {} 
-std::unique_ptr<IRGraph> ASTToChiIR::convertFunction(const DSLFuncDefExpr& func_def, TypeChecker::CheckContext& parent_context) { 
+std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLFuncDefExpr& func_def, TypeChecker::CheckContext& parent_context) { 
 std::unique_ptr<IRGraph> ASTToIR::convertExpression(const DSLExpression* root_expr, TypeChecker::CheckContext& context) { 
     current_graph_ = std::make_unique<IRGraph>("ir_from_expr"),(func_def.signature.name.name); 
     next_node_id_ = 1; 
@@ -116,10 +116,14 @@ IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckConte
      return result_node_id; 
 } 
 IRNodeId ASTToIR::convertVariableDefinition(const DSLDefinition& def, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node)
- // 1. Convert the initializer expression (value_expr) 
+    // --- Type checking phase already added symbol info to context --- 
+    auto symbol_info = context.lookupSymbolInfo(def.name.name, true); // Look in current scope only 
+    if (!symbol_info) throw BDIExecutionError("Internal Compiler Error: SymbolInfo missing after type check for " + def.name.name);                                                                             
+    // 1. Convert the initializer expression (value_expr) 
     IRNodeId value_node_id = convertNode(def.value_expr.get(), context, current_cfg_node); 
 if (value_node_id == 0) throw std::runtime_error("Cannot convert initializer for variable " + 
 def.name.name); 
+// ... error checks ...                                                                             
 auto* value_ir_node = getNode(value_node_id); 
 if (!value_ir_node || !value_ir_node->output_type) throw std::runtime_error("Initializer node invalid"); 
 // 2. (Optional) Resolve type annotation if present and check compatibility 
@@ -127,10 +131,42 @@ std::shared_ptr<ChimeraType> var_type = value_ir_node->output_type;
 if (def.type_expr) { 
 // var_type = type_checker_.resolveTypeExpr(def.type_expr.get(), context); 
 // if (!type_checker_.checkTypeCompatibility(*var_type, *value_ir_node->output_type, context)) { /* Error */ } 
+}
+// 3. Add symbol to context *with its type* 
+context.addSymbol(
+def.name.name, var_type);
+// Update symbol info with value node ID if immutable/SSA 
+if (!symbol_info->is_mutable) { 
+        symbol_info->location = SymbolInfo::Location::SSA_VALUE; 
+        symbol_info->value_node_id = value_node_id; 
+    } else { 
+        // --- Generate ALLOC and STORE for mutable variables --- 
+        // Determine size/alignment from symbol_info->type 
+        size_t alloc_size = 8; // Placeholder: getChimeraTypeSize(symbol_info->type); 
+        size_t alloc_align = 8; // Placeholder: getChimeraTypeAlignment(symbol_info->type); 
+        // IR ALLOC node 
+        IRNodeId alloc_node_id = current_graph_->addNode(IROpCode::ALLOC_MEM, "alloc_" + def.name.name); 
+        auto* alloc_node = getNode(alloc_node_id); 
+        // Store size/type info needed for allocation in operation_data 
+        // alloc_node->operation_data = AllocInfo{alloc_size, alloc_align, symbol_info->type}; 
+        alloc_node->output_type = std::make_shared<ChimeraType>(); // Type is POINTER to symbol_info->type 
+        // Define pointer type properly: alloc_node->output_type = make_pointer_type(symbol_info->type); 
+        current_graph_->addEdge(current_cfg_node, alloc_node_id); 
+        current_cfg_node = alloc_node_id; 
+        // Update SymbolInfo with allocation info 
+        symbol_info->location = SymbolInfo::Location::STACK; // Or HEAP? Depends on scope/lifetime 
+        symbol_info->address_node_id = alloc_node_id; // Store node producing address 
+        // IR STORE node 
+        IRNodeId store_node_id = current_graph_->addNode(IROpCode::STORE_MEM, "init_" + def.name.name); 
+        auto* store_node = getNode(store_node_id); 
+        store_node->inputs.push_back({alloc_node_id, 0, alloc_node->output_type});           // Input 0: Address 
+        store_node->inputs.push_back({value_node_id, 0, value_ir_node->output_type});      // Input 1: Value 
+        store_node->operation_data = def.name; // Store target symbol 
+        current_graph_->addEdge(current_cfg_node, store_node_id); 
+        current_cfg_node = store_node_id; 
     }
- // 3. Add symbol to context *with its type* 
-    context.addSymbol(
- def.name.name, var_type);   
+    return 0; 
+}                                                                                                                                             
     // 4. Create IR Node for Storage (if necessary) 
     // Depending on strategy: 
     //   - Variables might just be SSA values (represented by the node producing them). 
@@ -171,11 +207,18 @@ IRNodeId ASTToIR::convertAssignment(const DSLAssignmentExpr& assign_expr, TypeCh
      IRNodeId value_node_id = convertNode(assign_expr.value.get(), context, current_cfg_node); 
      if (value_node_id == 0) throw std::runtime_error("Cannot convert RHS of assignment"); 
      auto* value_ir_node = getNode(value_node_id); 
+     // ... Convert RHS value -> value_node_id ... 
      if (!value_ir_node || !value_ir_node->output_type) throw std::runtime_error("RHS node invalid"); 
      // 2. Look up the target variable's type and address/value node 
+     // Lookup symbol info 
      const Symbol& target_symbol = assign_expr.target; 
-     auto target_type = context.lookupSymbol(target_symbol.name); 
+     auto target_type = context.lookupSymbolInfo(target_symbol.name); 
      if (!target_type) throw std::runtime_error("Assignment to undeclared variable: " + target_symbol.name, assign_expr.target.name); 
+     if (!target_info) throw BDIExecutionError("Assignment target not found: " + target_symbol.name); 
+     if (!target_info->is_mutable) throw BDIExecutionError("Cannot assign to immutable variable: " + target_symbol.name); 
+     if (target_info->location != SymbolInfo::Location::STACK && target_info->location != SymbolInfo::Location::HEAP) { // Check if it has an a
+         throw BDIExecutionError("Invalid assignment target location for: " + target_symbol.name); 
+     }
      // Check if mutable? context.isMutable(target_symbol.name)? Requires enhancement. 
      // Check type compatibility 
      if (!type_checker_.checkTypeCompatibility(*target_type, *value_ir_node->output_type, context)) { 
@@ -186,6 +229,7 @@ IRNodeId ASTToIR::convertAssignment(const DSLAssignmentExpr& assign_expr, TypeCh
      IRNodeId store_node_id = current_graph_->addNode(IROpCode::STORE_MEM, "assign_" + target_symbol.name, assign_expr.target.name); 
      auto* store_node = getNode(store_node_id); 
      // store_node->inputs.push_back({target_addr_node_id, 0, /* pointer type */}); // Input 0: Address Source
+     store_node->inputs.push_back({target_info->address_node_id, 0, /* pointer type */ nullptr}); // Input 0: Address Source Node 
      store_node->inputs.push_back({value_node_id, 0, getNode(value_node_id)->output_type}); // Input 1: Value Source
      store_node->operation_data = assign_expr.target; // Store target symbol for BDI conversion 
      current_graph_->addEdge(current_cfg_node, store_node_id); // Store happens after RHS calculation 
@@ -211,7 +255,7 @@ IRNodeId ASTToIR::convertWhileLoop(const DSLLoopExpr& loop_expr, TypeChecker::Ch
      current_graph_->addEdge(current_cfg_node, loop_header_id); // Edge into loop check 
      // Convert Condition 
      // Condition - control flow starts from header 
-     IRNodeId cond_cfg_node = loop_header_id = current_graph_->addNode(ChiIROpCode::JUMP, "loop_header");  // Start condition check from header 
+     IRNodeId cond_cfg_node = loop_header_id = current_graph_->addNode(IROpCode::JUMP, "loop_header");  // Start condition check from header 
      current_graph_->addEdge(current_cfg_node, loop_header_id); // Edge into loop check 
      IRNodeId cond_value_node_id = convertNode(&loop_expr.condition, context, cond_cfg_node); 
      if (cond_value_node_id == 0 || getNode(cond_value_node_id)->output_type->getBaseBDIType() != BDIType::BOOL) { 
@@ -228,7 +272,7 @@ IRNodeId ASTToIR::convertWhileLoop(const DSLLoopExpr& loop_expr, TypeChecker::Ch
      TypeChecker::CheckContext body_context;  
      body_context.parent_scope = std::make_shared<TypeChecker::CheckContext>(context); 
      IRNodeId body_entry_placeholder = branch_node_id; // We'll actually start body exec after branch node 
-     IRNodeId body_entry_node_id = current_graph_->addNode(ChiIROpCode::SCOPE_BEGIN, "loop_body_entry"); // Placeholder for scope start 
+     IRNodeId body_entry_node_id = current_graph_->addNode(IROpCode::SCOPE_BEGIN, "loop_body_entry"); // Placeholder for scope start 
      IRNodeId body_start_cfg_node = branch_node_id; // Control enters body from branch (true path) 
      IRNodeId body_end_node = convertNode(&loop_expr.body, body_context, body_entry_placeholder, body_start_cfg_node); // Assuming body is a sequence, Body CFG starts here 
      // Add Jump from end of body back to header 
@@ -262,6 +306,27 @@ IRNodeId ASTToIR::convertLiteral(const DSLLiteral& literal, TypeChecker::CheckCo
 IRNodeId ASTToIR::convertSymbolLoad(const Symbol& symbol, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
      auto symbol_type = context.lookupSymbol(symbol.name); 
      if (!symbol_type) throw std::runtime_error("ASTToIR Error: Undefined symbol '" + symbol.name + "'"); 
+     if (!symbol_info) throw BDIExecutionError("Undefined symbol load: " + symbol.name); 
+     IRNodeId result_node_id = 0; 
+     if (symbol_info->location == SymbolInfo::Location::STACK || symbol_info->location == SymbolInfo::Location::HEAP) { 
+         // Mutable: Generate LOAD_MEM 
+         result_node_id = current_graph_->addNode(IROpCode::LOAD_MEM, "load_" + symbol.name); 
+         auto* node = getNode(result_node_id); 
+         node->inputs.push_back({symbol_info->address_node_id, 0, /* pointer type */ nullptr}); // Input is the address source 
+         node->operation_data = symbol; 
+         node->output_type = symbol_info->type; // Load produces value of variable's type 
+         if (current_cfg_node != 0) current_graph_->addEdge(current_cfg_node, result_node_id); 
+         current_cfg_node = result_node_id; 
+     } else if (symbol_info->location == SymbolInfo::Location::SSA_VALUE) { 
+         // Immutable/SSA: Just return the ID of the node that originally produced the value 
+         result_node_id = symbol_info->value_node_id; 
+         // No new node created, control flow doesn't necessarily advance here unless value node is later 
+     } else { 
+          throw BDIExecutionError("Cannot load symbol with unknown location: " + symbol.name); 
+     } 
+     return result_node_id; 
+} 
+ 
      IRNodeId node_id = current_graph_->addNode(IROpCode::LOAD_SYMBOL, symbol.name); 
      auto* node = getNode(node_id); 
      node->operation_data = symbol; 
@@ -342,7 +407,7 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
          current_cfg_node = ret_val_node_id; // CFG node before RETURN is the value node 
      }
          // TODO: Check ret_type against context.expected_return_type 
-         IRNodeId ret_node_id = current_graph_->addNode(ChiIROpCode::RETURN_VALUE, "return"); 
+         IRNodeId ret_node_id = current_graph_->addNode(IROpCode::RETURN_VALUE, "return"); 
          auto* node = getNode(ret_node_id); 
          if (ret_val_node_id != 0) { // If returning a value 
          node->inputs.push_back({ret_val_node_id, 0, ret_type}); 
