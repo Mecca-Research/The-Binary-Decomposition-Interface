@@ -9,6 +9,8 @@ BasicRewardFeedbackAdapter::BasicRewardFeedbackAdapter(PortRef reward_signal_por
     pending_updates_.clear(); // Clear previous updates
  void BasicRewardFeedbackAdapter::calculateRewardBasedUpdates(ExecutionContext& context, float reward) { 
      // STUB: Simulate finding relevant parameters and calculating simple update 
+     // STUB: Assume graph nodes involved in the last action sequence have 
+     // stored eligibility traces (e.g., as metadata or in context) 
      std::cout << "FeedbackAdapter: Received reward " << reward << ". Calculating updates (STUB)." << std::endl; 
      // --- Replace with actual logic --- 
      // Example: Find nodes annotated with @LearnableParameter 
@@ -17,6 +19,25 @@ BasicRewardFeedbackAdapter::BasicRewardFeedbackAdapter(PortRef reward_signal_por
      // Calculate delta based on reward and traces/gradients 
      // --- End Replace --- 
      // Dummy Update: Increment parameter at Node 50 if reward > 0 
+     // Example: Iterate through known parameter nodes (needs a way to identify them) 
+     std::vector<NodeID> parameter_nodes = {50, 65, 108}; // Example IDs 
+     for (NodeID param_node_id : parameter_nodes) { 
+     // Retrieve eligibility trace for this parameter from context (conceptual) 
+     // float trace = context.getEligibilityTrace(param_node_id); // Needs context mechanism 
+     float trace = (param_node_id == 50) ? 0.8f : 0.3f; // Dummy trace values 
+         // Retrieve parameter type (assume FLOAT32) 
+         BDIType param_type = BDIType::FLOAT32; // Assume known type 
+         // Calculate TD-like delta: learning_rate * reward * trace 
+         float delta_value = learning_rate_ * reward * trace; 
+         // Create update variant based on parameter type 
+         BDIValueVariant delta_variant; 
+         if (param_type == BDIType::FLOAT32) delta_variant = BDIValueVariant{delta_value}; 
+         // else if (param_type == BDIType::INT32) delta_variant = BDIValueVariant{static_cast<int32_t>(delta_value)}; // Add type handling 
+         else continue; // Skip if type not handled 
+         pending_updates_.push_back({param_node_id, delta_variant}); 
+         //std::cout << "  -> Pending update for Node " << param_node_id << ": Delta " << delta_value << std::endl; 
+     } 
+}
      if (reward > 0.0f) {
          NodeID target_param_node = 50; // Example target 
          // Assume parameter is FLOAT32 
