@@ -113,6 +113,8 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
  }
  // --- Execute Node Implementation (Refactored for Variant & Core Ops) --
  bool BDIVirtualMachine::executeNode(BDINode& node, BDIGraph& graph) { // Added graph param
+    // Need access to intelligence components if VM manages them directly 
+    // Or intelligence ops interact via ExecutionContext state / MetadataStore 
     using OpType = core::graph::BDIOperationType;
     using BDIType = core::types::BDIType;
     using TypeSys = core::types::TypeSystem;
@@ -130,6 +132,40 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
         }
         inputs.push_back(input_var_opt.value());
     }
+    // Intelligence Ops (Stubs) 
+            case OpType::LEARN_RECORD_GRADIENT: { 
+                if (inputs.size() < 2) { op_success = false; break; } // Need ParamRef, GradientValue 
+                // STUB: Store gradient associated with parameter (e.g., in ExecutionContext) 
+                // NodeID param_ref_node = convertValueOrThrow<NodeID>(inputs[0]); // How param is identified? 
+                // BDIValueVariant gradient = inputs[1]; 
+                // context_->storeGradient(param_ref_node, gradient); // Needs context mechanism 
+                std::cout << "  Op: LEARN_RECORD_GRADIENT (Stub) for Node " << node.id << std::endl; 
+                break; 
+            } 
+            case OpType::RECUR_READ_STATE: { // Read state from previous timestep 
+                if (node.data_outputs.empty()) { op_success = false; break; } 
+                // STUB: Needs RecurrenceManager passed in or accessible 
+                // Assume NodeID identifies the state variable from previous step 
+                // NodeID source_state_node_id = convertValueOrThrow<NodeID>(inputs[0]); // Get source ID from input? Or node payload? 
+                // auto previous_state = recurrence_manager_->readPreviousState(source_state_node_id); 
+                // if (previous_state) result_var = previous_state.value(); else op_success = false; 
+                std::cout << "  Op: RECUR_READ_STATE (Stub) for Node " << node.id << std::endl; 
+                result_var = BDIValueVariant{int32_t{0}}; // Dummy value 
+                break; 
+            } 
+             case OpType::RECUR_WRITE_STATE: { // Write state for *next* timestep 
+                  if (inputs.empty()) { op_success = false; break; } 
+                  // STUB: Store input value associated with this node's ID for RecurrenceManager 
+                  // recurrence_manager_->writeCurrentState(node.id, inputs[0]); // Needs manager access 
+                  std::cout << "  Op: RECUR_WRITE_STATE (Stub) for Node " << node.id << std::endl; 
+                  break; // No output value 
+             } 
+            // ... default ... 
+        } 
+    } // ... catch ... 
+     // ... Store Result ... 
+    return op_success; 
+} 
     // --- Operation Dispatch --
     BDIValueVariant result_var = std::monostate{}; // Default result is error/void
     bool op_success = true;
