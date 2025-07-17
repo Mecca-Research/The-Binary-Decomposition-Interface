@@ -158,6 +158,12 @@ case IROpCode::BRANCH_COND: {
      } 
      return true; 
 } 
+// Need to manage BDI stack pointer / frame concept during conversion 
+struct BDIConversionContext { 
+    bdi::frontend::api::GraphBuilder& builder; 
+    bdi::meta::MetadataStore& meta_store; 
+    std::unordered_map<ChiIRNodeId, NodeID>& chiir_to_bdi_node_map; 
+    std::unordered_map<ChiIRNodeId, std::vector<PortRef>>& chiir_output_to_bdi_port_map; 
 bool IRToBDI::convertNode(const IRNode& ir_node) { 
      if (ir_to_bdi_node_map_.count(ir_node.id)) return true; // Already processed 
      NodeID bdi_node_id = 0; 
