@@ -1,5 +1,5 @@
 #include "TypeChecker.hpp" 
-#include "../dsl/DSLRegistry.hpp" // Potentially needed for operator info 
+#include "DSLRegistry.hpp" // Potentially needed for operator info 
 #include <iostream> 
 #include <memory> // For make_shared 
 namespace chimera::frontend::types { 
@@ -15,6 +15,16 @@ auto t = std::make_shared<ChimeraType>();
     t->content = ChimeraScalarType{bdi_t, is_const}; 
 return t; 
 } 
+    // Add get size/alignment helpers based on ChimeraType (simplified) 
+    size_t getChimeraTypeSize(const ChimeraType& type) { 
+        if (type.isScalar()) { return getBdiTypeSize(std::get<ChimeraScalarType>(type.content).base_bdi_type); } 
+        // Add cases for Tensor, Struct etc. based on their definitions 
+        return 8; // Default/placeholder 
+    }
+     size_t getChimeraTypeAlignment(const ChimeraType& type) { 
+         if (type.isScalar()) { return getBdiTypeSize(std::get<ChimeraScalarType>(type.content).base_bdi_type); } // Often size==alignment 
+         return 8; // Default/placeholder 
+     } 
 std::shared_ptr<ChimeraType> TypeChecker::checkExpression(const DSLExpression* expr, CheckContext& context) { 
 if (!expr) return make_unresolved(); 
 try { 
@@ -138,6 +148,21 @@ std::shared_ptr<ChimeraType> TypeChecker::checkSequence(const DSLExpressionSeque
 } 
 std::shared_ptr<ChimeraType> TypeChecker::checkDefinition(const DSLDefinition& definition, CheckContext& context) { 
      // 1. Check the value expression first (allows type inference) 
+     // ... check value_type, annotation_type ... 
+        bool is_mutable = true; // Determine mutability 
+        SymbolInfo info(final_type, is_mutable, false, context.getScopeLevel()); 
+        if (is_mutable) { // Allocate stack space only for mutable locals for now 
+            info.location = SymbolInfo::Location::STACK; 
+            size_t size = getChimeraTypeSize(*final_type); 
+            size_t alignment = getChimeraTypeAlignment(*final_type); 
+            info.stack_offset = context.allocateStackSpace(size, alignment); 
+            std::cout << "TypeCheck INFO: Allocated stack space for '" << def.name.name << "' at offset " << info.stack_offset << std::endl; 
+        } else { 
+            info.location = SymbolInfo::Location::SSA_VALUE; // Mark as value source 
+        } 
+        if (!context.addSymbol(def.name.name, info)) { /* Error */ } 
+        return make_scalar(BDIType::VOID); 
+        } 
      auto value_type = checkExpression(definition.value_expr.get(), context); 
      if (!value_type->isResolved()) { 
          throw std::runtime_error("Type Error: Cannot resolve type for definition of '" + definition.name.name + "'"); 
