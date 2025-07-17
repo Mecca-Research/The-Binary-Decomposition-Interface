@@ -20,6 +20,17 @@ BasicRewardFeedbackAdapter::BasicRewardFeedbackAdapter(PortRef reward_signal_por
      // --- End Replace --- 
      // Dummy Update: Increment parameter at Node 50 if reward > 0 
      // Example: Iterate through known parameter nodes (needs a way to identify them) 
+     // Iterate through parameters that have gradients or traces stored in context 
+     for (const auto& pair : context.parameter_gradients) { // Use gradient map 
+              NodeID param_node_id = pair.first; 
+     const BDIValueVariant& gradient = pair.second; 
+     float eligibility = context.getEligibilityTrace(param_node_id).value_or(1.0f); // Get trace or default to 1 
+     // Calculate delta (Example: simple gradient ascent * trace * reward) 
+     auto grad_float = vm_ops::convertValue<float>(gradient); // Convert gradient 
+     if (grad_float) { 
+     float delta_value = learning_rate_ * reward * eligibility * (*grad_float); 
+              pending_updates_.push_back({param_node_id, BDIValueVariant{delta_value}}); 
+     // std::cout << "  -> Pending update for Node " << param_node_id << ": Delta " << delta_value << std::endl;
      std::vector<NodeID> parameter_nodes = {50, 65, 108}; // Example IDs 
      for (NodeID param_node_id : parameter_nodes) { 
      // Retrieve eligibility trace for this parameter from context (conceptual) 
@@ -36,8 +47,11 @@ BasicRewardFeedbackAdapter::BasicRewardFeedbackAdapter(PortRef reward_signal_por
          else continue; // Skip if type not handled 
          pending_updates_.push_back({param_node_id, delta_variant}); 
          //std::cout << "  -> Pending update for Node " << param_node_id << ": Delta " << delta_value << std::endl; 
+         }
      } 
-}
+     // Clear context state after using it? Optional. 
+     // context.clearIntelligenceState(); 
+} 
      if (reward > 0.0f) {
          NodeID target_param_node = 50; // Example target 
          // Assume parameter is FLOAT32 
