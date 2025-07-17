@@ -1,7 +1,7 @@
  #ifndef BDI_RUNTIME_EXECUTIONCONTEXT_HPP
  #define BDI_RUNTIME_EXECUTIONCONTEXT_HPP
- #include "../core/graph/BDINode.hpp"       // For PortRef, NodeID
- #include "../core/payload/TypedPayload.hpp" // For TypedPayload
+ #include "BDINode.hpp"       // For PortRef, NodeID
+ #include "TypedPayload.hpp" // For TypedPayload
  #include "BDIValueVariant.hpp" // Use the new variant type
  #include <unordered_map>
  #include <optional>
@@ -20,9 +20,14 @@
     }
  };
  class ExecutionContext {
+    // --- State for Intelligence --- 
+    // Conceptual: Store gradients or traces per parameter source node 
+    std::unordered_map<NodeID, BDIValueVariant> parameter_gradients; // NodeID producing param -> Gradient Value 
+    std::unordered_map<NodeID, float> eligibility_traces; // NodeID producing param -> Trace value 
+    // Add methods to set/get/clear gradients and traces 
  public:
     ExecutionContext() = default;
- // Store the output value for a specific port
+    // Store the output value for a specific port
     void setPortValue(const PortRef& port, BDIValueVariant value); // Takes variant
     void setPortValue(NodeID node_id, PortIndex port_idx, BDIValueVariant value);
     // Retrieve the value variant for a specific port
@@ -47,11 +52,19 @@
     // --- Call Stack --
     void pushCall(NodeID return_node_id);
     std::optional<NodeID> popCall();
+    void recordGradient(NodeID param_source_node, BDIValueVariant gradient); 
+    std::optional<BDIValueVariant> getGradient(NodeID param_source_node) const; 
+    void updateEligibilityTrace(NodeID param_source_node, float decay, float increment); 
+    std::optional<float> getEligibilityTrace(NodeID param_source_node) const; 
+    void clearIntelligenceState(); // Clear gradients/traces 
     bool isCallStackEmpty() const;
     void clear();
+}; 
  private:
     std::unordered_map<PortRef, BDIValueVariant, PortRefHash> port_values_; // Stores variants
-    std::vector<NodeID> call_stack_;
+    std::vector<NodeID> call_stack_; // Replaced by vector of CallFrames
+    std::unordered_map<PortIndex, BDIValueVariant> next_arguments_; // Staging area for next call
+    std::optional<BDIValueVariant> last_return_value_; // Value returned by the last RETURN
  };
     // --- Call Stack Frame --
     struct CallFrame {
@@ -63,13 +76,7 @@
     void pushCallFrame(NodeID caller_node_id, NodeID return_node_id); // << MODIFIED
     std::optional<CallFrame> popCallFrame(); // Returns the whole frame
     bool isCallStackEmpty() const;
-    void clear(); // Also clears args/return value state
- private:
-    std::unordered_map<PortRef, BDIValueVariant, PortRefHash> port_values_;
-    // std::vector<NodeID> call_stack_; // Replaced by vector of CallFrames
-    std::vector<CallFrame> call_stack_;
-    std::unordered_map<PortIndex, BDIValueVariant> next_arguments_; // Staging area for next call
-    std::optional<BDIValueVariant> last_return_value_; // Value returned by the last RETURN
+    void clear(); // Also clears args/return value state 
  };
  } // namespace bdi::runtime
  #endif // BDI_RUNTIME_EXECUTIONCONTEXT_HPP
