@@ -1,6 +1,6 @@
  #include "ExecutionContext.hpp"
- #include "../core/payload/TypedPayload.hpp"
- #include "../core/types/BinaryEncoding.hpp" // Include the encoding functions
+ #include "TypedPayload.hpp"
+ #include "BinaryEncoding.hpp" // Include the encoding functions
  #include <stdexcept> // For type conversion errors
  #include <bit>       // For std::bit_cast
  #include <cstring>   // For memcpy
@@ -50,7 +50,34 @@ void ExecutionContext::setNextArgument(PortIndex arg_index, BDIValueVariant valu
  std::optional<BDIValueVariant> ExecutionContext::getLastReturnValue() {
     return last_return_value_; // Return the value stored after the last RETURN
  }
- // --- Conversion Helpers --
+ void ExecutionContext::recordGradient(NodeID param_source_node, BDIValueVariant gradient) { 
+    parameter_gradients[param_source_node] = std::move(gradient); 
+ } 
+ std::optional<BDIValueVariant> ExecutionContext::getGradient(NodeID param_source_node) const { 
+    auto it = parameter_gradients.find(param_source_node); 
+    return (it != parameter_gradients.end()) ? std::optional{it->second} : std::nullopt; 
+} 
+void ExecutionContext::updateEligibilityTrace(NodeID param_source_node, float decay, float increment) { 
+    // Example update rule: trace = trace * decay + increment 
+    eligibility_traces[param_source_node] = eligibility_traces[param_source_node] * decay + increment; 
+} 
+std::optional<float> ExecutionContext::getEligibilityTrace(NodeID param_source_node) const { 
+     auto it = eligibility_traces.find(param_source_node); 
+     return (it != eligibility_traces.end()) ? std::optional{it->second} : std::nullopt; 
+} 
+void ExecutionContext::clearIntelligenceState() { 
+    parameter_gradients.clear(); 
+    eligibility_traces.clear(); 
+} 
+// Update clear() method 
+void ExecutionContext::clear() { 
+    port_values_.clear(); 
+    call_stack_.clear(); 
+    next_arguments_.clear(); 
+    last_return_value_ = std::nullopt; 
+    clearIntelligenceState(); // Clear intelligence state too 
+} 
+// --- Conversion Helpers --
 BDIValueVariant ExecutionContext::payloadToVariant(const TypedPayload& payload) {
     using Type = core::types::BDIType;
     try {
