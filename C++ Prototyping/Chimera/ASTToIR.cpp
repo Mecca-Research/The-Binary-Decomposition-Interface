@@ -148,7 +148,9 @@ IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckConte
               else if constexpr (std::is_same_v<T, DSLLiteral>) { result_node_id = convertLiteral(arg, context, current_cfg_node); } 
               else if constexpr (std::is_same_v<T, DSLOperation>) { result_node_id = convertOperation(arg, context, current_cfg_node); } 
               else if constexpr (std::is_same_v<T, DSLExpressionSequence>) { result_node_id = convertSequence(arg, context, current_cfg_node);
-              else if constexpr (std::is_same_v<T, DSLDefinition>) { convertDefinition(arg, context, current_cfg_node); result_node_id = 0; 
+              else if constexpr (std::is_same_v<T, DSLDefinition>) { convertDefinition(arg, context, current_cfg_node); result_node_id = 0;
+              else if constexpr (std::is_same_v<T, DSLMemberAccessExpr>) { result_node_id = convertMemberAccess(arg, context, current_cfg_n
+              else if constexpr (std::is_same_v<T, DSLArrayIndexExpr>)   { result_node_id = convertArrayIndex(arg, context, current_cfg_nod                                                      
               // Handle different kinds of definitions 
               // if (isFunctionDefinition(arg)) { convertFunctionDefinition(arg, context, current_cfg_node); } 
               // else { convertVariableDefinition(arg, context, current_cfg_node); } 
@@ -556,6 +558,67 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           current_cfg_node = exit_loop_node_id; // Continue code gen after loop 
           return 0; 
      } 
+          ChiIRNodeId ASTToChiIR::convertMemberAccess(const DSLMemberAccessExpr& access_expr, TypeChecker::CheckContext& context, ChiIRNodeId& curre
+          // 1. Convert the base object expression to get its address node ID 
+          //    (Assume structs are passed by reference or allocated on stack -> we need address) 
+          ChiIRNodeId base_addr_node_id = convertNode(access_expr.object.get(), context, current_cfg_node); 
+          // Error check... Get base object type from type checker... 
+          auto base_obj_type = type_checker_.checkExpression(access_expr.object.get(), context); // Re-check? Or store type during conversion? 
+          if (!base_obj_type || !base_obj_type->isStruct()) throw BDIExecutionError("Internal Error: Base object for member access is not struct
+          const auto& struct_type = std::get<ChimeraStructType>(base_obj_type->content); 
+          // 2. Find field offset 
+          auto field_it = struct_type.field_name_to_index.find(access_expr.member_name.name); 
+          if (field_it == struct_type.field_name_to_index.end()) throw BDIExecutionError("Internal Error: Field not found"); 
+          size_t offset = struct_type.fields[field_it->second].offset; 
+          // 3. Generate address calculation: BaseAddr + Offset 
+          ChiIRNodeId member_addr_node_id = generateAddressCalculation(offset, context, current_cfg_node, base_addr_node_id); // Pass base addre
+          // 4. Return the node producing the MEMBER'S ADDRESS 
+          //    The caller (e.g., convertAssignment or convertSymbolLoad needing member) will use this address node 
+          //    with LOAD_MEM or STORE_MEM. 
+          return member_addr_node_id; 
+    }
+          ChiIRNodeId ASTToChiIR::convertArrayIndex(const DSLArrayIndexExpr& index_expr, TypeChecker::CheckContext& context, ChiIRNodeId& current_cf
+          // 1. Convert array base expression -> base_addr_node_id 
+          ChiIRNodeId base_addr_node_id = convertNode(index_expr.array.get(), context, current_cfg_node); 
+          auto array_type = type_checker_.checkExpression(index_expr.array.get(), context); 
+          if (!array_type || !array_type->isArray()) throw BDIExecutionError("Internal Error: Base object for index is not array"); 
+          const auto& arr_type = std::get<ChimeraArrayType>(array_type->content); 
+          size_t element_size = arr_type.element_size_bytes; 
+          // 2. Convert index expression -> index_value_node_id 
+          ChiIRNodeId index_value_node_id = convertNode(index_expr.index.get(), context, current_cfg_node); 
+          // Error check... ensure index is integer type... 
+          // 3. Generate address calculation: BaseAddr + (IndexValue * ElementSize) 
+          //    a. Create CONST node for ElementSize 
+          ChiIRNodeId elem_size_const_id = current_graph_->addNode(ChiIROpCode::LOAD_CONST); 
+          // ... set payload for element_size (as pointer-sized uint) ... set output type ... connect CFG ... 
+          //    b. Create MUL node: IndexValue * ElementSize 
+          ChiIRNodeId offset_node_id = current_graph_->addNode(ChiIROpCode::BINARY_OP); 
+          // ... set inputs (index_value_node_id, elem_size_const_id), op_data="*", output type ... connect CFG ... 
+          //    c. Create ADD node: BaseAddr + Offset 
+          ChiIRNodeId element_addr_node_id = current_graph_->addNode(ChiIROpCode::BINARY_OP); 
+          // ... set inputs (base_addr_node_id, offset_node_id), op_data="+", output type POINTER ... connect CFG ... 
+          current_cfg_node = element_addr_node_id; // Update CFG pos 
+          return element_addr_node_id; // Return node producing the ELEMENT'S ADDRESS 
+    }
+          // Helper to generate address calculation (Modified) 
+          ChiIRNodeId ASTToChiIR::generateAddressCalculation(size_t offset, TypeChecker::CheckContext& context, ChiIRNodeId& current_cfg_node, Node
+          ChiIRNodeId current_base_node = 0; 
+          if (base_addr_node_id != 0) { 
+          current_base_node = base_addr_node_id; // Use provided base 
+          } else { 
+          // Load Frame Pointer if no base provided (assumes stack var) 
+          // current_base_node = getNode(context.lookupSymbolInfo("__FRAME_POINTER__")->address_node_id); // Need FP tracking 
+          }
+          if (current_base_node == 0) throw BDIExecutionError("Cannot determine base address for offset calculation"); 
+          // Load Constant Offset 
+          ChiIRNodeId offset_const_id = current_graph_->addNode(ChiIROpCode::LOAD_CONST, std::to_string(offset)); 
+          // ... set payload/type ... connect CFG ... 
+          // Add Base + Offset 
+          ChiIRNodeId add_addr_id = current_graph_->addNode(ChiIROpCode::BINARY_OP, "addr_add"); 
+          // ... set inputs (current_base_node, offset_const_id), op="+", type=POINTER ... connect CFG ... 
+          current_cfg_node = add_addr_id; 
+          return add_addr_id; 
+     }
           // Create Merge Node (if necessary) 
           // Set branch targets (Successors) 
           branch_node->control_successors.push_back(body_entry_placeholder == branch_node_id ? // If body is empty, need first real node 
