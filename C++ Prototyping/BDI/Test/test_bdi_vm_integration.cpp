@@ -503,6 +503,80 @@ TEST_F(BDIVMIntegrationTest, ConversionOps) {
     ASSERT_TRUE(call_output_opt.has_value());
     EXPECT_EQ(convertVariantTo<int32_t>(call_output_opt.value()).value(), 12);
  }
+TEST_F(BDIVMIntegrationTest, CallReturnWithValueFinal) { 
+// Build Main Graph 
+    NodeID main_start = builder->addNode(OpType::META_START); 
+    NodeID current = main_start; 
+    NodeID c7 = addConst(int32_t{7}, current); // Argument 
+    NodeID call_node = builder->addNode(OpType::CTRL_CALL); 
+    builder->defineDataOutput(call_node, 0, BDIType::INT32); // Expect INT32 return 
+    builder->connectControl(current, call_node); 
+    builder->connectData(c7, 0, call_node, 0); // Pass c7 as argument 0 
+    current = call_node; 
+// Use the return value immediately 
+    NodeID add_after_call = builder->addNode(OpType::ARITH_ADD); 
+    builder->defineDataOutput(add_after_call, 0, BDIType::INT32); 
+    builder->connectControl(current, add_after_call); 
+    builder->connectData(call_node, 0, add_after_call, 0); // Input 0 = Return value 
+// Add another constant 
+    NodeID c1 = addConst(int32_t{1}, current); // This control flow needs care 
+// Ensure C1 runs before add_after_call but after call returns 
+// We need a way to define the actual return point. Let's make CALL node's 
+// second control output the return point in the *caller*. 
+    NodeID after_call_control = builder->addNode(OpType::META_NOP); // Node right after return 
+    builder->connectControl(c1, after_call_control); // Connect const to ensure it runs 
+    builder->connectControl(after_call_control, add_after_call); // Connect to final add 
+    builder->connectData(c1, 0, add_after_call, 1); // Input 1 = Const 1 
+    current = add_after_call; 
+    NodeID main_end = builder->addNode(OpType::META_END); 
+    builder->connectControl(current, main_end); 
+// Build Function Graph (Returns input + 5) 
+// Using different node IDs to avoid conflicts if built separately 
+    NodeID func_start = builder->addNode(OpType::META_START, "FuncStart"); 
+    NodeID func_current = func_start; 
+    builder->defineDataOutput(func_start, 0, BDIType::INT32); // Define argument output port 
+    NodeID func_c5 = addConst(int32_t{5}, func_current); // Function's internal constant 
+    NodeID func_add = builder->addNode(OpType::ARITH_ADD); 
+    builder->defineDataOutput(func_add, 0, BDIType::INT32); 
+    builder->connectControl(func_current, func_add); 
+    builder->connectData(func_start, 0, func_add, 0); // Use Func Arg 0 (loaded by START) 
+    builder->connectData(func_c5, 0, func_add, 1); 
+    func_current = func_add; 
+    NodeID func_ret = builder->addNode(OpType::CTRL_RETURN); 
+    builder->connectControl(func_current, func_ret); 
+    builder->connectData(func_add, 0, func_ret, 0); // Connect result of ADD to RETURN input 
+    // Finalize Connections in Main Graph's CALL node 
+    auto call_node_ref = builder->getGraph().getNodeMutable(call_node); 
+    ASSERT_TRUE(call_node_ref != nullptr); 
+    call_node_ref->control_outputs.push_back(func_start);   
+    // Target = func_start 
+    call_node_ref->control_outputs.push_back(c1); // Return = Resume control at c1 node 
+    // Finalize graph 
+    auto graph = builder->finalizeGraph(); 
+    ASSERT_NE(graph, nullptr);
+    ASSERT_TRUE(graph->validateGraph()); 
+    // Pre-populate constants 
+    vm->getExecutionContext()->setPortValue(c7, 0, BDIValueVariant{int32_t{7}}); 
+    vm->getExecutionContext()->setPortValue(c1, 0, BDIValueVariant{int32_t{1}}); 
+    vm->getExecutionContext()->setPortValue(func_c5, 0, BDIValueVariant{int32_t{5}}); 
+    // Execute the main graph 
+    ASSERT_TRUE(vm->execute(*graph, main_start)); 
+    // Check final result after call and add 
+    auto final_result_opt = vm->getExecutionContext()->getPortValue(add_after_call, 0); 
+    ASSERT_TRUE(final_result_opt.has_value()); 
+    // Expected: Call(7) -> Enters Func -> Reads Arg 7 -> Adds 5 -> Returns 12. 
+    //           Caller receives 12 on CALL node output. 
+    //           Control resumes at C1. 
+    //           Final Add node gets 12 (from CALL output) and 1 (from C1 output). 
+    //           Final result = 12 + 1 = 13. 
+    EXPECT_EQ(convertValueOrThrow<int32_t>(final_result_opt.value()), 13); 
+    // Check the output value of the original CALL node itself 
+    auto call_output_opt = vm->getExecutionContext()->getPortValue(call_node, 0); 
+    ASSERT_TRUE(call_output_opt.has_value()); 
+    EXPECT_EQ(convertValueOrThrow<int32_t>(call_output_opt.value()), 12); 
+} 
+    // Add TEST_F(BDIVMIntegrationTest, FunctionCallNested) similar structure 
+    // Add TEST_F(BDIVMIntegrationTest, RecursionTest) similar structure with depth limit check 
     // Pre-populate context
     vm->getExecutionContext()->setPortValue(c7, 0, BDIValueVariant{int32_t{7}});
     vm->getExecutionContext()->setPortValue(c10, 0, BDIValueVariant{int32_t{10}});
