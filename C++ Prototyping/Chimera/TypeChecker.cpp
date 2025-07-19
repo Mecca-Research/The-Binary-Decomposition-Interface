@@ -7,41 +7,101 @@ namespace chimera::frontend::types {
 // --- Type Comparison (Implementation in ChimeraTypes.cpp potentially or header) --- 
 // bool ChimeraType::operator==(const ChimeraType& other) const { ... } // Need full impl comparing variants 
 // --- TypeChecker Methods --- 
-// Helper to create unresolved type 
-auto make_unresolved() { return std::make_shared<ChimeraType>(); } 
-// Helper to create scalar type easily 
-auto make_scalar(BDIType bdi_t, bool is_const = false) { 
-auto t = std::make_shared<ChimeraType>(); 
-    t->content = ChimeraScalarType{bdi_t, is_const}; 
-return t; 
-} 
-    // Add get size/alignment helpers based on ChimeraType (simplified) 
-    size_t getChimeraTypeSize(const ChimeraType& type) { 
+void ChimeraStructType::calculateLayout() { 
+        total_size = 0; 
+        alignment = 1; 
+        field_name_to_index.clear(); 
+        size_t current_offset = 0; 
+        for (size_t i = 0; i < fields.size(); ++i) { 
+            auto& field = fields[i]; 
+            if (!field.type || !field.type->isResolved()) throw BDIExecutionError("Cannot layout struct with unresolved field types"); 
+            size_t field_size = getChimeraTypeSize(*field.type); 
+            size_t field_align = getChimeraTypeAlignment(*field.type); 
+            // Align current offset UP 
+            current_offset = (current_offset + field_align - 1) / field_align * field_align; 
+            field.offset = current_offset; 
+            current_offset += field_size; 
+            alignment = std::max(alignment, field_align); // Struct alignment is max of field alignments 
+            field_name_to_index[field.name] = i; 
+        } 
+        // Align total size UP to struct alignment 
+        total_size = (current_offset + alignment - 1) / alignment * alignment; 
+    }
+    void ChimeraArrayType::calculateLayout() { 
+        if (!element_type || !element_type->isResolved()) throw BDIExecutionError("Cannot layout array with unresolved element type"); 
+        element_size_bytes = getChimeraTypeSize(*element_type); 
+        alignment = getChimeraTypeAlignment(*element_type); 
+        total_size = element_size_bytes * count; 
+        // Array total size doesn't necessarily need element alignment padding *between* elements if accessed via index math 
+    }
+        // --- TypeChecker Updates --- 
+        // Assume AST includes nodes like: 
+        // struct DSLMemberAccessExpr { std::unique_ptr<DSLExpression> object; Symbol member_name; }; 
+        // struct DSLArrayIndexExpr { std::unique_ptr<DSLExpression> array; std::unique_ptr<DSLExpression> index; }; 
+        // struct DSLStructDefExpr { ... }; struct DSLArrayDefExpr { ... }; 
+        // Helper to create unresolved type 
+        auto make_unresolved() { return std::make_shared<ChimeraType>(); } 
+        // Helper to create scalar type easily 
+        auto make_scalar(BDIType bdi_t, bool is_const = false) { 
+        auto t = std::make_shared<ChimeraType>(); 
+        t->content = ChimeraScalarType{bdi_t, is_const}; 
+        return t; 
+    } 
+        // Add get size/alignment helpers based on ChimeraType (simplified) 
+        size_t getChimeraTypeSize(const ChimeraType& type) { 
         if (type.isScalar()) { return getBdiTypeSize(std::get<ChimeraScalarType>(type.content).base_bdi_type); } 
         // Add cases for Tensor, Struct etc. based on their definitions 
         return 8; // Default/placeholder 
     }
-     size_t getChimeraTypeAlignment(const ChimeraType& type) { 
-         if (type.isScalar()) { return getBdiTypeSize(std::get<ChimeraScalarType>(type.content).base_bdi_type); } // Often size==alignment 
-         return 8; // Default/placeholder 
+        size_t getChimeraTypeAlignment(const ChimeraType& type) { 
+        if (type.isScalar()) { return getBdiTypeSize(std::get<ChimeraScalarType>(type.content).base_bdi_type); } // Often size==alignment 
+        return 8; // Default/placeholder 
      } 
-std::shared_ptr<ChimeraType> TypeChecker::checkExpression(const DSLExpression* expr, CheckContext& context) { 
-if (!expr) return make_unresolved(); 
-try { 
-return std::visit([&](auto&& arg) -> std::shared_ptr<ChimeraType> { 
-using T = std::decay_t<decltype(arg)>; 
-if constexpr (std::is_same_v<T, std::monostate>) { return make_unresolved(); } 
-else if constexpr (std::is_same_v<T, Symbol>)        { return checkSymbol(arg, context); } 
-else if constexpr (std::is_same_v<T, DSLLiteral>)     { return checkLiteral(arg); } 
-else if constexpr (std::is_same_v<T, DSLOperation>)    { return checkOperation(arg, context); } 
-else if constexpr (std::is_same_v<T, DSLExpressionSequence>) { return checkSequence(arg, context); } 
-else if constexpr (std::is_same_v<T, DSLDefinition>)  { checkDefinition(arg, context); return make_scalar(BDIType::VOID); 
-else { std::cerr << "Type Error: Unknown expression variant type." << std::endl; return make_unresolved(); } 
-         }, expr->content); 
-     } 
-catch (const std::exception& e) { 
-std::cerr << "Type Error during checkExpression: " << e.what() << std::endl; 
-return make_unresolved(); 
+    std::shared_ptr<ChimeraType> TypeChecker::checkMemberAccess(const DSLMemberAccessExpr& access_expr, CheckContext& context) { 
+        auto object_type = checkExpression(access_expr.object.get(), context); 
+        if (!object_type || !object_type->isStruct()) { 
+            throw BDIExecutionError("Type Error: Member access '.' requires a struct type, got " /* + typeToString(object_type) */ ); 
+        } 
+        const auto& struct_type = std::get<ChimeraStructType>(object_type->content); 
+        auto field_it = struct_type.field_name_to_index.find(access_expr.member_name.name); 
+        if (field_it == struct_type.field_name_to_index.end()) { 
+            throw BDIExecutionError("Type Error: Struct '" + struct_type.name + "' has no member named '" + access_expr.member_name.name + "'"
+        } 
+        size_t field_index = field_it->second; 
+        return struct_type.fields[field_index].type; // Return the type of the member 
+    }
+     std::shared_ptr<ChimeraType> TypeChecker::checkArrayIndex(const DSLArrayIndexExpr& index_expr, CheckContext& context) { 
+        auto array_type = checkExpression(index_expr.array.get(), context); 
+        auto index_type = checkExpression(index_expr.index.get(), context); 
+        if (!array_type || !array_type->isArray()) { 
+             throw BDIExecutionError("Type Error: Array index '[]' requires an array type."); 
+        } 
+         if (!index_type || !index_type->isScalar() || !TypeSystem::isInteger(std::get<ChimeraScalarType>(index_type->content).base_bdi_type))
+             throw BDIExecutionError("Type Error: Array index must be an integer type."); 
+         }
+         // Optional: Add static bounds check if array size and index are constants? 
+        const auto& arr_type = std::get<ChimeraArrayType>(array_type->content); 
+        return arr_type.element_type; // Return the element type 
+    }
+     // Need checkDefinition variations for struct/array definitions 
+}
+     std::shared_ptr<ChimeraType> TypeChecker::checkExpression(const DSLExpression* expr, CheckContext& context) { 
+     if (!expr) return make_unresolved(); 
+     try { 
+     return std::visit([&](auto&& arg) -> std::shared_ptr<ChimeraType> {  
+     using T = std::decay_t<decltype(arg)>; 
+     if constexpr (std::is_same_v<T, std::monostate>) { return make_unresolved(); } 
+     else if constexpr (std::is_same_v<T, Symbol>)        { return checkSymbol(arg, context); } 
+     else if constexpr (std::is_same_v<T, DSLLiteral>)     { return checkLiteral(arg); } 
+     else if constexpr (std::is_same_v<T, DSLOperation>)    { return checkOperation(arg, context); } 
+     else if constexpr (std::is_same_v<T, DSLExpressionSequence>) { return checkSequence(arg, context); } 
+     else if constexpr (std::is_same_v<T, DSLDefinition>)  { checkDefinition(arg, context); return make_scalar(BDIType::VOID); 
+     else { std::cerr << "Type Error: Unknown expression variant type." << std::endl; return make_unresolved(); } 
+              }, expr->content); 
+} 
+     catch (const std::exception& e) { 
+     std::cerr << "Type Error during checkExpression: " << e.what() << std::endl; 
+     return make_unresolved(); 
      } 
 } 
 bool TypeChecker::checkFunctionDefinition(/* Function definition struct func_def */ CheckContext& parent_context) { 
