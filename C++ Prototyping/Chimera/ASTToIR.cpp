@@ -19,6 +19,17 @@ std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLFuncDefExpr& func_def
      current_graph_->entry_node_id_ = entry_node; 
      IRNodeId current_cfg_node = entry_node; 
      // --- Generate Prologue --- 
+     current_cfg_node = generateFunctionPrologue(func_def.signature, func_context, current_cfg_node); // Helper generates STACK/FP ops 
+     // Process Parameters - associate PARAM nodes with stack locations relative to FP 
+     // Assume parameters are pushed by caller or first things on stack frame 
+     // size_t current_param_offset = ... // Calculate offset based on ABI (e.g., positive offset from FP) 
+     // for(size_t i = 0; i < func_def.signature.parameters.size(); ++i) { 
+     //     SymbolInfo& param_info = func_context.lookupSymbolInfo(func_def.signature.parameters[i].name); // Already added by type checker? 
+     //     param_info.location = SymbolInfo::Location::STACK; 
+     //     param_info.stack_offset = current_param_offset; 
+     //     param_info.address_node_id = generateAddressCalculation(param_info.stack_offset, func_context, current_cfg_node); // Node calculat
+     //     current_param_offset += getChimeraTypeSize(param_info.type); // Update for next param 
+     // } 
      size_t frame_size = func_context.getFrameSize(); // Get size calculated during type checking 
      // Need nodes representing SP (Stack Pointer) and FP (Frame Pointer) registers/values 
      // IRNodeId current_sp = ... ; // Node representing SP before prologue 
@@ -130,6 +141,8 @@ std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLDefinition* func_def,
      // If the last node isn't a RETURN or other terminator, add one? Depends on language semantics. Or rely on checkExpression to add RETURN_VALUE?
      // Store function graph mapping? 
      // function_graphs_[func_def.signature.name.name] = current_graph_.get(); // Store raw ptr? Or manage elsewhere. 
+     // This needs modification to `convertReturn` or graph post-processing 
+     // Add implicit return for void functions if last node isn't RETURN 
      return std::move(current_graph_); 
 } 
 // Recursive Conversion Helpers 
@@ -149,8 +162,16 @@ IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckConte
               else if constexpr (std::is_same_v<T, DSLOperation>) { result_node_id = convertOperation(arg, context, current_cfg_node); } 
               else if constexpr (std::is_same_v<T, DSLExpressionSequence>) { result_node_id = convertSequence(arg, context, current_cfg_node);
               else if constexpr (std::is_same_v<T, DSLDefinition>) { convertDefinition(arg, context, current_cfg_node); result_node_id = 0;
+              // Dispatch based on definition type (Var, Func, Struct, etc.) 
+              // if (isFunctionDefinition(arg)) { convertFunctionDefinition(arg, context); } // Functions handled separately 
+              // else if (isStructDefinition(arg)) { convertStructDefinition(arg, context); } 
+              // else { convertVariableDefinition(arg, context, current_cfg_node); } 
+              result_node_id = 0; // Definitions themselves don't yield a value node here                                                       
               else if constexpr (std::is_same_v<T, DSLMemberAccessExpr>) { result_node_id = convertMemberAccess(arg, context, current_cfg_n
-              else if constexpr (std::is_same_v<T, DSLArrayIndexExpr>)   { result_node_id = convertArrayIndex(arg, context, current_cfg_nod                                                      
+              else if constexpr (std::is_same_v<T, DSLArrayIndexExpr>)   { result_node_id = convertArrayIndex(arg, context, current_cfg_nod    
+              else if constexpr (std::is_same_v<T, DSLFuncCallExpr>)  { result_node_id = convertFunctionCall(arg, context, current_cfg_node); }
+              else if constexpr (std::is_same_v<T, DSLReturnExpr>)   { result_node_id = convertReturn(arg, context, current_cfg_node); } 
+              // Add cases for struct/array literals, other control flow (match/switch)     
               // Handle different kinds of definitions 
               // if (isFunctionDefinition(arg)) { convertFunctionDefinition(arg, context, current_cfg_node); } 
               // else { convertVariableDefinition(arg, context, current_cfg_node); } 
@@ -558,10 +579,10 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           current_cfg_node = exit_loop_node_id; // Continue code gen after loop 
           return 0; 
      } 
-          ChiIRNodeId ASTToChiIR::convertMemberAccess(const DSLMemberAccessExpr& access_expr, TypeChecker::CheckContext& context, ChiIRNodeId& curre
+          IRNodeId ASTToIR::convertMemberAccess(const DSLMemberAccessExpr& access_expr, TypeChecker::CheckContext& context, IRNodeId& curre
           // 1. Convert the base object expression to get its address node ID 
           //    (Assume structs are passed by reference or allocated on stack -> we need address) 
-          ChiIRNodeId base_addr_node_id = convertNode(access_expr.object.get(), context, current_cfg_node); 
+          IRNodeId base_addr_node_id = convertNode(access_expr.object.get(), context, current_cfg_node); 
           // Error check... Get base object type from type checker... 
           auto base_obj_type = type_checker_.checkExpression(access_expr.object.get(), context); // Re-check? Or store type during conversion? 
           if (!base_obj_type || !base_obj_type->isStruct()) throw BDIExecutionError("Internal Error: Base object for member access is not struct
@@ -571,38 +592,62 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           if (field_it == struct_type.field_name_to_index.end()) throw BDIExecutionError("Internal Error: Field not found"); 
           size_t offset = struct_type.fields[field_it->second].offset; 
           // 3. Generate address calculation: BaseAddr + Offset 
-          ChiIRNodeId member_addr_node_id = generateAddressCalculation(offset, context, current_cfg_node, base_addr_node_id); // Pass base addre
+          IRNodeId member_addr_node_id = generateAddressCalculation(offset, context, current_cfg_node, base_addr_node_id); // Pass base addre
           // 4. Return the node producing the MEMBER'S ADDRESS 
           //    The caller (e.g., convertAssignment or convertSymbolLoad needing member) will use this address node 
           //    with LOAD_MEM or STORE_MEM. 
-          return member_addr_node_id; 
+          return member_addr_node_id; // Return node producing the MEMBER'S ADDRESS  
     }
-          ChiIRNodeId ASTToChiIR::convertArrayIndex(const DSLArrayIndexExpr& index_expr, TypeChecker::CheckContext& context, ChiIRNodeId& current_cf
+          IRNodeId ASTToIR::convertArrayIndex(const DSLArrayIndexExpr& index_expr, TypeChecker::CheckContext& context, IRNodeId& current_cf
           // 1. Convert array base expression -> base_addr_node_id 
-          ChiIRNodeId base_addr_node_id = convertNode(index_expr.array.get(), context, current_cfg_node); 
+          IRNodeId base_addr_node_id = convertNode(index_expr.array.get(), context, current_cfg_node); 
           auto array_type = type_checker_.checkExpression(index_expr.array.get(), context); 
           if (!array_type || !array_type->isArray()) throw BDIExecutionError("Internal Error: Base object for index is not array"); 
           const auto& arr_type = std::get<ChimeraArrayType>(array_type->content); 
           size_t element_size = arr_type.element_size_bytes; 
+          if (element_size == 0) throw BDIExecutionError("Internal Error: Array element size is zero"); 
           // 2. Convert index expression -> index_value_node_id 
-          ChiIRNodeId index_value_node_id = convertNode(index_expr.index.get(), context, current_cfg_node); 
+          IRNodeId index_value_node_id = convertNode(index_expr.index.get(), context, current_cfg_node); 
+          auto index_type = getNode(index_value_node_id)->output_type; // Get actual type of index node 
+          // TODO: Convert index_value_node_id to pointer-sized unsigned integer if needed 
           // Error check... ensure index is integer type... 
           // 3. Generate address calculation: BaseAddr + (IndexValue * ElementSize) 
           //    a. Create CONST node for ElementSize 
-          ChiIRNodeId elem_size_const_id = current_graph_->addNode(ChiIROpCode::LOAD_CONST); 
+          IRNodeId elem_size_const_id = current_graph_->addNode(IROpCode::LOAD_CONST); 
+          auto* elem_size_node = getNode(elem_size_const_id); 
+          elem_size_node->output_type = make_scalar(BDIType::UINT64); // Use uint64 for size/offset math 
+          elem_size_node->operation_data = BDIValueVariant{static_cast<uint64_t>(element_size)}; 
+          current_graph_->addEdge(current_cfg_node, elem_size_const_id); // Depends on previous cfg node 
+          IRNodeId after_size_cfg = elem_size_const_id; 
           // ... set payload for element_size (as pointer-sized uint) ... set output type ... connect CFG ... 
           //    b. Create MUL node: IndexValue * ElementSize 
-          ChiIRNodeId offset_node_id = current_graph_->addNode(ChiIROpCode::BINARY_OP); 
+          IRNodeId offset_node_id = current_graph_->addNode(IROpCode::BINARY_OP); 
+          auto* mul_node = getNode(offset_node_id); 
+          mul_node->operation_data = Operator{"*"}; 
+          mul_node->inputs.push_back({index_value_node_id, 0, index_type}); 
+          mul_node->inputs.push_back({elem_size_const_id, 0, elem_size_node->output_type}); 
+          mul_node->output_type = make_scalar(BDIType::UINT64); // Resulting offset is uint64 
+          current_graph_->addEdge(getNode(index_value_node_id) ? current_cfg_node : 0, offset_node_id); // Depends on index calc 
+          current_graph_->addEdge(elem_size_const_id, offset_node_id); // Depends on size const 
+          IRNodeId after_mul_cfg = offset_node_id;   
           // ... set inputs (index_value_node_id, elem_size_const_id), op_data="*", output type ... connect CFG ... 
           //    c. Create ADD node: BaseAddr + Offset 
-          ChiIRNodeId element_addr_node_id = current_graph_->addNode(ChiIROpCode::BINARY_OP); 
+          IRNodeId element_addr_node_id = current_graph_->addNode(IROpCode::BINARY_OP); 
+          auto* add_node = getNode(element_addr_node_id); 
+          add_node->operation_data = Operator{"+"}; 
+          add_node->inputs.push_back({base_addr_node_id, 0, getNode(base_addr_node_id)->output_type}); // Base Addr (Pointer) 
+          add_node->inputs.push_back({offset_node_id, 0, mul_node->output_type}); // Offset (UInt64 -> Pointer size?) 
+          add_node->output_type = make_scalar(BDIType::POINTER); // Result is pointer 
+          current_graph_->addEdge(getNode(base_addr_node_id) ? current_cfg_node : 0, element_addr_node_id); // Depends on base addr calc 
+          current_graph_->addEdge(after_mul_cfg, element_addr_node_id); // Depends on offset calc  
           // ... set inputs (base_addr_node_id, offset_node_id), op_data="+", output type POINTER ... connect CFG ... 
           current_cfg_node = element_addr_node_id; // Update CFG pos 
           return element_addr_node_id; // Return node producing the ELEMENT'S ADDRESS 
     }
+          // Implement generateFunctionPrologue, generateFunctionEpilogue, convertStructDefinition etc. 
           // Helper to generate address calculation (Modified) 
-          ChiIRNodeId ASTToChiIR::generateAddressCalculation(size_t offset, TypeChecker::CheckContext& context, ChiIRNodeId& current_cfg_node, Node
-          ChiIRNodeId current_base_node = 0; 
+          IRNodeId ASTToIR::generateAddressCalculation(size_t offset, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node, Node
+          IRNodeId current_base_node = 0; 
           if (base_addr_node_id != 0) { 
           current_base_node = base_addr_node_id; // Use provided base 
           } else { 
@@ -611,10 +656,10 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           }
           if (current_base_node == 0) throw BDIExecutionError("Cannot determine base address for offset calculation"); 
           // Load Constant Offset 
-          ChiIRNodeId offset_const_id = current_graph_->addNode(ChiIROpCode::LOAD_CONST, std::to_string(offset)); 
+          IRNodeId offset_const_id = current_graph_->addNode(IROpCode::LOAD_CONST, std::to_string(offset)); 
           // ... set payload/type ... connect CFG ... 
           // Add Base + Offset 
-          ChiIRNodeId add_addr_id = current_graph_->addNode(ChiIROpCode::BINARY_OP, "addr_add"); 
+          IRNodeId add_addr_id = current_graph_->addNode(IROpCode::BINARY_OP, "addr_add"); 
           // ... set inputs (current_base_node, offset_const_id), op="+", type=POINTER ... connect CFG ... 
           current_cfg_node = add_addr_id; 
           return add_addr_id; 
