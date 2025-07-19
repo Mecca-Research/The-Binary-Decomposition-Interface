@@ -1,6 +1,6 @@
 #ifndef CHIMERA_FRONTEND_TYPES_CHIMERATYPES_HPP 
 #define CHIMERA_FRONTEND_TYPES_CHIMERATYPES_HPP 
-#include "../../core/types/BDITypes.hpp" // BDI Base types 
+#include "BDITypes.hpp" // BDI Base types 
 #include <vector> 
 #include <string> 
 #include <variant> 
@@ -9,6 +9,24 @@
 namespace bdi::meta { struct MetadataVariant; } // Annotation info 
 namespace chimera::frontend::types { 
 using namespace bdi::core::types; 
+// --- Main ChimeraType Variant --- 
+// Using std::shared_ptr to handle recursive type definitions (like Function args/return) 
+// Forward declare for recursive use (e.g., field types) 
+struct ChimeraType {
+ using Content = std::variant< 
+std::monostate, // Unresolved / Error / Void 
+         ChimeraScalarType, 
+         ChimeraTensorType, 
+         ChimeraGraphType, 
+         ChimeraMemoryRegionType, 
+         ChimeraStructField,
+         ChimeraStructType,
+         ChimeraFunctionType, 
+         ChimeraAgentType 
+// Add more types: Structs, Enums, Interfaces/Traits? 
+     >; 
+     Content content; 
+std::string user_defined_name; // For named types (structs, etc.) 
 // --- High-Level Chimera Type Representation --- 
 // Basic scalar value type 
 struct ChimeraScalarType { 
@@ -45,6 +63,32 @@ bool read_only = false;
 // Link to BDI RegionID? Maybe resolved later. 
 bool operator==(const ChimeraMemoryRegionType&) const = default; // Need custom compare for shared_ptr 
 }; 
+// Struct Field Definition 
+struct ChimeraStructField { 
+std::string name; 
+std::shared_ptr<ChimeraType> type = nullptr; 
+size_t offset = 0; // Calculated offset within the struct 
+// Add visibility? const? 
+bool operator==(const ChimeraStructField&) const; // Needs implementation 
+}; 
+// Struct Type Definition 
+struct ChimeraStructType { 
+std::string name; // Optional name for named structs 
+std::vector<ChimeraStructField> fields; 
+size_t total_size = 0;    
+// Calculated total size 
+size_t alignment = 1; // Calculated required alignment 
+// Scope for member functions? 
+bool operator==(const ChimeraStructType&) const; // Needs implementation 
+}; 
+// Array Type Definition 
+struct ChimeraArrayType {
+std::shared_ptr<ChimeraType> element_type = nullptr; 
+size_t size = 0; // Number of elements (0 for dynamic/slice?) - Fixed size for now 
+size_t element_size_bytes = 0; // Cache element size 
+// Bounds checking info? 
+bool operator==(const ChimeraArrayType&) const; // Needs implementation 
+}; 
 // Function type 
 struct ChimeraFunctionType { 
 std::vector<std::shared_ptr<struct ChimeraType>> argument_types; 
@@ -60,25 +104,12 @@ std::shared_ptr<struct ChimeraType> action_type; // Type describing possible act
 // Links to learning / feedback mechanisms? 
 bool operator==(const ChimeraAgentType&) const = default; // Need custom compare 
 }; 
-// --- Main ChimeraType Variant --- 
-// Using std::shared_ptr to handle recursive type definitions (like Function args/return) 
-struct ChimeraType {
- using Content = std::variant< 
-std::monostate, // Unresolved / Error / Void 
-         ChimeraScalarType, 
-         ChimeraTensorType, 
-         ChimeraGraphType, 
-         ChimeraMemoryRegionType, 
-         ChimeraFunctionType, 
-         ChimeraAgentType 
-// Add more types: Structs, Enums, Interfaces/Traits? 
-     >; 
-     Content content; 
-std::string user_defined_name; // For named types (structs, etc.) 
 // --- Helper Methods --- 
 BDIType getBaseBDIType() const; // Get underlying BDI type if applicable 
 bool isScalar() const { return std::holds_alternative<ChimeraScalarType>(content); } 
 bool isTensor() const { return std::holds_alternative<ChimeraTensorType>(content); } 
+bool isStruct() const { return std::holds_alternative<ChimeraStructType>(content); } 
+bool isArray() const { return std::holds_alternative<ChimeraArrayType>(content); } 
 // ... other type checks ... 
 bool isResolved() const { return !std::holds_alternative<std::monostate>(content); } 
 // Need custom comparison operator due to shared_ptr members in nested types 
