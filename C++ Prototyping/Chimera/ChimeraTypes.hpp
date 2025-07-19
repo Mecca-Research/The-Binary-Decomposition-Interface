@@ -73,11 +73,13 @@ bool operator==(const ChimeraStructField&) const; // Needs implementation
 }; 
 // Struct Type Definition 
 struct ChimeraStructType { 
-std::string name; // Optional name for named structs 
-std::vector<ChimeraStructField> fields; 
-size_t total_size = 0;    
-// Calculated total size 
-size_t alignment = 1; // Calculated required alignment 
+td::shared_ptr<ChimeraType> element_type = nullptr; 
+size_t count = 0; // Number of elements (fixed size) 
+size_t element_size_bytes = 0; 
+size_t total_size = 0;
+size_t alignment = 1; 
+void calculateLayout(); // Calculate size/alignment based on element type 
+// ... ChimeraType variant includes ChimeraStructType, ChimeraArrayType ... 
 // Scope for member functions? 
 bool operator==(const ChimeraStructType&) const; // Needs implementation 
 }; 
