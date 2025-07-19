@@ -35,8 +35,8 @@ else if constexpr (std::is_same_v<T, Symbol>)        { return checkSymbol(arg, c
 else if constexpr (std::is_same_v<T, DSLLiteral>)     { return checkLiteral(arg); } 
 else if constexpr (std::is_same_v<T, DSLOperation>)    { return checkOperation(arg, context); } 
 else if constexpr (std::is_same_v<T, DSLExpressionSequence>) { return checkSequence(arg, context); } 
-else if constexpr (std::is_same_v<T, DSLDefinition>)  { checkDefinition(arg, context); return make_scalar(BDIType::VOID); /*
- else { std::cerr << "Type Error: Unknown expression variant type." << std::endl; return make_unresolved(); } 
+else if constexpr (std::is_same_v<T, DSLDefinition>)  { checkDefinition(arg, context); return make_scalar(BDIType::VOID); 
+else { std::cerr << "Type Error: Unknown expression variant type." << std::endl; return make_unresolved(); } 
          }, expr->content); 
      } 
 catch (const std::exception& e) { 
@@ -167,25 +167,58 @@ std::shared_ptr<ChimeraType> TypeChecker::checkDefinition(const DSLDefinition& d
      if (!value_type->isResolved()) { 
          throw std::runtime_error("Type Error: Cannot resolve type for definition of '" + definition.name.name + "'"); 
      } 
-     std::shared_ptr<ChimeraType> final_type = value_type; 
-     // 2. Check type annotation if present 
-     if (definition.type_expr) { 
-        // Need a way to resolve type expressions (e.g., looking up type names) 
-        // std::shared_ptr<ChimeraType> annotation_type = resolveTypeExpr(definition.type_expr.get(), context); 
-        std::shared_ptr<ChimeraType> annotation_type = make_unresolved(); // Placeholder 
-        if (!annotation_type->isResolved()) { 
-             throw std::runtime_error("Type Error: Invalid type annotation for '" + definition.name.name + "'"); 
-        } 
-        // Check compatibility 
-        if (!checkTypeCompatibility(*annotation_type, *value_type, context)) { 
-             throw std::runtime_error("Type Error: Value type incompatible with type annotation for '" + definition.name.name + "'"); 
-        } 
-        final_type = annotation_type; // Use annotation type if compatible 
+     // --- CheckContext Stack Allocation --- 
+     size_t TypeChecker::CheckContext::allocateStackSpace(const std::string& var_name, size_t size_bytes, size_t alignment) { 
+     if (!stack_frame) { // Should only allocate within function frames 
+     if (parent_scope) return parent_scope->allocateStackSpace(var_name, size_bytes, alignment); // Delegate up? Risky. 
+     throw BDIExecutionError("Compiler Error: Attempting stack allocation outside function scope"); 
+         }
+     // Align current offset UP 
+     stack_frame->current_offset = (stack_frame->current_offset + alignment - 1) / alignment * alignment; 
+     size_t allocated_offset = stack_frame->current_offset; 
+     stack_frame->current_offset += size_bytes; 
+     stack_frame->total_size = std::max(stack_frame->total_size, stack_frame->current_offset); // Update total size needed 
+     stack_frame->max_alignment = std::max(stack_frame->max_alignment, alignment); 
+     stack_frame->variable_offsets[var_name] = allocated_offset; // Store offset 
      } 
-     // 3. Add symbol to context (use final_type) 
-     context.addSymbol(definition.name.name, final_type); 
-     return make_scalar(BDIType::VOID); // Definitions themselves evaluate to void 
+// std::cout << "StackAlloc: " << var_name << " at offset " << allocated_offset << " (Size " << size_bytes << ")" << std::endl; 
+return allocated_offset; 
+std::optional<size_t> TypeChecker::CheckContext::getStackOffset(const std::string& name) const { 
+if (stack_frame) { 
+auto it = stack_frame->variable_offsets.find(name); 
+if (it != stack_frame->variable_offsets.end()) { 
+return it->second; 
+         }
+     } 
+if (parent_scope) { 
+return parent_scope->getStackOffset(name); // Look in parent 
+     } 
+return std::nullopt; 
 } 
+size_t TypeChecker::CheckContext::getFrameSize() const { 
+if (stack_frame) return stack_frame->total_size; 
+if (parent_scope) return parent_scope->getFrameSize(); // Delegate up? Or error? Error safer. 
+throw BDIExecutionError("Compiler Error: Cannot get frame size outside function scope"); 
+} 
+// --- TypeChecker Updates --- 
+// Modify checkDefinition to use new allocateStackSpace 
+std::shared_ptr<ChimeraType> TypeChecker::checkDefinition(const DSLDefinition& def, CheckContext& context) { 
+// ... check value_type, annotation_type -> final_type ... 
+bool is_mutable = true; 
+SymbolInfo info(final_type, is_mutable, false, context.getScopeLevel()); 
+if (is_mutable /* && isLocalVariable not parameter/global? */) { 
+        info.location = SymbolInfo::Location::STACK; 
+size_t size = getChimeraTypeSize(*final_type); 
+size_t alignment = getChimeraTypeAlignment(*final_type); 
+// Allocate space and store the calculated offset IN THE SymbolInfo 
+        info.stack_offset = context.allocateStackSpace(
+ def.name.name, size, alignment); 
+    } 
+else { /* ... handle SSA ... */ } 
+if (!context.addSymbol(
+ def.name.name, info)) { /* Error */ } 
+return make_scalar(BDIType::VOID); 
+}    
 bool TypeChecker::checkTypeCompatibility(const ChimeraType& expected, const ChimeraType& actual, CheckContext& context) { 
     // std::cerr << "TypeChecker::checkTypeCompatibility - STUBBED" << std::endl; 
     if (!expected.isResolved() || !actual.isResolved()) return false; // Cannot compare unresolved 
@@ -211,5 +244,24 @@ bool ChimeraType::operator==(const ChimeraType& other) const {
      } // Add other cases... 
      return true; // If index matches and it's monostate or unhandled 
 } 
+     std::shared_ptr<ChimeraType> final_type = value_type; 
+     // 2. Check type annotation if present 
+     if (definition.type_expr) { 
+        // Need a way to resolve type expressions (e.g., looking up type names) 
+        // std::shared_ptr<ChimeraType> annotation_type = resolveTypeExpr(definition.type_expr.get(), context); 
+        std::shared_ptr<ChimeraType> annotation_type = make_unresolved(); // Placeholder 
+        if (!annotation_type->isResolved()) { 
+             throw std::runtime_error("Type Error: Invalid type annotation for '" + definition.name.name + "'"); 
+        } 
+        // Check compatibility 
+        if (!checkTypeCompatibility(*annotation_type, *value_type, context)) { 
+             throw std::runtime_error("Type Error: Value type incompatible with type annotation for '" + definition.name.name + "'"); 
+        } 
+        final_type = annotation_type; // Use annotation type if compatible 
+     } 
+     // 3. Add symbol to context (use final_type) 
+     context.addSymbol(definition.name.name, final_type); 
+     return make_scalar(BDIType::VOID); // Definitions themselves evaluate to void 
+} 
+// Add checkMemberAccess, checkArrayIndex ... 
 } // namespace chimera::frontend::types 
-         }
