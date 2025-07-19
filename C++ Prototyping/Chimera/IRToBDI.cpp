@@ -165,7 +165,10 @@ case IROpCode::BRANCH_COND: {
     std::unordered_map<IRNodeId, NodeID>& ir_to_bdi_node_map; 
     std::unordered_map<IRNodeId, std::vector<PortRef>>& ir_output_to_bdi_port_map; 
     // Map variable name/scope -> BDI node ID holding stack address 
+    // ... builder, meta_store, node maps ... 
+    // Map {scope_level, name} -> BDI NodeID holding stack address 
     std::map<std::pair<int, std::string>, NodeID> variable_address_bdi_nodes; // Key: {scope_level, name} 
+    NodeID frame_pointer_bdi_node = 0; // BDI node ID for frame pointer register/value 
     NodeID current_bdi_cfg_node = 0; 
     // Stack management 
     NodeID frame_pointer_node = 0; // BDI node representing frame pointer (if used) 
@@ -174,6 +177,7 @@ case IROpCode::BRANCH_COND: {
      // Modify convertNode and convertGraph to pass BDIConversionContext   
 bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { // Pass context
      if (ir_to_bdi_node_map_.count(ir_node.id)) return true; // Already processed 
+     // ... Check map ... 
      NodeID bdi_node_id = 0; 
      BDIOperationType bdi_op = BDIOperationType::META_NOP; 
      bool connect_standard_control_flow = true; // Assume standard sequential flow unless overridden 
@@ -243,26 +247,26 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              connect_standard_control_flow = false; // Manual control flow handled 
              break; 
         } 
-        case IROpCode::ALLOC_MEM: { // Stack allocation 
+        case IROpCode::ALLOC_MEM: { // Stack allocation address calculation  
              // Get size/alignment/type info from ir_node->operation_data 
-            // size_t alloc_size = ...; size_t alloc_align = ...; 
-            // Calculate stack offset (this requires a frame concept) 
-            // size_t offset = ctx.allocateStackSpace(alloc_size, alloc_align); // Need context method 
-            // Create BDI node representing the address computation (e.g., ADD FramePtr, Offset) 
-            // NodeID fp_node = ctx.frame_pointer_node; // Get frame pointer node 
-            // NodeID offset_const_node = ctx.builder.addNode(BDIOperationType::META_CONST); // Const node for offset 
-            // ctx.builder.setNodePayload(offset_const_node, TypedPayload::createFrom(static_cast<uintptr_t>(offset))); 
-            // ctx.builder.defineDataOutput(offset_const_node, 0, BDIType::POINTER); // Treat offset as pointer size 
-            // bdi_op = BDIOperationType::ARITH_ADD; // FP + Offset 
-            // bdi_node_id = ctx.builder.addNode(bdi_op, "stack_addr_" + ir_node.label); 
-            // ctx.builder.connectData(fp_node, 0, bdi_node_id, 0); 
-            // ctx.builder.connectData(offset_const_node, 0, bdi_node_id, 1); 
-            // ctx.builder.defineDataOutput(bdi_node_id, 0, BDIType::POINTER); // Result is address 
-            // Store this address node ID associated with the variable symbol 
-            // if (const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data)) { 
-                 // int scope = ... ; // Need scope info associated with IR node 
-                 // ctx.variable_address_bdi_nodes[{scope, symbol->name}] = bdi_node_id; 
-            // }
+             // size_t alloc_size = ...; size_t alloc_align = ...; 
+             // Calculate stack offset (this requires a frame concept) 
+             // size_t offset = ctx.allocateStackSpace(alloc_size, alloc_align); // Need context method 
+             // Create BDI node representing the address computation (e.g., ADD FramePtr, Offset) 
+             // NodeID fp_node = ctx.frame_pointer_node; // Get frame pointer node 
+             // NodeID offset_const_node = ctx.builder.addNode(BDIOperationType::META_CONST); // Const node for offset 
+             // ctx.builder.setNodePayload(offset_const_node, TypedPayload::createFrom(static_cast<uintptr_t>(offset))); 
+             // ctx.builder.defineDataOutput(offset_const_node, 0, BDIType::POINTER); // Treat offset as pointer size 
+             // bdi_op = BDIOperationType::ARITH_ADD; // FP + Offset 
+             // bdi_node_id = ctx.builder.addNode(bdi_op, "stack_addr_" + ir_node.label); 
+             // ctx.builder.connectData(fp_node, 0, bdi_node_id, 0); 
+             // ctx.builder.connectData(offset_const_node, 0, bdi_node_id, 1); 
+             // ctx.builder.defineDataOutput(bdi_node_id, 0, BDIType::POINTER); // Result is address 
+             // Store this address node ID associated with the variable symbol 
+             // if (const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data)) { 
+             // int scope = ... ; // Need scope info associated with IR node 
+             // ctx.variable_address_bdi_nodes[{scope, symbol->name}] = bdi_node_id; 
+             // }
              bdi_op = BDIOperationType::MEM_ALLOC; // Or use direct Alloc if VM handles stack implicitly 
              bdi_node_id = ctx.builder_.addNode(bdi_op, ir_node.label); 
              // Connect size input... Define address output... Store mapping... 
@@ -279,6 +283,22 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
                  if (!bdi_port_ref_opt) return false; 
                  builder_.connectData(bdi_port_ref_opt.value().node_id, bdi_port_ref_opt.value().port_index, bdi_node_id, 0); 
              } else { /* Error: Alloc needs size */ return false; } 
+                const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data); // Assuming symbol stored for name 
+                if (!symbol) return false; 
+                // int scope = ... // Need scope info from IR node annotation or context 
+                // size_t offset = ... // Need offset calculated by TypeChecker/ASTToIR 
+                // Create BDI nodes for: FP + Offset 
+                NodeID offset_const_node = ctx.builder.addNode(BDIOperationType::META_CONST); 
+                // ctx.builder.setNodePayload(offset_const_node, TypedPayload::createFrom(static_cast<uintptr_t>(offset))); 
+                ctx.builder.defineDataOutput(offset_const_node, 0, BDIType::POINTER); // Treat offset as pointer size 
+                bdi_op = BDIOperationType::ARITH_ADD; // FP + Offset 
+                bdi_node_id = ctx.builder.addNode(bdi_op, "addr_" + symbol->name); 
+                ctx.builder.connectData(ctx.frame_pointer_bdi_node, 0, bdi_node_id, 0); // Connect Frame Ptr 
+                ctx.builder.connectData(offset_const_node, 0, bdi_node_id, 1); // Connect Offset Const 
+                ctx.builder.defineDataOutput(bdi_node_id, 0, BDIType::POINTER); // Result is address 
+                // Store mapping 
+                // ctx.variable_address_bdi_nodes[{scope, symbol->name}] = bdi_nod
+             }
              // Define output (pointer/address) 
              if (ir_node.output_type) builder_.defineDataOutput(bdi_node_id, 0, ir_node.output_type->getBaseBDIType(), BDIType::POINTER); // Alloc returns pointer 
              connect_standard_control_flow = true; // Alloc is sequential op 
@@ -312,6 +332,24 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
             // NodeID bdi_addr_node_id = addr_node_it->second; 
             bdi_op = BDIOperationType::MEM_LOAD; 
             bdi_node_id = ctx.builder.addNode(bdi_op, ir_node.label); 
+            if (ir_node.output_type) ctx.builder.defineDataOutput(bdi_node_id, 0, ir_node.output_type->getBaseBDIType()); 
+            break; 
+       } 
+        case IROpCode::STORE_MEM: { // Store to variable address 
+            const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data); 
+             if (!symbol || ir_node.inputs.size() < 1) return false; // Need value input 
+             // int scope = ...; 
+             // auto addr_bdi_node_id_it = ctx.variable_address_bdi_nodes.find({scope, symbol->name}); 
+             // if (addr_bdi_node_id_it == ctx.variable_address_bdi_nodes.end()) throw BDIExecutionError("BDI Addr node not found for STOR
+             // NodeID bdi_addr_node_id = addr_bdi_node_id_it->second; 
+             bdi_op = BDIOperationType::MEM_STORE; 
+             bdi_node_id = ctx.builder.addNode(bdi_op, ir_node.label); 
+             // Connect address source (Input 0) 
+             // ctx.builder.connectData(bdi_addr_node_id, 0, bdi_node_id, 0); 
+             // Connect value source (Input 1, from IR input 0) 
+             auto bdi_value_port_ref_opt = getBDIPortRef(ir_node.inputs[0], ctx); 
+             if (!bdi_value_port_ref_opt) return false; 
+             ctx.builder.connectData(bdi_value_port_ref_opt.value().node_id, bdi_value_port_ref_opt.value().port_index, bdi_node_id, 1); 
             // ctx.builder.connectData(bdi_addr_node_id, 0, bdi_node_id, 0); // Connect address source 
             // Define output port with correct type from IR node 
             // ... 
@@ -461,5 +499,7 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              // ... 
              return std::nullopt; // Placeholder
         } 
-  
-  } // namespace ir::ir 
+             // ... map IDs, define outputs, connect data, connect control flow ... 
+             return true;
+    }
+ } // namespace chimera::ir 
