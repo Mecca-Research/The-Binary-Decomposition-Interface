@@ -96,11 +96,31 @@
     VEC_LOAD_PACKED,
     VEC_STORE_PACKED,
     VEC_SHUFFLE,
+    // Need a way to identify special registers if using REG_READ/WRITE 
+ enum class BDISpecialRegister : uint8_t { 
+    STACK_POINTER, 
+    FRAME_POINTER, 
+    INSTRUCTION_POINTER, 
+    // Add others if needed (flags, etc.) 
+    }; 
+    REG_READ,       
+    REG_WRITE,      
+    STACK_PUSH,     
+    STACK_POP,      
+    // Read from special register (e.g., SP, FP, Instruction Ptr) 
+    // Write to special register 
+    // Pushes value onto stack (updates SP implicitly) - Optional High-Level Op 
+    // Pops value from stack (updates SP implicitly) - Optional High-Level Op 
+    // Alternatively, use lower-level ops: 
+    // MEM_STORE relative to REG_READ(SP) 
+    // ARITH_ADD/SUB to update REG_READ(SP) 
+    // MEM_LOAD relative to updated SP 
+    // ...
     // Placeholders for other domains
     GRAPH_TRAVERSE,
     LINALG_MATMUL,
     SIGNAL_FFT,
     OPERATION_TYPE_COUNT // Sentinel value
- };
+    };
  } // namespace bdi::core::graph
  #endif // BDI_CORE_GRAPH_OPERATIONTYPES_HPP
