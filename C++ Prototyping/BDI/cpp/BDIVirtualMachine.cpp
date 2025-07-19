@@ -1,12 +1,12 @@
  #include "BDIVirtualMachine.hpp"
  #include "ExecutionContext.hpp"
  #include "MemoryManager.hpp"
- #include "../core/graph/BDINode.hpp"
- #include "../core/types/TypeSystem.hpp"
- #include "../core/payload/TypedPayload.hpp"
+ #include "BDINode.hpp"
+ #include "TypeSystem.hpp"
+ #include "TypedPayload.hpp"
  #include "BDIValueVariant.hpp" // Include the variant
- #include "../verification/ProofVerifier.hpp" 
- #include "../meta/MetadataStore.hpp"
+ #include "ProofVerifier.hpp" 
+ #include "MetadataStore.hpp"
  #include "VMTypeOperations.hpp" // Include the new operation helpers
  #include <iostream>
  #include <stdexcept>
@@ -119,6 +119,8 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
     using BDIType = core::types::BDIType;
     using TypeSys = core::types::TypeSystem;
     ExecutionContext& ctx = *execution_context_;
+    // Need access to RecurrenceManager, e.g., pass via constructor or member 
+    // RecurrenceManager* recurrence_manager_;
     try {
         switch (node.operation) {
     // --- Input Gathering --
@@ -160,7 +162,41 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
                   // recurrence_manager_->writeCurrentState(node.id, inputs[0]); 
                   std::cout << "VM Op: RECUR_WRITE_STATE (Stub) for Node " << node.id << std::endl; 
                   break; // No output value 
-             }  
+            }  
+             case OpType::LEARN_GET_GRADIENT: { 
+                  if (inputs.size() != 1 || node.data_outputs.empty()) throw BDIExecutionError("GET_GRADIENT needs ParamSourceID input and an o
+                  NodeID param_source_node = convertValueOrThrow<NodeID>(inputs[0]); 
+                  auto gradient_opt = ctx.getGradient(param_source_node); 
+                  if (!gradient_opt) throw BDIExecutionError("No gradient found for param source " + std::to_string(param_source_node)); 
+                  result_var = gradient_opt.value(); 
+                  break; 
+            } 
+             case OpType::LEARN_APPLY_DELTA: { 
+                  if (inputs.size() != 2) throw BDIExecutionError("APPLY_DELTA needs Param Ref and Delta Value"); 
+                  // Input 0: Param Ref (How is param identified? NodeID? Memory Address?) 
+                  // Let's assume Input 0 holds NodeID of the META_CONST holding the parameter 
+                  NodeID param_node_id = convertValueOrThrow<NodeID>(inputs[0]); 
+                  BDIValueVariant delta_val = inputs[1]; 
+                  BDINode* target_node = graph.getNodeMutable(param_node_id); // Need graph access 
+                  if (!target_node || target_node->operation != OpType::META_CONST) throw BDIExecutionError("APPLY_DELTA target node is not MET
+                  BDIValueVariant current_val = ExecutionContext::payloadToVariant(target_node->payload); 
+                  BDIValueVariant updated_val = vm_ops::performAddition(current_val, delta_val); // Assume simple add 
+                  target_node->payload = ExecutionContext::variantToPayload(updated_val); // Update payload directly 
+                  break; // No output value 
+            } 
+            case OpType::RECUR_READ_STATE: { 
+                  if (inputs.size() != 1 || node.data_outputs.empty()) throw BDIExecutionError("RECUR_READ needs SourceNodeID input and an outp
+                  NodeID source_state_node_id = convertValueOrThrow<NodeID>(inputs[0]); 
+                  auto previous_state = recurrence_manager_->readPreviousState(source_state_node_id); // Use manager 
+                  if (!previous_state) throw BDIExecutionError("Previous recurrent state not found for node " + std::to_string(source_state_nod
+                  result_var = previous_state.value(); 
+                  break; 
+            } 
+             case OpType::RECUR_WRITE_STATE: { 
+                  if (inputs.empty()) throw BDIExecutionError("RECUR_WRITE needs value input"); 
+                  recurrence_manager_->writeCurrentState(node.id, inputs[0]); // Use manager 
+                  break; // No output value 
+             } 
             // ... default ... 
         } 
     } // ... catch ... 
