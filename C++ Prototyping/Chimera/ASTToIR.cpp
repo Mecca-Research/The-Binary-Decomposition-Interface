@@ -14,6 +14,59 @@ namespace ir::ir {
 // --- ASTToIR --- 
 ASTToIR::ASTToIR(TypeChecker& type_checker) : type_checker_(type_checker) {} 
 std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLFuncDefExpr& func_def, TypeChecker::CheckContext& parent_context) { 
+     // ... (Setup graph, func_context as before) ... 
+     IRNodeId entry_node = current_graph_->addNode(IROpCode::ENTRY, "func_entry"); 
+     current_graph_->entry_node_id_ = entry_node; 
+     IRNodeId current_cfg_node = entry_node; 
+     // --- Generate Prologue --- 
+     size_t frame_size = func_context.getFrameSize(); // Get size calculated during type checking 
+     // Need nodes representing SP (Stack Pointer) and FP (Frame Pointer) registers/values 
+     // IRNodeId current_sp = ... ; // Node representing SP before prologue 
+     // IRNodeId current_fp = ... ; // Node representing FP before prologue 
+     // 1. Push Old FP onto stack: STORE_MEM(SP - PtrSize, current_fp) 
+     // 2. Set New FP:          FP = SP 
+     // 3. Allocate Frame:      SP = SP - FrameSize (or ADD SP, -FrameSize) 
+     // This requires adding specific IR opcodes or sequences for stack manipulation, 
+     // or assuming lower-level details handled by IRToBDI. 
+     // Let's add conceptual nodes: 
+          IRNodeId push_fp_node = current_graph_->addNode(IROpCode::STACK_PUSH, "push_fp"); 
+     // push_fp_node->inputs = { ... node for FP ... }; 
+          current_graph_->addEdge(current_cfg_node, push_fp_node); current_cfg_node = push_fp_node; 
+          IRNodeId set_fp_node = current_graph_->addNode(IROpCode::STACK_SET_FP, "set_fp"); // FP = SP 
+          current_graph_->addEdge(current_cfg_node, set_fp_node); current_cfg_node = set_fp_node; 
+          IRNodeId alloc_frame_node = current_graph_->addNode(IROpCode::STACK_ALLOC, "alloc_frame"); 
+     // alloc_frame_node->operation_data = frame_size; // Store size 
+          current_graph_->addEdge(current_cfg_node, alloc_frame_node); current_cfg_node = alloc_frame_node; 
+     // --- Process Parameters (Assign locations relative to new FP) --- 
+     // ... Create PARAM IR nodes, set their output type ... 
+     // SymbolInfo for param needs location=STACK and correct offset relative to FP  
+     // --- Convert function body --- 
+          IRNodeId last_body_node = convertNode(func_def.body.get(), func_context, current_cfg_node); 
+     // --- Generate Epilogue on RETURN ---    
+     // The convertReturn helper needs modification: 
+     // Before the RETURN_VALUE node, insert epilogue nodes: 
+     // 1. Deallocate Frame: SP = FP 
+     // 2. Pop Old FP:      FP = LOAD_MEM(SP - PtrSize); STACK_POP or adjust SP 
+     // convertReturn(...) { 
+     //    ... (convert return value expression) ... 
+     //    IRNodeId dealloc_frame = current_graph_->addNode(IROpCode::STACK_DEALLOC, "dealloc_frame"); 
+     //    current_graph_->addEdge(current_cfg_node, dealloc_frame); current_cfg_node = dealloc_frame; 
+     //    IRNodeId pop_fp = current_graph_->addNode(IROpCode::STACK_POP, "pop_fp"); 
+     //    // pop_fp output is old FP (if needed), also adjusts SP implicitly 
+     //    current_graph_->addEdge(current_cfg_node, pop_fp); current_cfg_node = pop_fp; 
+     //    // Create RETURN_VALUE node connected to pop_fp 
+     //    IRNodeId ret_node_id = current_graph_->addNode(IROpCode::RETURN_VALUE, "return"); 
+     //    // ... connect return value input ... 
+     //    current_graph_->addEdge(current_cfg_node, ret_node_id); 
+     //    return ret_node_id; 
+     // } 
+     return std::move(current_graph_); 
+}     
+     // --- Need implementations for --- 
+     // convertMemberAccess(const DSLMemberAccessExpr&, CheckContext&, IRNodeId&); 
+     // convertArrayIndex(const DSLArrayIndexExpr&, CheckContext&, IRNodeId&); 
+     // convertStructLiteral(...); 
+     // convertArrayLiteral(...); 
 std::unique_ptr<IRGraph> ASTToIR::convertExpression(const DSLExpression* root_expr, TypeChecker::CheckContext& context) { 
     current_graph_ = std::make_unique<IRGraph>("ir_from_expr"),(func_def.signature.name.name); 
     next_node_id_ = 1; 
