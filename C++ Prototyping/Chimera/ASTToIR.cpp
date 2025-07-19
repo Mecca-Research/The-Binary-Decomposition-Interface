@@ -38,7 +38,8 @@ else {
         current_graph_->addNode(IROpCode::EXIT, "empty_exit"); 
     }
     return std::move(current_graph_); 
-} 
+}uj-+
+    
 std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLDefinition* func_def, TypeChecker::CheckContext& parent_context) { 
      if (!func_def || !std::holds_alternative<std::monostate>(func_def->value_expr->content) /* check if value holds function body */) { 
          throw std::runtime_error("Invalid function definition AST node passed to convertFunction"); 
@@ -196,6 +197,53 @@ if (!symbol_info->is_mutable) {
     }
     return 0; // Definition itself doesn't produce a value usable by next expression 
 } 
+        // Helper to get address calculation IR nodes (FramePtr + Offset) 
+    IRNodeId ASTToIR::generateAddressCalculation(size_t offset, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
+        // 1. Load Frame Pointer (assume available via special symbol or context info) 
+        // IRNodeId fp_load_id = convertSymbolLoad(Symbol{"__FRAME_POINTER__"}, context, current_cfg_node); 
+        // 2. Load Constant Offset 
+        IRNodeId offset_const_id = current_graph_->addNode(IROpCode::LOAD_CONST, std::to_string(offset)); 
+        auto* offset_node = getNode(offset_const_id); 
+        offset_node->output_type = make_scalar(BDIType::UINT64); // Use pointer-sized uint for offset 
+        offset_node->operation_data = BDIValueVariant{static_cast<uint64_t>(offset)}; 
+        current_graph_->addEdge(current_cfg_node, offset_const_id); // Assume FP available before offset const 
+        current_cfg_node = offset_const_id; 
+        // 3. Add FP + Offset 
+        IRNodeId add_addr_id = current_graph_->addNode(IROpCode::BINARY_OP, "addr_add"); 
+        auto* add_node = getNode(add_addr_id); 
+        // add_node->inputs.push_back({fp_load_id, 0, /* Pointer Type */ nullptr}); 
+        add_node->inputs.push_back({offset_const_id, 0, offset_node->output_type}); 
+        add_node->operation_data = Operator{"+"}; // Store operator 
+        add_node->output_type = make_scalar(BDIType::POINTER); // Result is pointer 
+        // current_graph_->addEdge(fp_load_id, add_addr_id); // Depends on FP load 
+        current_graph_->addEdge(offset_const_id, add_addr_id); 
+        current_cfg_node = add_addr_id; 
+        return add_addr_id; // Return node producing the final address 
+    }
+    IRNodeId ASTToIR::convertVariableDefinition(const DSLDefinition& def, TypeChecker::CheckContext& context, IRNodeId& current_cfg_n
+        auto symbol_info_ptr = context.lookupSymbolInfo(def.name.name, true); 
+        if (!symbol_info_ptr) throw BDIExecutionError("Internal Compiler Error: SymbolInfo missing in convertVariableDefinition for " + def.na
+        SymbolInfo& symbol_info = *symbol_info_ptr; // Modify context's version 
+        IRNodeId value_node_id = convertNode(def.value_expr.get(), context, current_cfg_node); 
+        // ... error checks ... 
+        auto* value_ir_node = getNode(value_node_id); 
+        if (symbol_info.is_mutable && symbol_info.location == SymbolInfo::Location::STACK) { 
+            // Generate address calculation node 
+            IRNodeId addr_node_id = generateAddressCalculation(symbol_info.stack_offset, context, current_cfg_node); 
+            symbol_info.address_node_id = addr_node_id; // Store address source node ID 
+            // Generate STORE_MEM 
+            IRNodeId store_node_id = current_graph_->addNode(IROpCode::STORE_MEM, "init_" + def.name.name); 
+            auto* store_node = getNode(store_node_id); 
+            store_node->inputs.push_back({addr_node_id, 0, getNode(addr_node_id)->output_type}); // Input 0: Address 
+            store_node->inputs.push_back({value_node_id, 0, value_ir_node->output_type});         // Input 1: Value 
+            store_node->operation_data = def.name; 
+            current_graph_->addEdge(current_cfg_node, store_node_id); 
+            current_cfg_node = store_node_id; 
+        } else { // Immutable / SSA 
+            symbol_info.value_node_id = value_node_id; // Just track the value source 
+        } 
+        return 0;
+    }
 IRNodeId ASTToIR::convertAssignment(const DSLAssignmentExpr& assign_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_n
      // 1. Convert the RHS value expression 
      // ... (Check target symbol type and mutability in context) ... 
@@ -214,7 +262,8 @@ IRNodeId ASTToIR::convertAssignment(const DSLAssignmentExpr& assign_expr, TypeCh
      const Symbol& target_symbol = assign_expr.target; 
      auto target_type = context.lookupSymbolInfo(target_symbol.name); 
      if (!target_type) throw std::runtime_error("Assignment to undeclared variable: " + target_symbol.name, assign_expr.target.name); 
-     if (!target_info) throw BDIExecutionError("Assignment target not found: " + target_symbol.name); 
+     if (!target_info || !target_info->is_mutable || target_info->address_node_id == 0) { 
+         throw BDIExecutionError("Assignment target not found: " + target_symbol.name); 
      if (!target_info->is_mutable) throw BDIExecutionError("Cannot assign to immutable variable: " + target_symbol.name); 
      if (target_info->location != SymbolInfo::Location::STACK && target_info->location != SymbolInfo::Location::HEAP) { // Check if it has an a
          throw BDIExecutionError("Invalid assignment target location for: " + target_symbol.name); 
@@ -312,13 +361,15 @@ IRNodeId ASTToIR::convertSymbolLoad(const Symbol& symbol, TypeChecker::CheckCont
          // Mutable: Generate LOAD_MEM 
          result_node_id = current_graph_->addNode(IROpCode::LOAD_MEM, "load_" + symbol.name); 
          auto* node = getNode(result_node_id); 
-         node->inputs.push_back({symbol_info->address_node_id, 0, /* pointer type */ nullptr}); // Input is the address source 
+         node->inputs.push_back({symbol_info->address_node_id, 0, getNode(symbol_info->address_node_id)->output_type}); /* pointer type */ nullptr}); // Input is the address source 
          node->operation_data = symbol; 
          node->output_type = symbol_info->type; // Load produces value of variable's type 
          if (current_cfg_node != 0) current_graph_->addEdge(current_cfg_node, result_node_id); 
          current_cfg_node = result_node_id; 
+         return load_node_id; 
      } else if (symbol_info->location == SymbolInfo::Location::SSA_VALUE) { 
          // Immutable/SSA: Just return the ID of the node that originally produced the value 
+         return symbol_info->value_node_id; // No new node, no CFG change here 
          result_node_id = symbol_info->value_node_id; 
          // No new node created, control flow doesn't necessarily advance here unless value node is later 
      } else { 
@@ -461,9 +512,9 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           current_cfg_node = exit_loop_node_id; // Continue code generation after the loop exit 
           return 0; // Loops don't produce a value 
      } 
-     // Similar logic needs to be implemented for If/Else using BRANCH_COND and merge points. 
-     // Function Calls: Create CALL node, link arguments, CFG edge to CALL, CFG edge from CALL to successor. 
-     // Function Defs: Convert body, ensure RETURN nodes exist.
+          // Similar logic needs to be implemented for If/Else using BRANCH_COND and merge points. 
+          // Function Calls: Create CALL node, link arguments, CFG edge to CALL, CFG edge from CALL to successor. 
+          // Function Defs: Convert body, ensure RETURN nodes exist.
           IRNodeId merge_node_id = current_graph_->addNode(IROpCode::JUMP, "if_merge"); // Use JUMP as simple merge 
           // Connect branch targets (True -> True Branch Start, False -> False Branch Start) - Handled by BRANCH node data 
           branch_node->operation_data = std::pair<IRNodeId, IRNodeId>{ 
@@ -483,8 +534,8 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           // node->output_type = ...; 
           return merge_node_id; // Return merge node (or last node of dominant branch?) 
      } 
-     // Example: Standard Binary/Unary Ops 
-     else { 
+          // Example: Standard Binary/Unary Ops 
+          else { 
          // Determine IR opcode based on op_name (e.g., BINARY_OP, UNARY_OP) 
          IROpCode op_code = (op.arguments.size() == 2) ? IROpCode::BINARY_OP : 
                             (op.arguments.size() == 1) ? IROpCode::UNARY_OP : IROpCode::CALL; // Basic guess 
