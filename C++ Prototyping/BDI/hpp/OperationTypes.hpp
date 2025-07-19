@@ -97,6 +97,13 @@
     VEC_STORE_PACKED,
     VEC_SHUFFLE,
     // Need a way to identify special registers if using REG_READ/WRITE 
+    // Intelligence Ops  
+    LEARN_GET_GRADIENT,  // Output: Gradient value for specified Param Source ID 
+    LEARN_APPLY_DELTA,   // Input 0: Param Ref (NodeID?), Input 1: Delta Value. Modifies param. 
+    RECUR_READ_STATE,    // Input 0: Prev Step Producer NodeID. Output: State value. 
+    RECUR_WRITE_STATE,   // Input 0: Value to store for next step (associated with this node's ID) 
+    // ...
+ };
  enum class BDISpecialRegister : uint8_t { 
     STACK_POINTER, 
     FRAME_POINTER, 
