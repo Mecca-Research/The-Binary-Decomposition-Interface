@@ -146,7 +146,49 @@ BasicRewardFeedbackAdapter::BasicRewardFeedbackAdapter(PortRef reward_signal_por
    float weight_delta = learning_rate_ * error * input_float_opt.value(); 
             pending_updates_.push_back({weight_node_id, BDIValueVariant{weight_delta}}); 
         } 
-     } 
-   // ... getPendingUpdates / clearPendingUpdates ... 
-  }
+// Assume BDI graph nodes exist for: 
+// - Input activations (source nodes) 
+// - Weights (META_CONST nodes, ID stored) 
+// - Weighted sum (e.g., LINALG_DOT or sequence of MUL/ADD) 
+// - Activation function (e.g., SIGMOID, RELU ops) 
+// - Output activation (final node of layer) 
+// - Target output value (from context) 
+// - Downstream error signal (delta) (from context) 
+class BackpropFeedbackAdapter : public FeedbackAdapter { 
+// ... constructor stores relevant node IDs/references ... 
+    NodeID output_node_id; 
+    NodeID target_node_id; // Node providing target value 
+    NodeID downstream_delta_node_id; // Node providing error signal from next layer 
+std::vector<NodeID> weight_node_ids; 
+std::vector<NodeID> input_node_ids; // Corresponding input activations 
+float learning_rate; 
+void processFeedback(ExecutionContext& context, BDIGraph& graph) override { 
+        pending_updates_.clear(); 
+// 1. Get Target, Actual Output, Downstream Delta (assume FLOAT32) 
+auto target = vm_ops::convertValue<float>(context.getPortValue(target_node_id, 0).value_or(BDIValueVariant{0.0f})); 
+auto actual = vm_ops::convertValue<float>(context.getPortValue(output_node_id, 0).value_or(BDIValueVariant{0.0f})); 
+auto downstream_delta = vm_ops::convertValue<float>(context.getPortValue(downstream_delta_node_id, 0).value_or(BDIValueVariant{0.0f}))
+ if (!target || !actual /* || !downstream_delta needed? */) { /* Error */ return; } 
+// 2. Calculate Output Error (delta) for this layer 
+// Depends on activation function derivative. Assume sigmoid derivative = output * (1 - output) 
+float output_derivative = actual.value() * (1.0f - actual.value()); 
+// If output layer: error = (target - actual) * output_derivative 
+// If hidden layer: error = downstream_delta_sum * output_derivative (need weighted sum of deltas from next layer) 
+float layer_delta = (target.value() - actual.value()) * output_derivative; // Simplified output layer case 
+// 3. Calculate Weight Updates (delta_W = eta * layer_delta * input_activation) 
+if (input_node_ids.size() != weight_node_ids.size()) { /* Error */ return; } 
+for (size_t i = 0; i < weight_node_ids.size(); ++i) { 
+auto input_activation_opt = context.getPortValue(input_node_ids[i], 0); 
+if (!input_activation_opt) continue; 
+auto input_act = vm_ops::convertValue<float>(input_activation_opt.value()); 
+if (!input_act) continue; 
+float weight_delta = learning_rate_ * layer_delta * input_act.value(); 
+            pending_updates_.push_back({weight_node_ids[i], BDIValueVariant{weight_delta}}); 
+// std::cout << "  BP Update for Weight Node " << weight_node_ids[i] << ": Delta " << weight_delta << std::endl; 
+        } 
+// 4. (Optional) Calculate and store gradient w.r.t inputs for previous layer 
+// gradient_for_prev_layer = layer_delta * weight; Store this in context for prev layer adapter. 
+    }
+ // ... get/clear updates ... 
+}; 
 } // namespace bdi::intelligence
