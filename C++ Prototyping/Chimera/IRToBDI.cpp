@@ -241,17 +241,18 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
         bdi_op = BDIOperationType::META_START; // Map ENTRY to START 
         bdi_node_id = ctx.builder.addNode(bdi_op, chiir_node.label); 
         ctx.current_bdi_cfg_node = bdi_node_id; // Start control flow here 
+        // Store this as the function entry BDI node? 
         // --- Prologue --- 
         // 1. Get current FP & SP (conceptually, before modification) 
-        NodeID initial_fp = getSpecialRegister(BDISpecialRegister::FRAME_POINTER, ctx); 
-        NodeID initial_sp = getSpecialRegister(BDISpecialRegister::STACK_POINTER, ctx); 
+        ctx.frame_pointer_bdi_node = getSpecialRegister(BDISpecialRegister::FRAME_POINTER, ctx); 
+        ctx.stack_pointer_bdi_node = getSpecialRegister(BDISpecialRegister::STACK_POINTER, ctx);  
         // 2. Push Old FP onto stack: STORE_MEM(SP - PtrSize, FP) 
         // Assume PtrSize is 8 bytes (64-bit) 
         NodeID push_addr_node = adjustPointer(initial_sp, -8, ctx); // Calculate SP-8 
-        NodeID push_node = ctx.builder.addNode(BDIOperationType::MEM_STORE); 
+        NodeID push_node = ctx.builder.addNode(BDIOperationType::MEM_STORE);   
         ctx.builder.connectData(push_addr_node, 0, push_node, 0); // Address 
-        ctx.builder.connectData(initial_fp, 0, push_node, 1); // Value (Old FP) 
-        ctx.current_bdi_cfg_node = push_node; // Update CFG position 
+        ctx.builder.connectData(ctx.frame_pointer_bdi_node, 0, push_fp, 1); // Value Input (Old FP)
+        ctx.current_bdi_cfg_node = push_fp; // Update CFG 
         // 3. Set New FP: FP = SP (Use initial_sp, *before* frame allocation) 
         setSpecialRegister(BDISpecialRegister::FRAME_POINTER, initial_sp, 0, ctx); 
         ctx.frame_pointer_bdi_node = initial_sp; // Track the node holding the NEW FP value 
@@ -260,6 +261,13 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
         size_t frame_size = 128; // Placeholder 
         NodeID new_sp_node = adjustPointer(initial_sp, -((int64_t)frame_size + 8), ctx); // Adjust for pushed FP too 
         setSpecialRegister(BDISpecialRegister::STACK_POINTER, new_sp_node, 0, ctx); 
+        setSpecialRegister(BDISpecialRegister::FRAME_POINTER, ctx.stack_pointer_bdi_node, 0, ctx); 
+        // ctx.frame_pointer_bdi_node remains the node ID holding the *new* FP value (which was the old SP value node) 
+        // 4. Allocate Frame: SP = SP - FrameSize 
+        // size_t frame_size = ... // Get from ChiIR Function Info or context 
+        size_t frame_size = 128; // Placeholder 
+        NodeID new_sp = adjustPointer(ctx.stack_pointer_bdi_node, -(int64_t)frame_size, ctx); 
+        setSpecialRegister(BDISpecialRegister::STACK_POINTER, new_sp, 0, ctx); 
         ctx.stack_pointer_bdi_node = new_sp_node; // Track node holding NEW SP value 
         connect_standard_control_flow = false; // Prologue handles its own flow 
         break; 
@@ -276,9 +284,19 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
             // Store mapping from IR PARAM node ID to itself (as value source) 
             // This requires ir_output_to_bdi_port_map_ to handle self-references maybe? 
             break; 
-        case IROpCode::RETURN_VALUE:{ // Function Epilogue 
+        case IROpCode::RETURN_VALUE:{ // Function Epilogue before Return 
              bdi_op = BDIOperationType::CTRL_RETURN; 
              // --- Epilogue --- 
+             // --- Generate BDI Epilogue (before the RETURN BDI node) --- 
+             // 1. (Optional) Store return value (ChiIR input 0) to dedicated return register or stack slot? Assume value node is ready. 
+             NodeID return_value_source_node = 0; 
+             PortIndex return_value_source_port = 0; 
+             if (!chiir_node.inputs.empty()) { 
+             auto bdi_ret_val_ref_opt = getBDIPortRef(chiir_node.inputs[0], ctx); 
+             if (!bdi_ret_val_ref_opt) return false; 
+             return_value_source_node = bdi_ret_val_ref_opt.value().node_id; 
+             return_value_source_port = bdi_ret_val_ref_opt.value().port_index; 
+            } 
              // 1. Deallocate Frame: SP = FP 
              NodeID current_fp = ctx.frame_pointer_bdi_node; // Get current FP value node 
              setSpecialRegister(BDISpecialRegister::STACK_POINTER, current_fp, 0, ctx); 
@@ -292,20 +310,29 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
               ctx.current_bdi_cfg_node = old_fp_load_node; 
               setSpecialRegister(BDISpecialRegister::FRAME_POINTER, old_fp_load_node, 0, ctx); // Restore old FP 
               ctx.frame_pointer_bdi_node = old_fp_load_node; 
-              // Adjust SP 
-               NodeID final_sp_node = adjustPointer(current_fp, 8, ctx); // SP = Current FP + 8 
-               setSpecialRegister(BDISpecialRegister::STACK_POINTER, final_sp_node, 0, ctx); 
-               ctx.stack_pointer_bdi_node = final_sp_node; 
-             // 3. Create the actual BDI RETURN node 
-             bdi_node_id = ctx.builder.addNode(bdi_op, chiir_node.label); 
-             // Connect return value if exists (ChiIR input 0 -> BDI input 0) 
-             if (!chiir_node.inputs.empty()) { 
+             // Adjust SP 
+              NodeID final_sp_node = adjustPointer(current_fp, 8, ctx); // SP = Current FP + 8 
+              setSpecialRegister(BDISpecialRegister::STACK_POINTER, final_sp_node, 0, ctx); 
+              ctx.stack_pointer_bdi_node = final_sp_node; 
+              // 3. Create the actual BDI RETURN node 
+              bdi_node_id = ctx.builder.addNode(bdi_op, chiir_node.label); 
+              // Connect return value if exists (ChiIR input 0 -> BDI input 0) 
+              if (!chiir_node.inputs.empty()) { 
                   auto bdi_ret_val_ref_opt = getBDIPortRef(chiir_node.inputs[0], ctx); 
                   if (!bdi_ret_val_ref_opt) return false; 
                   ctx.builder.connectData(bdi_ret_val_ref_opt.value().node_id, bdi_ret_val_ref_opt.value().port_index, bdi_node_id, 0); 
-             } 
+            } 
              ctx.builder.connectControl(ctx.current_bdi_cfg_node, bdi_node_id); // Connect epilogue to RETURN 
              connect_standard_control_flow = false; // Epilogue handles flow 
+             // 4. Create BDI RETURN node 
+             bdi_op = BDIOperationType::CTRL_RETURN; 
+             bdi_node_id = ctx.builder.addNode(bdi_op, chiir_node.label); 
+             // Connect the calculated return value (if any) to BDI RETURN Input 0 
+             if (return_value_source_node != 0) { 
+             ctx.builder.connectData(return_value_source_node, return_value_source_port, bdi_node_id, 0); 
+            } 
+             ctx.builder.connectControl(ctx.current_bdi_cfg_node, bdi_node_id); // Connect epilogue to return 
+             connect_standard_control_flow = false; // Return is terminator 
              break; 
         }  
         case IROpCode::LOAD_CONST: 
@@ -357,7 +384,7 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              connect_standard_control_flow = false; // Manual control flow handled 
              break; 
         } 
-        case IROpCode::ALLOC_MEM: { // Stack allocation address calculation  
+        case IROpCode::ALLOC_MEM: { // Stack allocation address calculation, Generates address calc node  
              // Get size/alignment/type info from ir_node->operation_data 
              // size_t alloc_size = ...; size_t alloc_align = ...; 
              // Calculate stack offset (this requires a frame concept) 
@@ -395,12 +422,12 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              } else { /* Error: Alloc needs size */ return false; } 
                 // Already handled stack offset calc conceptually in ASTToChiIR 
                 // This ChiIR node now just generates the BDI node representing the calculated address 
-                const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data); // Assuming symbol stored for name 
+                const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data); // Assuming symbol stored for name, Need scope/offset info  
                 // const auto* alloc_info = std::get_if<AllocInfo>(&chiir_node.operation_data); // Use proper struct 
                 if (!symbol /* || !alloc_info */) return false;
                 // size_t offset = context.lookupSymbolInfo(symbol->name)->stack_offset; // Need context access 
-                size_t offset = 16; // Placeholder offset 
-                NodeID addr_node_id = generateBDIAddressCalc(offset, ctx); // Generate FP + Offset 
+                size_t offset = 16; // Placeholder offset, Get correct offset from SymbolInfo / context  
+                NodeID addr_node_id = generateBDIAddressCalc(offset, ctx); // Generate FP + Offset, This *is* the BDI node for this IR alloc node  
                 bdi_node_id = addr_node_id; // The result of this node IS the address 
                 // Store mapping for symbol to this BDI address node ID 
                 // ctx.variable_address_bdi_nodes[{scope, symbol->name}] = bdi_node_id; 
@@ -421,7 +448,8 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              }
              // Define output (pointer/address) 
              if (ir_node.output_type) builder_.defineDataOutput(bdi_node_id, 0, ir_node.output_type->getBaseBDIType(), BDIType::POINTER); // Alloc returns pointer 
-             connect_standard_control_flow = true; // Alloc is sequential op 
+             ctx.variable_address_bdi_nodes[{/*scope*/ 0, symbol->name}] = bdi_node_id; // Store address node ID 
+             connect_standard_control_flow = false; // Address calc handles flow 
              // Store mapping from variable name (if available in op_data) to this alloc node's ID 
              // if (const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data)) { 
              //     variable_address_nodes_[symbol->name] = bdi_node_id; // Store BDI ID of node producing address 
@@ -481,9 +509,10 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              break;
        } 
         case IROpCode::LOAD_MEM: { // Load from variable address 
-            const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data); 
+            const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data); // Address source handled here 
             if (!symbol) return false; 
             // int scope = ...; // Get scope 
+            // auto addr_bdi_node_id = ctx.variable_address_bdi_nodes.at({scope, symbol->name}); // Get BDI Addr node 
             // auto addr_node_it = ctx.variable_address_bdi_nodes.find({scope, symbol->name}); 
             // if (addr_node_it == ctx.variable_address_bdi_nodes.end()) throw BDIExecutionError("Address node not found for LOAD"); 
             // NodeID bdi_addr_node_id = addr_node_it->second; 
@@ -495,8 +524,10 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
             // ctx.builder.connectData(addr_calc_node_id, 0, bdi_node_id, 0); // Address input 
             // Connect value input (chiir_node.inputs[0]) -> BDI STORE input 1 
             // ... 
+            NodeID bdi_addr_node_id = 123; // Placeholder 
             bdi_op = BDIOperationType::MEM_LOAD; 
             bdi_node_id = ctx.builder.addNode(bdi_op, ir_node.label); 
+            ctx.builder.connectData(bdi_addr_node_id, 0, bdi_node_id, 0); // Connect address source  // Address source 
             if (ir_node.output_type) ctx.builder.defineDataOutput(bdi_node_id, 0, ir_node.output_type->getBaseBDIType()); 
             break; 
        }
@@ -508,12 +539,15 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              // auto addr_node_it = ctx.variable_address_bdi_nodes.find({scope, symbol->name}); 
              // if (addr_node_it == ctx.variable_address_bdi_nodes.end()) throw BDIExecutionError("Address node not found for STORE"); 
              // NodeID bdi_addr_node_id = addr_node_it->second;
+             // auto addr_bdi_node_id = 
+             ctx.variable_address_bdi_nodes.at({scope, symbol->name}); 
+             NodeID bdi_addr_node_id = 123; // Placeholder 
              bdi_op = BDIOperationType::MEM_STORE; 
-             NodeID bdi_addr_node_id = 123; // Placeholder address node ID 
              if (chiir_node.opcode == ChiIROpCode::LOAD_SYMBOL) { 
                  bdi_op = BDIOperationType::MEM_LOAD; 
                  bdi_node_id = ctx.builder.addNode(bdi_op, chiir_node.label); 
                  ctx.builder.connectData(bdi_addr_node_id, 0, bdi_node_id, 0); // Connect address 
+                 // Connect value input (ChiIR input 0 -> BDI input 1) 
                  // Define output port... 
              } else { // STORE_MEM 
                  bdi_op = BDIOperationType::MEM_STORE; 
@@ -663,4 +697,10 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              // ... map IDs, define outputs, connect data, connect control flow ... 
              return true;
     }
+            // Implement generateBDIAddressCalc using adjustPointer helper and ctx.frame_pointer_bdi_node 
+            NodeID ChiIRToBDI::generateBDIAddressCalc(size_t offset, BDIConversionContext& ctx, NodeID base_addr_node_id /* = 0 */) { 
+            NodeID base_node = (base_addr_node_id != 0) ? base_addr_node_id : ctx.frame_pointer_bdi_node; 
+            if (base_node == 0) throw BDIExecutionError("Base address node (e.g., Frame Pointer) not available for address calculation"); 
+            // Offset is relative to FP (positive for args, negative for locals typically) 
+            return adjustPointer(base_node, static_cast<int64_t>(offset), ctx); // Use helper 
  } // namespace chimera::ir 
