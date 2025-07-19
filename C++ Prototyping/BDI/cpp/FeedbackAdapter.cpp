@@ -99,5 +99,54 @@ BasicRewardFeedbackAdapter::BasicRewardFeedbackAdapter(PortRef reward_signal_por
      }
      // In a real system, this would involve retrieving gradients or eligibility traces
      // stored in the ExecutionContext or MetadataStore by other parts of the computation graph.
- }
- } // namespace bdi::intelligence
+     // Assume a different adapter for supervised learning 
+   class SupervisedDeltaRuleAdapter : public FeedbackAdapter { 
+   public: 
+   // Target output port, Actual output port, Input source ports for weights 
+       SupervisedDeltaRuleAdapter(PortRef target_port, PortRef actual_port, std::vector<PortRef> input_ports, float learning_rate = 0.01f); 
+   void processFeedback(ExecutionContext& context, BDIGraph& graph) override; 
+   const std::vector<ParameterUpdate>& getPendingUpdates() const; 
+   void clearPendingUpdates(); 
+   private: 
+       PortRef target_output_port_; 
+       PortRef actual_output_port_; 
+   std::vector<PortRef> input_source_ports_; // Nodes providing inputs for weights being updated 
+   std::vector<NodeID> weight_node_ids_; // NodeIDs of the weights themselves (assume META_CONST nodes) 
+   float learning_rate_; 
+   std::vector<ParameterUpdate> pending_updates_; 
+   }; 
+   SupervisedDeltaRuleAdapter::SupervisedDeltaRuleAdapter(PortRef target_port, PortRef actual_port, std::vector<PortRef> input_ports, float learn
+       : target_output_port_(target_port), actual_output_port_(actual_port), input_source_ports_(std::move(input_ports)), learning_rate_(learning
+    // TODO: Need a way to associate input_ports with corresponding weight_node_ids 
+       }
+    void SupervisedDeltaRuleAdapter::processFeedback(ExecutionContext& context, BDIGraph& graph) { 
+        pending_updates_.clear(); 
+   // 1. Get Target and Actual outputs (assume float) 
+   auto target_opt = context.getPortValue(target_output_port_); 
+   auto actual_opt = context.getPortValue(actual_output_port_); 
+   if (!target_opt || !actual_opt) return; // Missing signal 
+   auto target_val = vm_ops::convertValue<float>(target_opt.value()); 
+   auto actual_val = vm_ops::convertValue<float>(actual_opt.value()); 
+   if (!target_val || !actual_val) return; // Type error 
+   // 2. Calculate Error 
+   float error = target_val.value() - actual_val.value(); 
+   // 3. Iterate through inputs/weights and calculate updates (Delta Rule: delta_W = eta * error * input) 
+   if (input_source_ports_.size() != weight_node_ids_.size()) { 
+   // Error: Mismatch between inputs and weights 
+   return; 
+        } 
+   for(size_t i = 0; i < input_source_ports_.size(); ++i) { 
+            NodeID weight_node_id = weight_node_ids_[i]; 
+            PortRef input_source_port = input_source_ports_[i]; 
+   auto input_val_opt = context.getPortValue(input_source_port); 
+   if (!input_val_opt) continue; // Skip if input wasn't available? 
+   auto input_float_opt = vm_ops::convertValue<float>(input_val_opt.value()); // Assume float inputs 
+   if (!input_float_opt) continue; 
+   // Calculate weight delta 
+   float weight_delta = learning_rate_ * error * input_float_opt.value(); 
+            pending_updates_.push_back({weight_node_id, BDIValueVariant{weight_delta}}); 
+        } 
+     } 
+   // ... getPendingUpdates / clearPendingUpdates ... 
+  }
+} // namespace bdi::intelligence
