@@ -10,6 +10,8 @@ namespace ir::ir {
 // std::unordered_map<std::string, bdi::core::graph::NodeID> variable_address_bdi_nodes_; 
 // Need function entry point map 
 // std::unordered_map<std::string, bdi::core::graph::NodeID> function_entry_bdi_nodes_; 
+// Add BDI operations for stack if not present 
+// BDIOperationType::STACK_PUSH, STACK_POP, STACK_ALLOC, STACK_SET_FP etc. 
 // --- IRToBDI --- 
 IRToBDI::IRToBDI(bdi::frontend::api::GraphBuilder& builder, 
                        frontend::dsl::DSLRegistry& dsl_registry, 
@@ -487,6 +489,55 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              connect_standard_control_flow = false; // Mapper handled flow for its generated nodes 
              break; 
         }
+             // --- Map Stack Ops --- 
+          case ChiIROpCode::STACK_PUSH: 
+              bdi_op = BDIOperationType::MEM_STORE; // Need SP based store 
+              // Calculate address SP - sizeof(value) 
+              // Connect value input chiir_node.inputs[0] -> BDI STORE input 1 
+              // Adjust SP: Generate ADD SP, -Size node AFTER store? Complex. 
+              // Needs dedicated STACK_PUSH BDI op or ABI knowledge. 
+              std::cerr << "STACK_PUSH ChiIR->BDI Not fully implemented." << std::endl; 
+              break;
+          case ChiIROpCode::STACK_SET_FP: 
+              // bdi_op = BDIOperationType::REG_MOV; // If BDI has register moves: MOV FP, SP 
+              std::cerr << "STACK_SET_FP ChiIR->BDI Not fully implemented." << std::endl; 
+              break;
+          case ChiIROpCode::STACK_ALLOC: 
+              // bdi_op = BDIOperationType::ARITH_SUB; // SP = SP - frame_size 
+              // Get frame_size from chiir_node.operation_data 
+              std::cerr << "STACK_ALLOC ChiIR->BDI Not fully implemented." << std::endl; 
+              break;
+          case ChiIROpCode::STACK_DEALLOC: // SP = FP 
+              // bdi_op = BDIOperationType::REG_MOV; // MOV SP, FP 
+              std::cerr << "STACK_DEALLOC ChiIR->BDI Not fully implemented." << std::endl; 
+              break;
+          case ChiIROpCode::STACK_POP: 
+               bdi_op = BDIOperationType::MEM_LOAD; // Load old FP from stack relative to SP 
+               // Adjust SP: Generate ADD SP, Size node AFTER load? 
+               std::cerr << "STACK_POP ChiIR->BDI Not fully implemented." << std::endl; 
+               break; 
+          // --- Address Calculation for Stack Variables --- 
+          // LOAD_SYMBOL / STORE_MEM for stack vars need to use the generated address calc nodes 
+          case ChiIROpCode::LOAD_SYMBOL: { 
+               // ... get SymbolInfo ... 
+               // if (symbol_info->location == SymbolInfo::Location::STACK) { 
+               // ChiIRNodeId addr_calc_node_id = generateBDIAddressCalc(symbol_info->stack_offset, ctx); 
+               // bdi_op = BDIOperationType::MEM_LOAD; 
+               // bdi_node_id = ctx.builder.addNode(bdi_op); 
+               // ctx.builder.connectData(addr_calc_node_id, 0, bdi_node_id, 0); // Address input 
+               // ... define output ... 
+               // } else { /* handle SSA */ } 
+             break; 
+         }
+          case ChiIROpCode::STORE_MEM: { 
+             // ... get SymbolInfo ... 
+             // if (symbol_info->location == SymbolInfo::Location::STACK) { 
+                  // ChiIRNodeId addr_calc_node_id = generateBDIAddressCalc(symbol_info->stack_offset, ctx); 
+                  // bdi_op = BDIOperationType::MEM_STORE; 
+                  // bdi_node_id = ctx.builder.addNode(bdi_op); 
+                  // ctx.builder.connectData(addr_calc_node_id, 0, bdi_node_id, 0); // Address input 
+                  // Connect value input (chiir_node.inputs[0]) -> BDI STORE input 1 
+                  // ... 
              // ... getBDIPortRef ... 
              // ... Create node if needed, map IDs, define output ports, connect data inputs ... 
              // ... Handle standard control flow connection ... 
