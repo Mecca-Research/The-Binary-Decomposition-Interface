@@ -588,7 +588,7 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           IRNodeId base_addr_node_id = convertNode(access_expr.object.get(), context, current_cfg_node); 
           // Error check... Get base object type from type checker... 
           auto base_obj_type = type_checker_.checkExpression(access_expr.object.get(), context); // Re-check? Or store type during conversion? 
-          if (!base_obj_type || !base_obj_type->isStruct()) throw BDIExecutionError("Internal Error: Base object for member access is not struct
+          if (!base_obj_type || !base_obj_type->isStruct()) throw BDIExecutionError("Internal Error: Base object for member access is not struct");
           const auto& struct_type = std::get<ChimeraStructType>(base_obj_type->content); 
           // 2. Find field offset 
           auto field_it = struct_type.field_name_to_index.find(access_expr.member_name.name); 
