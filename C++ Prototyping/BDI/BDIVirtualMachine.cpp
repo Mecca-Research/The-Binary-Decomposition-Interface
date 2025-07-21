@@ -8,6 +8,7 @@
  #include "ProofVerifier.hpp" 
  #include "MetadataStore.hpp"
  #include "VMTypeOperations.hpp" // Include the new operation helpers
+ #include "HardwareAbstractionLayer.hpp" // Need HAL access 
  #include <iostream>
  #include <stdexcept>
  #include <variant>
@@ -100,6 +101,23 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
         throw std::runtime_error("Failed to initialize VM components.");
     }
  }
+BDIVirtualMachine::BDIVirtualMachine( 
+hal::HardwareAbstractionLayer& hal, // Pass in HAL implementation 
+    MetadataStore& meta_store, 
+    verification::ProofVerifier& proof_verifier, 
+    size_t memory_size) 
+    : current_node_id_(0), 
+      hal_(&hal), // Store pointer to HAL 
+      metadata_store_(&meta_store), 
+      proof_verifier_(&proof_verifier), 
+      memory_manager_(std::make_unique<MemoryManager>(memory_size)), 
+      execution_context_(std::make_unique<ExecutionContext>()) 
+{ 
+    // ... init checks ... 
+    // Initialize internal VM registers concept from HAL if needed 
+    // current_sp_value_ = hal_->readSpecialRegister(hal::SpecialRegister::StackPointer); 
+    // current_fp_value_ = hal_->readSpecialRegister(hal::SpecialRegister::FramePointer); 
+} 
  bool BDIVirtualMachine::execute(BDIGraph& graph, NodeID entry_node_id) { /* ... (no change needed) ... */ }
  bool BDIVirtualMachine::fetchDecodeExecuteCycle(BDIGraph& graph) { /* ... (no change needed) ... */ }
     // ... (fetch node) ...
@@ -196,7 +214,63 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
                   if (inputs.empty()) throw BDIExecutionError("RECUR_WRITE needs value input"); 
                   recurrence_manager_->writeCurrentState(node.id, inputs[0]); // Use manager 
                   break; // No output value 
-             } 
+            } 
+            // --- System Op Implementation --- 
+            case OpType::SYS_REG_READ: { 
+                 if (node.data_outputs.empty()) throw BDIExecutionError("SYS_REG_READ requires an output port"); 
+                 // Get register ID from payload 
+                 if (node.payload.type != BDIType::UINT8) throw BDIExecutionError("SYS_REG_READ payload must be UINT8 (Register ID)"); 
+                 auto reg_id_raw = node.payload.getAs<uint8_t>(); 
+                 hal::SpecialRegister reg = static_cast<hal::SpecialRegister>(reg_id_raw); // Cast carefully 
+                 // TODO: Validate casted enum value 
+                 uint64_t reg_value = hal_->readSpecialRegister(reg); 
+                 result_var = reg_value; // Return as UINT64 BDIValueVariant 
+                 break; 
+            } 
+            case OpType::SYS_REG_WRITE: { 
+                 if (inputs.size() != 1) throw BDIExecutionError("SYS_REG_WRITE requires 1 input (value)"); 
+                 if (node.payload.type != BDIType::UINT8) throw BDIExecutionError("SYS_REG_WRITE payload must be UINT8 (Register ID)"); 
+                 auto reg_id_raw = node.payload.getAs<uint8_t>(); 
+                 hal::SpecialRegister reg = static_cast<hal::SpecialRegister>(reg_id_raw); 
+                 // TODO: Validate casted enum value 
+                 uint64_t value_to_write = convertValueOrThrow<uint64_t>(inputs[0]); // Convert input to u64 
+                 hal_->writeSpecialRegister(reg, value_to_write); 
+                 break; // No output value 
+            } 
+            case OpType::SYS_MEM_MAP: { // Privileged, Complex 
+                 if (inputs.size() != 3 || node.data_outputs.empty()) throw BDIExecutionError("SYS_MEM_MAP requires PhysAddr, Size, Flags inpu
+                 uint64_t phys_addr = convertValueOrThrow<uint64_t>(inputs[0]); 
+                 uint64_t map_size = convertValueOrThrow<uint64_t>(inputs[1]); 
+                 uint64_t map_flags = convertValueOrThrow<uint64_t>(inputs[2]); 
+                 std::optional<uintptr_t> virt_addr = hal_->mapPhysicalMemory(phys_addr, map_size, map_flags); 
+                 if (!virt_addr) throw BDIExecutionError("SYS_MEM_MAP failed in HAL"); 
+                 result_var = virt_addr.value(); // Return virtual address as POINTER/uintptr_t 
+                 // BDIOS Memory Manager needs to be informed about this mapping too! Requires OS Service Call? 
+                 break; 
+            } 
+            // ... Implement SYS_MEM_UNMAP, SYS_MEM_PROPS (interacting with HAL and MM service)... 
+            // ... Implement SYS_CONTEXT_SAVE/RESTORE (internal VM state backup/load) ... 
+            case OpType::SYS_DISPATCH: // Interaction with Scheduler Service Graph 
+            case OpType::SYS_YIELD: 
+            case OpType::SYS_HALT_TASK: 
+            case OpType::SYS_WAIT_EVENT: 
+            case OpType::SYS_SEND_EVENT: 
+            case OpType::OS_SERVICE_CALL: 
+                 // These ops primarily signal intent or transfer data. 
+                 // The actual logic (changing task state, queuing events, calling services) 
+                 // happens *outside* the direct execution of this node, often involving 
+                 // the VM pausing the current task and switching to execute the scheduler 
+                 // or event dispatcher BDI graph. 
+                 // For now, treat as NOPs but log the intent. Requires VM scheduler integration. 
+                 std::cout << "VM Op: System Control Op (" << static_cast<int>(node.operation) << ") Triggered (Requires Scheduler/Dispatcher 
+                 // Example: Yield might set a flag that the main VM loop checks after this node executes. 
+                 // yield_requested_ = true; 
+                 break; 
+            case OpType::SYS_INTERRUPT_ENABLE: hal_->enableInterrupts(); break; 
+            case OpType::SYS_INTERRUPT_DISABLE: hal_->disableInterrupts(); break; 
+            case OpType::SYS_ACK_INTERRUPT: { if (inputs.size()!=1) throw BDIExecutionError("..."); uint32_t vec = convertValueOrThrow<uint32_
+            case OpType::SYS_DEBUG_BREAK: hal_->debugBreak(); break; 
+            case OpType::SYS_HALT_SYSTEM: hal_->systemHalt(); break; // Doesn't return  
             // ... default ... 
         } 
     } // ... catch ... 
@@ -909,5 +983,13 @@ BDIVirtualMachine::BDIVirtualMachine(MetadataStore& meta_store, size_t memory_si
     }
     return true; // Assume success if no error/exception and not explicitly failed
  }
- // determineNextNode remains largely the same as before, handling control flow logic
+   // determineNextNode remains largely the same as before, handling control flow logic
+   // --- Update VM Main Loop --- 
+   // The main loop in BDIVirtualMachine::execute needs modification to handle 
+   // yields, halts, waits, and dispatches triggered by SYS_* ops. 
+   // E.g., After executeNode returns true: 
+   // if (yield_requested_) { /* Switch to scheduler graph */ } 
+   // else if (task_halt_requested_) { /* Remove task, switch to scheduler */ } 
+   // else if (wait_requested_) { /* Move task to wait queue, switch to scheduler */ } 
+   // else { current_node_id_ = determineNextNode(...); } 
  } // namespace bdi::runtime
