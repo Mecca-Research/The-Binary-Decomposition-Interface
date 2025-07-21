@@ -6,6 +6,7 @@ namespace chimera::frontend::types {
 // --- CheckContext Methods --- (As before) 
 // --- Type Comparison (Implementation in ChimeraTypes.cpp potentially or header) --- 
 // bool ChimeraType::operator==(const ChimeraType& other) const { ... } // Need full impl comparing variants 
+// Assume AST includes DSLMemberAccessExpr, DSLArrayIndexExpr, DSLStructDefExpr etc. 
 // --- TypeChecker Methods --- 
 void ChimeraStructType::calculateLayout() { 
         total_size = 0; 
@@ -293,6 +294,64 @@ bool TypeChecker::checkTypeCompatibility(const ChimeraType& expected, const Chim
     // Fallback: Require exact type match for non-scalars for now 
     return expected == actual; 
 } 
+    // Called when processing struct definition AST node 
+    bool TypeChecker::checkStructDefinition(const DSLStructDefExpr& def, CheckContext& context) { 
+        std::cout << "TypeCheck INFO: Checking struct definition '" << def.name.name << "'" << std::endl; 
+        auto new_struct_type = std::make_shared<ChimeraType>(); 
+        ChimeraStructType st_content; 
+        st_content.name = def.name.name; 
+        // Create a temporary context for resolving field types relative to struct scope? (If needed) 
+        // CheckContext struct_context(&context); 
+        for (const auto& field_def : def.fields) { // Assume def.fields is vector<DSLDefinition> or similar 
+            // Resolve field type annotation 
+            // auto field_type = resolveTypeExpr(field_def.type_expr.get(), context); // Use resolve helper 
+            auto field_type = make_scalar(BDIType::INT32); // Placeholder type resolution 
+            if (!field_type || !field_type->isResolved()) { 
+                throw BDIExecutionError("Type Error: Cannot resolve type for field '" + field_def.name.name + "' in struct '" + def.name.name 
+            } 
+            st_content.fields.push_back({field_def.name.name, field_type, 0}); // Offset calculated later 
+        } 
+        st_content.calculateLayout(); // Calculate offsets, size, alignment 
+        new_struct_type->content = std::move(st_content); 
+        new_struct_type->user_defined_name = def.name.name; 
+        // Add struct type definition to the current scope/type registry 
+        // context.addTypeDefinition(def.name.name, new_struct_type); // Need type registry in context 
+        return true;
+    }
+    // Check Member Access (called from checkExpression visitor) 
+    std::shared_ptr<ChimeraType> TypeChecker::checkMemberAccess(const DSLMemberAccessExpr& access_expr, CheckContext& context) { 
+        auto object_type = checkExpression(access_expr.object.get(), context); 
+        if (!object_type || !object_type->isStruct()) { 
+            throw BDIExecutionError("Type Error: Member access '.' requires a struct type."); 
+        } 
+        // Use std::get to access the struct type content safely 
+        const auto& struct_type = std::get<ChimeraStructType>(object_type->content); 
+        auto field_it = struct_type.field_name_to_index.find(access_expr.member_name.name); 
+        if (field_it == struct_type.field_name_to_index.end()) { 
+            throw BDIExecutionError("Type Error: Struct '" + struct_type.name + "' has no member '" + access_expr.member_name.name + "'"); 
+        } 
+        size_t field_index = field_it->second; 
+        if (field_index >= struct_type.fields.size()) { 
+             throw BDIExecutionError("Internal Compiler Error: Invalid field index for struct member."); 
+        } 
+        return struct_type.fields[field_index].type; // Return the type of the member 
+    }
+     // Check Array Index (called from checkExpression visitor) 
+     std::shared_ptr<ChimeraType> TypeChecker::checkArrayIndex(const DSLArrayIndexExpr& index_expr, CheckContext& context) { 
+        auto array_type = checkExpression(index_expr.array.get(), context); 
+        auto index_type = checkExpression(index_expr.index.get(), context); 
+        if (!array_type || !array_type->isArray()) { 
+             throw BDIExecutionError("Type Error: Array index '[]' requires an array type."); 
+        } 
+         if (!index_type || !index_type->isScalar() || !TypeSystem::isInteger(std::get<ChimeraScalarType>(index_type->content).base_bdi_type))
+             throw BDIExecutionError("Type Error: Array index must be an integer type."); 
+         }
+        const auto& arr_type = std::get<ChimeraArrayType>(array_type->content); 
+        if (!arr_type.element_type) { 
+            throw BDIExecutionError("Internal Compiler Error: Array type has null element type."); 
+        } 
+        return arr_type.element_type; // Return the element type 
+    }
 // --- ChimeraType Method Implementations --- 
 bool ChimeraType::operator==(const ChimeraType& other) const { 
      if (content.index() != other.content.index()) return false; 
