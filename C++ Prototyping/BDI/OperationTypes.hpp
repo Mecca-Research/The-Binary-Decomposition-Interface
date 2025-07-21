@@ -74,6 +74,40 @@
     IO_READ_PORT,
     IO_WRITE_PORT,
     IO_PRINT,           // Debug print
+    // --- System / OS Primitives --- 
+    SYS_REG_READ,       
+    // Read Special HW Register. Payload: BDISpecialRegister enum val. Output: u64 value. 
+    SYS_REG_WRITE,      
+    SYS_MEM_MAP,        
+    SYS_MEM_UNMAP,      
+    SYS_MEM_PROPS,      
+    SYS_CONTEXT_SAVE,   
+    // Write Special HW Register. Payload: BDISpecialRegister enum val. Input 0: u64 value. 
+    // Map physical memory. Input 0: phys_addr(u64), Input 1: size(u64), Input 2: flags(u64). Output 0: virt_addr(ptr) or 
+    // Unmap memory. Input 0: virt_addr(ptr), Input 1: size(u64). Output 0: bool success. (Privileged) 
+    // Set memory region properties. Input 0: RegionID/Addr?, Input 1: props(u64). Output 0: bool success. (Privileged) 
+    // Save current ExecutionContext state. Output 0: ContextHandle/Ptr. (Internal VM Use) 
+    SYS_CONTEXT_RESTORE,// Restore ExecutionContext state. Input 0: ContextHandle/Ptr. (Internal VM Use) 
+    SYS_DISPATCH,       
+    // Request scheduler dispatch. Input 0: Target Task Entry NodeID (u64), Input 1: Target Context ID/Handle (u64/ptr). (
+    SYS_YIELD,          
+    SYS_HALT_TASK,      
+    SYS_WAIT_EVENT,     
+    SYS_SEND_EVENT,     
+    // Yield CPU to scheduler. 
+    // Terminate current task/graph execution. 
+    // Pause task awaiting event. Input 0: Event type filter? Timeout? 
+    // Send event to dispatcher. Input 0: Target Queue/Task ID (u64), Input 1: Event Payload (Any type? MemRef?). 
+    SYS_INTERRUPT_ENABLE, // Enable HW interrupts. (Privileged) 
+    SYS_INTERRUPT_DISABLE,// Disable HW interrupts. (Privileged) 
+    SYS_ACK_INTERRUPT,  // Acknowledge HW interrupt. Input 0: vector(u32). (Privileged) 
+    SYS_DEBUG_BREAK,    
+    // Trigger debug break. 
+    SYS_HALT_SYSTEM,    
+    OS_SERVICE_CALL,    
+    // Halt entire machine. (Privileged) 
+    // Call a registered BDIOS Service Graph. Payload: ServiceID. Inputs: Args for service. Output 0: Result from service.
+    // --- End System / OS Primitives ---
     // Concurrency / Parallelism
     CONCURRENCY_SPAWN,  // Start new execution thread/task for subgraph
     CONCURRENCY_JOIN,   // Wait for spawned task to complete
@@ -129,5 +163,7 @@
     SIGNAL_FFT,
     OPERATION_TYPE_COUNT // Sentinel value
     };
+ // Define BDISpecialRegister enum (as in HAL, maybe shared header?) 
+ enum class BDISpecialRegister : uint8_t { /* ... values like STACK_POINTER, FRAME_POINTER ... */ }; 
  } // namespace bdi::core::graph
  #endif // BDI_CORE_GRAPH_OPERATIONTYPES_HPP
