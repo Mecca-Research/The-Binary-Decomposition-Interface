@@ -118,6 +118,48 @@ hal::HardwareAbstractionLayer& hal, // Pass in HAL implementation
     // current_sp_value_ = hal_->readSpecialRegister(hal::SpecialRegister::StackPointer); 
     // current_fp_value_ = hal_->readSpecialRegister(hal::SpecialRegister::FramePointer); 
 } 
+    // --- Run Slice Implementation --- 
+BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, NodeID entry_or_resume_node_id, uint64_t timeslice_instructions) 
+    current_node_id_ = entry_or_resume_node_id; 
+    // DO NOT clear context here - resuming task 
+    yield_requested_ = false; 
+    halt_task_requested_ = false; 
+    wait_event_requested_ = false; 
+    uint64_t instructions_executed = 0; 
+    while (current_node_id_ != 0 && instructions_executed < timeslice_instructions) { 
+        auto node_opt = graph.getNode(current_node_id_); 
+        if (!node_opt) { /* Error */ return VMExecResult::ERROR; } 
+        BDINode& current_node = node_opt.value().get(); 
+        // --- Debugger Hook --- 
+        // if (debugger_) { debugger_->onPreNodeExecute(current_node_id); /* Check pause/bp */ } 
+        // --- Execute --- 
+        bool success = executeNode(current_node, graph); // Assume this sets internal flags on SYS ops 
+        // if (debugger_) { debugger_->onPostNodeExecute(current_node_id, success); } 
+        if (!success) { 
+            // Handle execution error within the slice 
+            return VMExecResult::ERROR; 
+        } 
+        instructions_executed++; 
+        // --- Check for Scheduler Interaction Flags set by executeNode --- 
+        if (halt_task_requested_) return VMExecResult::HALTED_TASK; 
+        if (yield_requested_) return VMExecResult::YIELDED; 
+        if (wait_event_requested_) return VMExecResult::WAITING; // Pass wait condition? 
+        // --- Determine Next Node --- 
+        NodeID next_id = determineNextNode(current_node, graph); 
+        current_node_id_ = next_id; // Update for next iteration or exit 
+        // Check for explicit halt condition from control flow 
+        if (current_node_id_ == 0) { 
+             // If return from initial task graph function? Treat as HALTED_TASK? 
+             return VMExecResult::HALTED_TASK; // Or COMPLETED if meaningful 
+        } 
+    } // End while loop 
+    // If loop finished due to timeslice, return YIELDED 
+    if (instructions_executed >= timeslice_instructions) { 
+        return VMExecResult::YIELDED; 
+    }
+    // If loop finished because current_node_id_ became 0 (e.g. META_END) 
+     return VMExecResult::COMPLETED; // Or HALTED_TASK? Define semantics. 
+}
  bool BDIVirtualMachine::execute(BDIGraph& graph, NodeID entry_node_id) { /* ... (no change needed) ... */ }
  bool BDIVirtualMachine::fetchDecodeExecuteCycle(BDIGraph& graph) { /* ... (no change needed) ... */ }
     // ... (fetch node) ...
@@ -152,7 +194,86 @@ hal::HardwareAbstractionLayer& hal, // Pass in HAL implementation
         }
         inputs.push_back(input_var_opt.value());
     }
-    // Intelligence Ops (Stubs) 
+            // --- System Op Implementation --- 
+            case OpType::SYS_REG_READ: { 
+                 if (node.data_outputs.empty()) throw BDIExecutionError("SYS_REG_READ requires an output port"); 
+                 // Get register ID from payload 
+                 if (node.payload.type != BDIType::UINT8) throw BDIExecutionError("SYS_REG_READ payload must be UINT8 (Register ID)"); 
+                 auto reg_id_raw = node.payload.getAs<uint8_t>(); 
+                 hal::SpecialRegister reg = static_cast<hal::SpecialRegister>(reg_id_raw); // Cast carefully 
+                 // TODO: Validate casted enum value 
+                 uint64_t reg_value = hal_->readSpecialRegister(reg); 
+                 result_var = reg_value; // Return as UINT64 BDIValueVariant 
+                 break; 
+            } 
+            case OpType::SYS_REG_WRITE: { 
+                 if (inputs.size() != 1) throw BDIExecutionError("SYS_REG_WRITE requires 1 input (value)"); 
+                 if (node.payload.type != BDIType::UINT8) throw BDIExecutionError("SYS_REG_WRITE payload must be UINT8 (Register ID)"); 
+                 auto reg_id_raw = node.payload.getAs<uint8_t>(); 
+                 hal::SpecialRegister reg = static_cast<hal::SpecialRegister>(reg_id_raw); 
+                 // TODO: Validate casted enum value 
+                 uint64_t value_to_write = convertValueOrThrow<uint64_t>(inputs[0]); // Convert input to u64 
+                 hal_->writeSpecialRegister(reg, value_to_write); 
+                 break; // No output value 
+            } 
+            case OpType::SYS_MEM_MAP: { // Privileged, Complex 
+                 if (inputs.size() != 3 || node.data_outputs.empty()) throw BDIExecutionError("SYS_MEM_MAP requires PhysAddr, Size, Flags inpu
+                 uint64_t phys_addr = convertValueOrThrow<uint64_t>(inputs[0]); 
+                 uint64_t map_size = convertValueOrThrow<uint64_t>(inputs[1]); 
+                 uint64_t map_flags = convertValueOrThrow<uint64_t>(inputs[2]); 
+                 std::optional<uintptr_t> virt_addr = hal_->mapPhysicalMemory(phys_addr, map_size, map_flags); 
+                 if (!virt_addr) throw BDIExecutionError("SYS_MEM_MAP failed in HAL"); 
+                 result_var = virt_addr.value(); // Return virtual address as POINTER/uintptr_t 
+                 // BDIOS Memory Manager needs to be informed about this mapping too! Requires OS Service Call? 
+                 break; 
+            } 
+                // ... Implement SYS_MEM_UNMAP, SYS_MEM_PROPS (interacting with HAL and MM service)... 
+                // ... Implement SYS_CONTEXT_SAVE/RESTORE (internal VM state backup/load) ... 
+            case OpType::SYS_YIELD: yield_requested_ = true; break; 
+            case OpType::SYS_HALT_TASK: halt_task_requested_ = true; break; 
+            case OpType::SYS_WAIT_EVENT: wait_event_requested_ = true; /* Store wait condition */ break; 
+            case OpType::SYS_DISPATCH: { // Signal scheduler via external mechanism if needed 
+                if (!scheduler_) return false; // Error: No scheduler 
+                // Get target info from inputs 
+                // scheduler_->requestDispatch(target_entry_id, target_context_id); // Conceptual 
+                // Often, dispatch just causes current task to yield implicitly. 
+                yield_requested_ = true; // Yield after requesting dispatch 
+                break; 
+            } 
+            case OpType::SYS_SEND_EVENT: { 
+                 if (!event_dispatcher_ || inputs.size() < 2) return false; // Need target, payload 
+                 // Get target, payload from inputs 
+                 // event_dispatcher_->queueEvent(target_id, event_payload); // Conceptual 
+                 break; 
+            } 
+            case OpType::OS_SERVICE_CALL: { 
+                 // This is complex: Needs to pause current graph, save state, 
+                 // load/find the service graph, execute it (passing args), get result, 
+                 // restore state, place result in context, and continue. 
+                 // Requires VM support for nested/synchronous graph execution. 
+                 std::cout << "VM Op: OS_SERVICE_CALL (Complex Stub) - Node " << node.id << std::endl; 
+                 // Placeholder: Return dummy value 
+                 result_var = BDIValueVariant{uint64_t{0xBEEF}}; // Dummy result 
+                 break; 
+            } 
+                 // These ops primarily signal intent or transfer data. 
+                 // The actual logic (changing task state, queuing events, calling services) 
+                 // happens *outside* the direct execution of this node, often involving 
+                 // the VM pausing the current task and switching to execute the scheduler 
+                 // or event dispatcher BDI graph. 
+                 // For now, treat as NOPs but log the intent. Requires VM scheduler integration. 
+                 std::cout << "VM Op: System Control Op (" << static_cast<int>(node.operation) << ") Triggered (Requires Scheduler/Dispatcher 
+                 // Example: Yield might set a flag that the main VM loop checks after this node executes. 
+                 // yield_requested_ = true; 
+                 break; 
+            case OpType::SYS_INTERRUPT_ENABLE: hal_->enableInterrupts(); break; 
+            case OpType::SYS_INTERRUPT_DISABLE: hal_->disableInterrupts(); break; 
+            case OpType::SYS_ACK_INTERRUPT: { if (inputs.size()!=1) throw BDIExecutionError("..."); uint32_t vec = convertValueOrThrow<uint32_
+            case OpType::SYS_DEBUG_BREAK: hal_->debugBreak(); break; 
+            case OpType::SYS_HALT_SYSTEM: hal_->systemHalt(); break; // Doesn't return  
+            // ... default ... 
+        } 
+            // Intelligence Ops (Stubs) 
             case OpType::LEARN_RECORD_GRADIENT: { 
                 if (inputs.size() != 2) throw BDIExecutionError("RECORD_GRADIENT needs ParamSourceID and GradientValue"); 
                 // Input 0: NodeID of the node whose output is the parameter being tracked 
@@ -215,64 +336,6 @@ hal::HardwareAbstractionLayer& hal, // Pass in HAL implementation
                   recurrence_manager_->writeCurrentState(node.id, inputs[0]); // Use manager 
                   break; // No output value 
             } 
-            // --- System Op Implementation --- 
-            case OpType::SYS_REG_READ: { 
-                 if (node.data_outputs.empty()) throw BDIExecutionError("SYS_REG_READ requires an output port"); 
-                 // Get register ID from payload 
-                 if (node.payload.type != BDIType::UINT8) throw BDIExecutionError("SYS_REG_READ payload must be UINT8 (Register ID)"); 
-                 auto reg_id_raw = node.payload.getAs<uint8_t>(); 
-                 hal::SpecialRegister reg = static_cast<hal::SpecialRegister>(reg_id_raw); // Cast carefully 
-                 // TODO: Validate casted enum value 
-                 uint64_t reg_value = hal_->readSpecialRegister(reg); 
-                 result_var = reg_value; // Return as UINT64 BDIValueVariant 
-                 break; 
-            } 
-            case OpType::SYS_REG_WRITE: { 
-                 if (inputs.size() != 1) throw BDIExecutionError("SYS_REG_WRITE requires 1 input (value)"); 
-                 if (node.payload.type != BDIType::UINT8) throw BDIExecutionError("SYS_REG_WRITE payload must be UINT8 (Register ID)"); 
-                 auto reg_id_raw = node.payload.getAs<uint8_t>(); 
-                 hal::SpecialRegister reg = static_cast<hal::SpecialRegister>(reg_id_raw); 
-                 // TODO: Validate casted enum value 
-                 uint64_t value_to_write = convertValueOrThrow<uint64_t>(inputs[0]); // Convert input to u64 
-                 hal_->writeSpecialRegister(reg, value_to_write); 
-                 break; // No output value 
-            } 
-            case OpType::SYS_MEM_MAP: { // Privileged, Complex 
-                 if (inputs.size() != 3 || node.data_outputs.empty()) throw BDIExecutionError("SYS_MEM_MAP requires PhysAddr, Size, Flags inpu
-                 uint64_t phys_addr = convertValueOrThrow<uint64_t>(inputs[0]); 
-                 uint64_t map_size = convertValueOrThrow<uint64_t>(inputs[1]); 
-                 uint64_t map_flags = convertValueOrThrow<uint64_t>(inputs[2]); 
-                 std::optional<uintptr_t> virt_addr = hal_->mapPhysicalMemory(phys_addr, map_size, map_flags); 
-                 if (!virt_addr) throw BDIExecutionError("SYS_MEM_MAP failed in HAL"); 
-                 result_var = virt_addr.value(); // Return virtual address as POINTER/uintptr_t 
-                 // BDIOS Memory Manager needs to be informed about this mapping too! Requires OS Service Call? 
-                 break; 
-            } 
-            // ... Implement SYS_MEM_UNMAP, SYS_MEM_PROPS (interacting with HAL and MM service)... 
-            // ... Implement SYS_CONTEXT_SAVE/RESTORE (internal VM state backup/load) ... 
-            case OpType::SYS_DISPATCH: // Interaction with Scheduler Service Graph 
-            case OpType::SYS_YIELD: 
-            case OpType::SYS_HALT_TASK: 
-            case OpType::SYS_WAIT_EVENT: 
-            case OpType::SYS_SEND_EVENT: 
-            case OpType::OS_SERVICE_CALL: 
-                 // These ops primarily signal intent or transfer data. 
-                 // The actual logic (changing task state, queuing events, calling services) 
-                 // happens *outside* the direct execution of this node, often involving 
-                 // the VM pausing the current task and switching to execute the scheduler 
-                 // or event dispatcher BDI graph. 
-                 // For now, treat as NOPs but log the intent. Requires VM scheduler integration. 
-                 std::cout << "VM Op: System Control Op (" << static_cast<int>(node.operation) << ") Triggered (Requires Scheduler/Dispatcher 
-                 // Example: Yield might set a flag that the main VM loop checks after this node executes. 
-                 // yield_requested_ = true; 
-                 break; 
-            case OpType::SYS_INTERRUPT_ENABLE: hal_->enableInterrupts(); break; 
-            case OpType::SYS_INTERRUPT_DISABLE: hal_->disableInterrupts(); break; 
-            case OpType::SYS_ACK_INTERRUPT: { if (inputs.size()!=1) throw BDIExecutionError("..."); uint32_t vec = convertValueOrThrow<uint32_
-            case OpType::SYS_DEBUG_BREAK: hal_->debugBreak(); break; 
-            case OpType::SYS_HALT_SYSTEM: hal_->systemHalt(); break; // Doesn't return  
-            // ... default ... 
-        } 
     } // ... catch ... 
      // ... Store Result ... 
     return op_success; 
