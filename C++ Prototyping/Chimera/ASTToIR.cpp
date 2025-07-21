@@ -102,7 +102,7 @@ else {
         current_graph_->addNode(IROpCode::EXIT, "empty_exit"); 
     }
     return std::move(current_graph_); 
-}uj-+
+}
     
 std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLDefinition* func_def, TypeChecker::CheckContext& parent_context) { 
      if (!func_def || !std::holds_alternative<std::monostate>(func_def->value_expr->content) /* check if value holds function body */) { 
@@ -160,26 +160,36 @@ IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckConte
               else if constexpr (std::is_same_v<T, Symbol>) { result_node_id = convertSymbolLoad(arg, context, current_cfg_node); } 
               else if constexpr (std::is_same_v<T, DSLLiteral>) { result_node_id = convertLiteral(arg, context, current_cfg_node); } 
               else if constexpr (std::is_same_v<T, DSLOperation>) { result_node_id = convertOperation(arg, context, current_cfg_node); } 
-              else if constexpr (std::is_same_v<T, DSLExpressionSequence>) { result_node_id = convertSequence(arg, context, current_cfg_node);
-              else if constexpr (std::is_same_v<T, DSLDefinition>) { convertDefinition(arg, context, current_cfg_node); result_node_id = 0;
+              else if constexpr (std::is_same_v<T, DSLExpressionSequence>) { result_node_id = convertSequence(arg, context, current_cfg_node); }
+              else if constexpr (std::is_same_v<T, DSLDefinition>) { convertDefinition(arg, context, current_cfg_node); result_node_id = 0; 
               // Dispatch based on definition type (Var, Func, Struct, etc.) 
               // if (isFunctionDefinition(arg)) { convertFunctionDefinition(arg, context); } // Functions handled separately 
               // else if (isStructDefinition(arg)) { convertStructDefinition(arg, context); } 
               // else { convertVariableDefinition(arg, context, current_cfg_node); } 
               result_node_id = 0; // Definitions themselves don't yield a value node here                                                       
-              else if constexpr (std::is_same_v<T, DSLMemberAccessExpr>) { result_node_id = convertMemberAccess(arg, context, current_cfg_n
-              else if constexpr (std::is_same_v<T, DSLArrayIndexExpr>)   { result_node_id = convertArrayIndex(arg, context, current_cfg_nod    
+              else if constexpr (std::is_same_v<T, DSLMemberAccessExpr>) { result_node_id = convertMemberAccess(arg, context, current_cfg_node); }
+                   // Member access usually results in an L-Value (address) 
+                   // If used where R-Value needed, insert implicit LOAD_MEM 
+                   result_node_id = convertMemberAccessAddress(arg, context, current_cfg_node); 
+                   // Insert LOAD_MEM if needed based on context? Or handle in ChiIRToBDI? 
+                   // For now, return address node ID. Caller decides if LOAD needed. 
+              } 
+              else if constexpr (std::is_same_v<T, DSLArrayIndexExpr>)   { result_node_id = convertArrayIndex(arg, context, current_cfg_node); }  
+                   result_node_id = convertArrayIndexAddress(arg, context, current_cfg_node); 
+                   // Insert LOAD_MEM if needed based on context? 
+     }
               else if constexpr (std::is_same_v<T, DSLFuncCallExpr>)  { result_node_id = convertFunctionCall(arg, context, current_cfg_node); }
               else if constexpr (std::is_same_v<T, DSLReturnExpr>)   { result_node_id = convertReturn(arg, context, current_cfg_node); } 
-              else if constexpr (std::is_same_v<T, DSLStructDefExpr>)  { convertStructDefinition(arg, context, current_cfg_node); result_node_i
-              else if constexpr (std::is_same_v<T, DSLStructLiteralExpr>){ result_node_id = convertStructLiteral(arg, context, current_cfg_node
-              else if constexpr (std::is_same_v<T, DSLArrayLiteralExpr>) { result_node_id = convertArrayLiteral(arg, context, current_cfg_node)
-              else if constexpr (std::is_same_v<T, DSLForLoopExpr>)     { result_node_id = convertForLoop(arg, context, current_cfg_node); }    
+              else if constexpr (std::is_same_v<T, DSLStructDefExpr>)  { convertStructDefinition(arg, context, current_cfg_node); result_node_id = 0; 
+              else if constexpr (std::is_same_v<T, DSLStructLiteralExpr>){ result_node_id = convertStructLiteral(arg, context, current_cfg_node); }
+              else if constexpr (std::is_same_v<T, DSLArrayLiteralExpr>) { result_node_id = convertArrayLiteral(arg, context, current_cfg_node); }
+              else if constexpr (std::is_same_v<T, DSLForLoopExpr>)     { result_node_id = convertForLoop(arg, context, current_cfg_node); }
+              }, expr->content); 
               // Handle different kinds of definitions 
               // if (isFunctionDefinition(arg)) { convertFunctionDefinition(arg, context, current_cfg_node); } 
               // else { convertVariableDefinition(arg, context, current_cfg_node); } 
               result_node_id = 0; // Definitions usually don't produce a value node directly 
-              } 
+     } 
               // Example: Handling an assignment AST node 
               // else if constexpr (std::is_same_v<T, DSLAssignmentExpr>) { 
               //    result_node_id = convertAssignment(arg, context, current_cfg_node); 
@@ -500,7 +510,7 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
          current_cfg_node = assign_node_id; 
          return assign_node_id; // Return assign node ID (or 0 if no value?) 
      } 
-         IRNodeId ASTToIR::convertFunctionCall(const DSLFuncCallExpr& call_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_nod
+         IRNodeId ASTToIR::convertFunctionCall(const DSLFuncCallExpr& call_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) {
          // 1. Lookup function signature in context 
          // FunctionType func_type = context.lookupFunctionType(call_expr.function_name.name); 
          // if (!func_type) throw BDIExecutionError("Call to undefined function: " + call_expr.function_name.name); 
@@ -581,8 +591,8 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           current_graph_->addEdge(branch_node_id, exit_loop_node_id); // False path goes to exit 
           current_cfg_node = exit_loop_node_id; // Continue code gen after loop 
           return 0; 
-     } 
-          IRNodeId ASTToIR::convertMemberAccess(const DSLMemberAccessExpr& access_expr, TypeChecker::CheckContext& context, IRNodeId& curre
+    } 
+          IRNodeId ASTToIR::convertMemberAccess(const DSLMemberAccessExpr& access_expr, TypeChecker::CheckContext& context, IRNodeId& current_cf_node) {
           // 1. Convert the base object expression to get its address node ID 
           //    (Assume structs are passed by reference or allocated on stack -> we need address) 
           IRNodeId base_addr_node_id = convertNode(access_expr.object.get(), context, current_cfg_node); 
@@ -599,14 +609,17 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           // 4. Return the node producing the MEMBER'S ADDRESS 
           //    The caller (e.g., convertAssignment or convertSymbolLoad needing member) will use this address node 
           //    with LOAD_MEM or STORE_MEM. 
+          // Assign correct pointer type to the resulting address node 
+          auto* addr_ir_node = getNode(member_addr_node_id); 
+          // addr_ir_node->output_type = make_pointer_type(struct_type.fields[field_it->second].type); // Pointer to member type 
           return member_addr_node_id; // Return node producing the MEMBER'S ADDRESS  
     }
-          IRNodeId ASTToIR::convertArrayIndex(const DSLArrayIndexExpr& index_expr, TypeChecker::CheckContext& context, IRNodeId& current_cf
+          IRNodeId ASTToIR::convertArrayIndex(const DSLArrayIndexExpr& index_expr, TypeChecker::CheckContext& context, IRNodeId& current_cf_node) {
           // 1. Convert array base expression -> base_addr_node_id 
           IRNodeId base_addr_node_id = convertNode(index_expr.array.get(), context, current_cfg_node); 
-          auto array_type = type_checker_.checkExpression(index_expr.array.get(), context); 
-          if (!array_type || !array_type->isArray()) throw BDIExecutionError("Internal Error: Base object for index is not array"); 
-          const auto& arr_type = std::get<ChimeraArrayType>(array_type->content); 
+          auto array_type_ptr = type_checker_.checkExpression(index_expr.array.get(), context); 
+          if (!array_type_ptr || !array_type_ptr->isArray()) throw BDIExecutionError("Internal Error: Base object for index is not array"); 
+          const auto& arr_type = std::get<ChimeraArrayType>(array_type_ptr->content); 
           size_t element_size = arr_type.element_size_bytes; 
           if (element_size == 0) throw BDIExecutionError("Internal Error: Array element size is zero"); 
           // 2. Convert index expression -> index_value_node_id 
@@ -614,6 +627,8 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           auto index_type = getNode(index_value_node_id)->output_type; // Get actual type of index node 
           // TODO: Convert index_value_node_id to pointer-sized unsigned integer if needed 
           // Error check... ensure index is integer type... 
+          // TODO: Add explicit ChiIR conversion node if index isn't UINT64 
+          // ChiIRNodeId index_u64_node = addConversionNode(index_value_node_id, make_scalar(BDIType::UINT64), ...); 
           // 3. Generate address calculation: BaseAddr + (IndexValue * ElementSize) 
           //    a. Create CONST node for ElementSize 
           IRNodeId elem_size_const_id = current_graph_->addNode(IROpCode::LOAD_CONST); 
@@ -644,6 +659,7 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
           current_graph_->addEdge(getNode(base_addr_node_id) ? current_cfg_node : 0, element_addr_node_id); // Depends on base addr calc 
           current_graph_->addEdge(after_mul_cfg, element_addr_node_id); // Depends on offset calc  
           // ... set inputs (base_addr_node_id, offset_node_id), op_data="+", output type POINTER ... connect CFG ... 
+          // getNode(element_addr_node_id)->output_type = make_pointer_type(arr_type.element_type); 
           current_cfg_node = element_addr_node_id; // Update CFG pos 
           return element_addr_node_id; // Return node producing the ELEMENT'S ADDRESS 
     }
