@@ -45,10 +45,33 @@
     NodeID determineNextNode(BDINode& node); // Follow control flow
  };
     // Forward declare 
-    class BDIOSSchedulerInterface; // Interface for scheduler interaction 
     class BDIOSEventDispatcherInterface; 
+    // --- Task Control Block (Conceptual - Managed by Scheduler Graph) --- 
+    struct TaskControlBlock { 
+        uint64_t task_id; 
+        NodeID resume_node_id; // Where to restart execution 
+        // Pointer/Handle to ExecutionContext state 
+        // Priority, Status (Ready, Running, Waiting, Halted), Wait Condition 
+        // Memory Region List? Capabilities? 
+    }; 
+    // --- Scheduler Interface (Implemented by Scheduler Graph Logic) --- 
+    class BDIOSSchedulerInterface { // Interface for scheduler interaction 
+    public: 
+        virtual ~BDIOSSchedulerInterface() = default; 
+        // Called by VM after yield/halt/wait or timeslice end 
+        virtual std::optional<TaskControlBlock> getNextTaskToRun() = 0; 
+        // Called by VM when task state changes (e.g., becomes WAITING) 
+        virtual void updateTaskState(uint64_t task_id, /* New State */ int state, /* Wait condition? */ uint64_t condition) = 0; 
+        // Called by OS_SERVICE_CALL for AddTask etc. 
+        virtual BDIValueVariant handleServiceCall(/* Args */) = 0; 
+    }; 
+    // Similar interface for BDIOSEventDispatcherInterface 
     class BDIVirtualMachine { 
         // ... existing members ... 
+        // ExecutionContext needs Task ID 
+        // std::unordered_map<uint64_t /*TaskID*/, std::unique_ptr<ExecutionContext>> task_contexts_; 
+        uint64_t current_task_id_ = 0; 
+        ExecutionContext* current_context_ = nullptr; // Points into task_contexts_ map 
         BDIOSSchedulerInterface* scheduler_ = nullptr; // Pointer to scheduler logic (could be another graph context) 
         BDIOSEventDispatcherInterface* event_dispatcher_ = nullptr; // Pointer to event logic 
         // VM Internal State Flags 
@@ -66,5 +89,18 @@
         VMExecResult runSlice(BDIGraph& graph, NodeID entry_or_resume_node_id, uint64_t timeslice_instructions = 1000); 
         // Get current task state for saving context 
         // ExecutionContext& getCurrentContextForSave(); // Needs careful state management 
+        // ... Constructor takes HAL, MetaStore, Verifier ... 
+        // void setScheduler(BDIOSSchedulerInterface* sched); // Set external scheduler logic 
+        // Main execution loop runs the scheduler 
+        void runOS(); 
+        // Internal function to execute a single task's timeslice 
+        VMExecResult runTaskSlice(uint64_t task_id, uint64_t timeslice_instructions); 
+ private: 
+        // Internal context switch logic 
+        bool saveCurrentContext(uint64_t task_id); 
+        bool restoreContext(uint64_t task_id); 
+        void switchToScheduler(); // Changes current_node_id_ etc. to run scheduler graph 
+        // ... executeNode, determineNextNode ... 
+    }; 
  } // namespace bdi::runtime
  #endif // BDI_RUNTIME_BDIVIRTUALMACHINE_HPP
