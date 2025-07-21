@@ -59,11 +59,39 @@ void BDIToLLVMIR::setupBasicBlocks(BDIGraph& graph) {
     // Requires graph analysis to identify block headers 
     // For now, just the entry block 
 } 
-void BDIToLLVMIR::setupFunction(BDINode& start_node) { 
-    // Define function type (e.g., void func()) - needs proper signature based on graph later 
-    llvm::FunctionType* func_type = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm_context_), false); // Placeholder 
-    current_function_ = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, "bdi_func", module_.get()); 
-    // TODO: Set argument names, types based on PARAM nodes 
+void BDIToLLVMIR::setupFunction(BDINode& start_node /* BDI Start Node */, const IRGraph& chiir_graph /* For signature */) { 
+     // 1. Determine Function Signature from IR Graph or annotations  
+     std::vector<llvm::Type*> llvm_arg_types; 
+     llvm::Type* llvm_return_type = llvm::Type::getVoidTy(llvm_context_); 
+     // Iterate ChiIR PARAM nodes linked from ChiIR ENTRY node 
+     // For each param, map its ChimeraType to llvm::Type and add to llvm_arg_types 
+     // Find ChiIR RETURN_VALUE node and map its input type to llvm_return_type  
+     // Define function type (e.g., void func()) - needs proper signature based on graph later 
+     llvm::FunctionType* func_type = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm_context_), false); // Placeholder 
+     current_function_ = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, /* Function Name */ "bdi_func", module_.get()); 
+     // TODO: Set argument names, types based on PARAM nodes 
+     // 2. Create Entry Basic Block 
+     llvm::BasicBlock* entry_bb = llvm::BasicBlock::Create(llvm_context_, "entry", current_function_); 
+     builder_.SetInsertPoint(entry_bb); 
+     bdi_node_to_llvm_block_[start_node.id] = entry_bb; // Map BDI start node to entry block 
+     // 3. Process Arguments: Create allocas and store incoming args 
+     auto llvm_arg_it = current_function_->arg_begin(); 
+     // Iterate ChiIR PARAM nodes again 
+     // for (const auto& param_chiir_node : /* get ChiIR PARAM nodes */) { 
+     //     NodeID bdi_param_node_id = /* find corresponding BDI node (likely NOP) */; 
+     //     llvm::Argument* llvm_arg = &*llvm_arg_it++; 
+     //     llvm::Type* param_llvm_type = llvm_arg->getType(); // Or map from ChiIR type 
+     //     llvm::AllocaInst* arg_alloc = builder_.CreateAlloca(param_llvm_type, nullptr, param_chiir_node->label + ".addr"); 
+     //     builder_.CreateStore(llvm_arg, arg_alloc); 
+     //     // Store the AllocaInst* as the value for the BDI PARAM node ID 
+     //     bdi_node_to_llvm_value_[bdi_param_node_id] = arg_alloc; // Param node provides address 
+     // } 
+     // 4. Create Alloca for stack frame pointer storage (if needed by target ABI) 
+     // llvm::AllocaInst* fp_alloc = builder_.CreateAlloca(builder_.getInt8PtrTy(), nullptr, "fp.addr"); 
+     // builder_.CreateStore(builder_.CreateCall(llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::frameaddress), {builder_.getI
+     // 5. Allocate space for local variables (alloca in entry block) 
+     // Iterate variables needing stack allocation identified during ChiIR gen 
+     // builder.CreateAlloca(llvm_type, size_llvm_const, name); Store mapping NodeID -> AllocaInst* 
 } 
 void BDIToLLVMIR::convertNode(BDINode& node) { 
      // Ensure we are inserting into a valid basic block 
@@ -102,8 +130,17 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
              result_val = getLLVMConstant(val_var); 
              break; 
         } 
+             // ... Arithmetic, Bitwise, Comparison, Logical -> LLVM instructions ... 
         case BDIOperationType::ARITH_ADD: { 
              if (llvm_inputs.size() != 2) return; // Error 
+             // Check if one input is pointer and other is integer offset 
+             if (llvm_inputs[0]->getType()->isPointerTy() && llvm_inputs[1]->getType()->isIntegerTy()) { 
+                    result_val = builder_.CreateGEP(mapBDITypeToLLVM(node.getOutputType(0))->getPointerElementType(), llvm_inputs[0], llvm_inp
+                 } else if (llvm_inputs[1]->getType()->isPointerTy() && llvm_inputs[0]->getType()->isIntegerTy()) { 
+                     result_val = builder_.CreateGEP(mapBDITypeToLLVM(node.getOutputType(0))->getPointerElementType(), llvm_inputs[1], llvm_in
+                 } else if (llvm_inputs[0]->getType()->isIntegerTy()) { 
+                     result_val = builder_.CreateAdd(llvm_inputs[0], llvm_inputs[1]); 
+                 } // ... etc. 
              if (llvm_inputs[0]->getType()->isIntegerTy()) result_val = builder_.CreateAdd(llvm_inputs[0], llvm_inputs[1], "addtmp"); 
              else if (llvm_inputs[0]->getType()->isFloatingPointTy()) result_val = builder_.CreateFAdd(llvm_inputs[0], llvm_inputs[1], 
              } else { /* Error */ } 
@@ -122,42 +159,66 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
              case BDIOperationType::CMP_NE: if(llvm_inputs.size()==2) result_val = builder_.CreateICmpNE(llvm_inputs[0], llvm_inputs[1], "netmp"); 
              case BDIOperationType::CMP_LT: if(llvm_inputs.size()==2) result_val = builder_.CreateICmpSLT(llvm_inputs[0], llvm_inputs[1], "lttmp");
              // ... Implement other comparisons (SLE, ULE, OLE, SGT, UGT, OGT, SGE, UGE, OGE) ...  
-        } 
+             // ... Control Flow -> CreateBr, CreateCondBr, CreateRet ... 
+             // ... Function Calls -> CreateCall ... 
+             // ... Conversions -> CreateTrunc/SExt/ZExt/SIToFP/FPToSI/BitCast ... 
+        }
+             // ... Store result_val map ... 
+   } 
          // Memory (Using GEP for address calculation is crucial here) 
          case BDIOperationType::MEM_LOAD: { 
-             if (llvm_inputs.size() != 1) return; // Address must be provided 
-             llvm::Value* ptr_input = llvm_inputs[0]; 
-             llvm::Type* load_type = mapBDITypeToLLVM(node.getOutputType(0)); 
-             if (!load_type || !ptr_input->getType()->isPointerTy()) return; // Invalid type or ptr 
-             // Ensure pointer points to the correct type, GEP often needed before load 
-             // llvm::Value* typed_ptr = builder_.CreateBitOrPointerCast(ptr_input, load_type->getPointerTo()); 
-             result_val = builder_.CreateLoad(load_type, ptr_input, "loadtmp"); // Assume ptr is already correct type for now 
+              if (llvm_inputs.size() != 1) return; // Address must be provided 
+              llvm::Value* ptr_input = llvm_inputs[0]; // This should be the result of address calc (GEP or Alloca) 
+              llvm::Type* load_type = mapBDITypeToLLVM(node.getOutputType(0)); 
+              if (!load_type || !ptr_input->getType()->isPointerTy()) return; // Invalid type or ptr 
+              // LLVM Load requires pointer to element type. Cast if necessary. 
+              // Ensure pointer points to the correct type, GEP often needed before load 
+              // llvm::Value* typed_ptr = builder_.CreateBitOrPointerCast(ptr_input, load_type->getPointerTo()); 
+              llvm::Value* typed_ptr = ptr_input; // Assume GEP produced correct type ptr 
+              // if (ptr_input->getType() != load_type->getPointerTo()) { 
+              //     typed_ptr = builder_.CreatePointerCast(ptr_input, load_type->getPointerTo()); 
+              // }  
+              result_val = builder_.CreateLoad(load_type, ptr_input, "loadtmp"); // Assume ptr is already correct type for now 
              break; 
         } 
          case BDIOperationType::MEM_STORE: { 
               if (llvm_inputs.size() != 2) return; // Need address and value 
-              llvm::Value* ptr_input = llvm_inputs[0]; // Address 
+              llvm::Value* ptr_input = llvm_inputs[0]; // Address (result of GEP/Alloca)
               llvm::Value* val_input = llvm_inputs[1]; // Value 
               if (!ptr_input->getType()->isPointerTy()) return; 
               // Ensure pointer type matches value type 
-               // llvm::Value* typed_ptr = builder_.CreateBitOrPointerCast(ptr_input, val_input->getType()->getPointerTo()); 
-               builder_.CreateStore(val_input, ptr_input); // Assume ptr is correct type 
-               break; 
+              // llvm::Value* typed_ptr = builder_.CreateBitOrPointerCast(ptr_input, val_input->getType()->getPointerTo()); 
+              builder_.CreateStore(val_input, ptr_input); // Assume ptr is correct type 
+             break; 
          }
          case BDIOperationType::MEM_ALLOC: { // Translate to stack allocation (alloca) 
-             // Get size from input or node data? Assume input 0 is size (e.g., uint64) 
-             if (llvm_inputs.empty()) return; 
-             llvm::Value* size_val = llvm_inputs[0]; 
-             llvm::Type* alloc_type = mapBDITypeToLLVM(node.getOutputType(0)); // Type being allocated? Or just return i8*? Let's assume outpu
-             if (!alloc_type || !size_val->getType()->isIntegerTy()) return; 
-             // Alloca typically allocates specific types, not raw bytes easily from dynamic size 
-             // Usually: builder.CreateAlloca(llvm_type, size_array_val_opt, name); 
-             // For dynamic size, might need malloc call or different approach 
-             llvm::errs() << "BDIToLLVMIR Warning: MEM_ALLOC to Alloca translation is complex/stubbed.\n"; 
-             // Placeholder: allocate i8 array of size (treat as void*) 
-             llvm::Type* byte_type = builder_.getInt8Ty(); 
-             result_val = builder_.CreateAlloca(byte_type, size_val, "allocatmp"); 
+              // Get size from input or node data? Assume input 0 is size (e.g., uint64) 
+              // This was handled conceptually during function setup / variable processing 
+              // The ChiIR ALLOC might just produce the stack offset constant? 
+              // Or if it means heap alloc, translate to 'malloc' call. Assume stack for now. 
+              // If this node calculates offset, handle as ADD below. 
+              if (llvm_inputs.empty()) return; 
+              llvm::Value* size_val = llvm_inputs[0]; 
+              llvm::Type* alloc_type = mapBDITypeToLLVM(node.getOutputType(0)); // Type being allocated? Or just return i8*? Let's assume outpu
+              if (!alloc_type || !size_val->getType()->isIntegerTy()) return; 
+              // Alloca typically allocates specific types, not raw bytes easily from dynamic size 
+              // Usually: builder.CreateAlloca(llvm_type, size_array_val_opt, name); 
+              // For dynamic size, might need malloc call or different approach 
+              llvm::errs() << "BDIToLLVMIR Warning: MEM_ALLOC to Alloca translation is complex/stubbed.\n"; 
+              // Placeholder: allocate i8 array of size (treat as void*) 
+              llvm::Type* byte_type = builder_.getInt8Ty(); 
+              result_val = builder_.CreateAlloca(byte_type, size_val, "allocatmp"); 
              break; 
+              // Handle Address Calculations from ChiIRToBDI (Base + Offset or Base + Index*Size) 
+              // These likely became BDI ARITH_ADD, ARITH_MUL nodes. 
+              // LLVM Equivalent: Use GetElementPtrInst (GEP) 
+              // Need to identify patterns: ADD(ptr, offset_int) -> GEP(ptr, offset_int)
+              // MUL(index_int, size_int) -> part of GEP calculation 
+              // Example GEP for struct member: GEP(struct_ptr, 0, field_index_const) 
+              // Example GEP for array element: GEP(array_ptr, index_value) 
+              // This requires modifying the ARITH_ADD/MUL cases to detect address calculation 
+              // patterns or having dedicated ChiIR/BDI ops for GEP. 
+              // --- Simplified ADD for now (assumes pointer arithmetic works) --- 
          }
         // Control Flow (Terminators - linkage done separately) 
         case BDIOperationType::CTRL_JUMP: /* CreateBr - linking done later */ break; 
