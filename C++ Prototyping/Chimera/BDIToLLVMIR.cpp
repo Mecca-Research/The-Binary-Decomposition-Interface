@@ -90,9 +90,11 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
         llvm_inputs.push_back(val_it->second); 
         // TODO: Handle multiple output ports if PortIndex > 0 
     }
+    // ... (Get input llvm::Value*s as before) ... 
     llvm::Value* result_val = nullptr; 
     // Generate LLVM instruction based on BDI OpType 
     switch (node.operation) { 
+    // ... Meta Start/End, Const ... 
         case BDIOperationType::META_START: /* Handled by setupFunction/setupBasicBlocks */ break; 
         case BDIOperationType::META_END: builder_.CreateRetVoid(); break; // Simple void return 
         case BDIOperationType::META_CONST: { 
@@ -104,29 +106,75 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
              if (llvm_inputs.size() != 2) return; // Error 
              if (llvm_inputs[0]->getType()->isIntegerTy()) result_val = builder_.CreateAdd(llvm_inputs[0], llvm_inputs[1], "addtmp"); 
              else if (llvm_inputs[0]->getType()->isFloatingPointTy()) result_val = builder_.CreateFAdd(llvm_inputs[0], llvm_inputs[1], "faddtm
-             else { /* Error */ } 
+             } else { /* Error */ } 
+             break; 
+             // ... Implement MUL, DIV (SDiv/UDiv/FDiv), REM (SRem/URem/FRem), NEG (Sub 0, X / FNeg) ... 
+             // Bitwise (Use integer instructions) 
+             case BDIOperationType::BIT_AND: if(llvm_inputs.size()==2) result_val = builder_.CreateAnd(llvm_inputs[0], llvm_inputs[1], "andtmp"); b
+             case BDIOperationType::BIT_OR: if(llvm_inputs.size()==2) result_val = builder_.CreateOr(llvm_inputs[0], llvm_inputs[1], "ortmp"); brea
+             case BDIOperationType::BIT_XOR: if(llvm_inputs.size()==2) result_val = builder_.CreateXor(llvm_inputs[0], llvm_inputs[1], "xortmp"); b
+             case BDIOperationType::BIT_NOT: if(llvm_inputs.size()==1) result_val = builder_.CreateNot(llvm_inputs[0], "nottmp"); break; 
+             case BDIOperationType::BIT_SHL: if(llvm_inputs.size()==2) result_val = builder_.CreateShl(llvm_inputs[0], llvm_inputs[1], "shltmp"); b
+             case BDIOperationType::BIT_SHR: if(llvm_inputs.size()==2) result_val = builder_.CreateLShr(llvm_inputs[0], llvm_inputs[1], "shrtmp"); 
+             case BDIOperationType::BIT_ASHR: if(llvm_inputs.size()==2) result_val = builder_.CreateAShr(llvm_inputs[0], llvm_inputs[1], "ashrtmp")
+             // Comparison 
+             case BDIOperationType::CMP_EQ: if(llvm_inputs.size()==2) result_val = builder_.CreateICmpEQ(llvm_inputs[0], llvm_inputs[1], "eqtmp"); 
+             case BDIOperationType::CMP_NE: if(llvm_inputs.size()==2) result_val = builder_.CreateICmpNE(llvm_inputs[0], llvm_inputs[1], "netmp"); 
+             case BDIOperationType::CMP_LT: if(llvm_inputs.size()==2) result_val = builder_.CreateICmpSLT(llvm_inputs[0], llvm_inputs[1], "lttmp");
+             // ... Implement other comparisons (SLE, ULE, OLE, SGT, UGT, OGT, SGE, UGE, OGE) ...  
+        } 
+         // Memory (Using GEP for address calculation is crucial here) 
+         case BDIOperationType::MEM_LOAD: { 
+             if (llvm_inputs.size() != 1) return; // Address must be provided 
+             llvm::Value* ptr_input = llvm_inputs[0]; 
+             llvm::Type* load_type = mapBDITypeToLLVM(node.getOutputType(0)); 
+             if (!load_type || !ptr_input->getType()->isPointerTy()) return; // Invalid type or ptr 
+             // Ensure pointer points to the correct type, GEP often needed before load 
+             // llvm::Value* typed_ptr = builder_.CreateBitOrPointerCast(ptr_input, load_type->getPointerTo()); 
+             result_val = builder_.CreateLoad(load_type, ptr_input, "loadtmp"); // Assume ptr is already correct type for now 
              break; 
         } 
-         case BDIOperationType::MEM_LOAD: { 
-              if (llvm_inputs.size() != 1) return; // Need address input 
-              llvm::Type* load_type = mapBDITypeToLLVM(node.getOutputType(0)); 
-              if (!load_type) return; 
-              llvm::Value* ptr_input = llvm_inputs[0]; 
-              // Ensure pointer type matches load type (may need bitcast) 
-              // llvm::Value* ptr = builder_.CreateBitCast(ptr_input, load_type->getPointerTo(), "loadptr"); 
-              // result_val = builder_.CreateLoad(load_type, ptr, "loadtmp"); 
-               result_val = builder_.CreateLoad(load_type, ptr_input, "loadtmp"); // Simpler for now 
-               break; 
-         }
          case BDIOperationType::MEM_STORE: { 
               if (llvm_inputs.size() != 2) return; // Need address and value 
-              llvm::Value* ptr_input = llvm_inputs[0]; 
-              llvm::Value* val_input = llvm_inputs[1]; 
-              // Ensure pointer type matches value type (may need bitcast) 
-              // builder_.CreateStore(val_input, ptr); 
-              builder_.CreateStore(val_input, ptr_input); // Simpler for now 
-              break;
+              llvm::Value* ptr_input = llvm_inputs[0]; // Address 
+              llvm::Value* val_input = llvm_inputs[1]; // Value 
+              if (!ptr_input->getType()->isPointerTy()) return; 
+              // Ensure pointer type matches value type 
+               // llvm::Value* typed_ptr = builder_.CreateBitOrPointerCast(ptr_input, val_input->getType()->getPointerTo()); 
+               builder_.CreateStore(val_input, ptr_input); // Assume ptr is correct type 
+               break; 
          }
+         case BDIOperationType::MEM_ALLOC: { // Translate to stack allocation (alloca) 
+             // Get size from input or node data? Assume input 0 is size (e.g., uint64) 
+             if (llvm_inputs.empty()) return; 
+             llvm::Value* size_val = llvm_inputs[0]; 
+             llvm::Type* alloc_type = mapBDITypeToLLVM(node.getOutputType(0)); // Type being allocated? Or just return i8*? Let's assume outpu
+             if (!alloc_type || !size_val->getType()->isIntegerTy()) return; 
+             // Alloca typically allocates specific types, not raw bytes easily from dynamic size 
+             // Usually: builder.CreateAlloca(llvm_type, size_array_val_opt, name); 
+             // For dynamic size, might need malloc call or different approach 
+             llvm::errs() << "BDIToLLVMIR Warning: MEM_ALLOC to Alloca translation is complex/stubbed.\n"; 
+             // Placeholder: allocate i8 array of size (treat as void*) 
+             llvm::Type* byte_type = builder_.getInt8Ty(); 
+             result_val = builder_.CreateAlloca(byte_type, size_val, "allocatmp"); 
+             break; 
+         }
+        // Control Flow (Terminators - linkage done separately) 
+        case BDIOperationType::CTRL_JUMP: /* CreateBr - linking done later */ break; 
+        case BDIOperationType::CTRL_BRANCH_COND: /* CreateCondBr - linking done later */ break; 
+        case BDIOperationType::CTRL_RETURN: { 
+             if (!llvm_inputs.empty()) builder_.CreateRet(llvm_inputs[0]); // Return value 
+             else builder_.CreateRetVoid(); 
+             break; 
+        } 
+        case BDIOperationType::CTRL_CALL: { 
+             // Need function signature lookup based on target 
+             // llvm::Function* target_func = ...; 
+             // std::vector<llvm::Value*> llvm_args = llvm_inputs; // Get args 
+             // result_val = builder_.CreateCall(target_func, llvm_args, "calltmp"); 
+              llvm::errs() << "BDIToLLVMIR Warning: CALL translation stubbed.\n"; 
+             break; 
+        } 
          case BDIOperationType::CTRL_JUMP: { 
               // Node ID target needs mapping to LLVM BasicBlock* 
               // llvm::BasicBlock* target_bb = bdi_node_to_llvm_block_.at( /* target NodeID */ ); 
@@ -140,11 +188,13 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
                // builder_.CreateCondBr(condition, true_bb, false_bb); 
                break; 
           } 
-        // ... Implement ALL other BDI -> LLVM mappings ... 
-        default: 
+            // ... Implement other ops (Conversions -> Trunc, SExt, ZExt, SIToFP, FPToSI etc.) ... 
+            default: /* Warning */ 
              llvm::errs() << "BDIToLLVMIR Warning: Unhandled BDI OpType: " << static_cast<int>(node.operation) << "\n"; 
              break; 
     }
+    // ... Store result_val in map ... 
+    // ... Handle terminators ... 
     // Store mapping from BDI node output to LLVM value 
     if (result_val && !node.data_outputs.empty()) { 
          bdi_node_to_llvm_value_[node.id] = result_val; // Assume output port 0 maps to this value 
@@ -159,10 +209,35 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
     bdi_node_to_llvm_block_.clear(); 
     current_function_ = nullptr; 
     // --- Requires proper CFG analysis and block identification --- 
-    // 1. Find entry node(s) - Assuming one entry for now 
-    // 2. Identify basic block headers (targets of jumps/branches, function entry) 
-    // 3. Create llvm::BasicBlock for each header 
-    // 4. Create llvm::Function for graph entry 
+    // 1. Identify Basic Block Headers (Function Entry, Targets of Jumps/Branches) 
+    // Requires CFG analysis on BDI graph 
+    std::set<NodeID> block_headers;
+    // Find entry node(s)... add to headers 
+    // Find successors of BRANCH_COND and JUMP nodes... add to headers 
+    // ...
+    // 2. Create llvm::Function and entry BasicBlock 
+    // ... setupFunction ... 
+    // 3. Create llvm::BasicBlock for each identified header 
+    // for (NodeID header_id : block_headers) { 
+    //     llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm_context_, "bb_" + std::to_string(header_id), current_function_); 
+    //     bdi_node_to_llvm_block_[header_id] = bb; 
+    // } 
+    // 4. Iterate through nodes (in RPO within each block ideally) 
+    std::vector<NodeID> processing_order; // Get RPO order 
+    std::set<NodeID> visited; 
+    // ... Perform traversal (DFS/RPO) starting from entry ... 
+    for (NodeID node_id : processing_order) { 
+        BDINode* node = graph.getNodeMutable(node_id); 
+        if (!node) continue; 
+        // Set insert point to the correct block 
+        // if (bdi_node_to_llvm_block_.count(node_id)) { 
+        //     builder_.SetInsertPoint(bdi_node_to_llvm_block_.at(node_id)); 
+        // } else if (!builder_.GetInsertBlock()) { /* Error or handle hanging nodes */ } 
+        // Convert node instructions 
+        convertNode(*node); 
+        // Handle terminators (JUMP, BRANCH, RETURN) by creating corresponding LLVM terminators 
+        // Connect blocks using CreateBr, CreateCondBr 
+    }
     // 5. Iterate through nodes in suitable order (e.g., per-block RPO) 
     // 6. Call convertNode for each node, setting builder insert point correctly 
     // --- Simplified Stub --- 
