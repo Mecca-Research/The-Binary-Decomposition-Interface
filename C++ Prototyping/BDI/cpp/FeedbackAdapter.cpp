@@ -188,7 +188,36 @@ float weight_delta = learning_rate_ * layer_delta * input_act.value();
         } 
 // 4. (Optional) Calculate and store gradient w.r.t inputs for previous layer 
 // gradient_for_prev_layer = layer_delta * weight; Store this in context for prev layer adapter. 
+// Assume a GradientDescentAdapter 
+class GradientDescentAdapter : public FeedbackAdapter { 
+public: 
+    GradientDescentAdapter(float learning_rate = 0.01f) : learning_rate_(learning_rate) {} 
+void processFeedback(ExecutionContext& context, BDIGraph& graph) override { 
+        pending_updates_.clear(); 
+std::cout << "FeedbackAdapter: Processing gradients..." << std::endl; 
+// Iterate through all recorded gradients in the context 
+for (const auto& grad_pair : context.parameter_gradients) { // Use actual gradient map 
+            NodeID param_node_id = grad_pair.first; 
+const BDIValueVariant& gradient = grad_pair.second; 
+// Calculate delta (eta * gradient) -> Note: Gradient Descent SUBTRACTS 
+// Need to negate the gradient or subtract the delta. Let's calculate positive delta first. 
+            BDIValueVariant scaled_gradient = vm_ops::performMultiplication(gradient, BDIValueVariant{learning_rate_}); 
+// Negate for descent step 
+            BDIValueVariant delta_variant = vm_ops::performNegation(scaled_gradient); 
+if (!std::holds_alternative<std::monostate>(delta_variant)) { 
+                pending_updates_.push_back({param_node_id, delta_variant}); 
+// std::cout << "  -> Pending GD update for Node " << param_node_id << std::endl; 
+            } 
+else {
+ std::cerr << "  FeedbackAdapter Warning: Failed to calculate delta for gradient of Node " << param_node_id << std::endl; 
+            } 
+        } 
     }
- // ... get/clear updates ... 
-}; 
+ // Clear gradients after processing? Optional, depends on usage. 
+// context.clearIntelligenceState(); // Or just clear gradients 
+// ... get/clear updates ... 
+private: 
+float learning_rate_; 
+std::vector<ParameterUpdate> pending_updates_; 
+};
 } // namespace bdi::intelligence
