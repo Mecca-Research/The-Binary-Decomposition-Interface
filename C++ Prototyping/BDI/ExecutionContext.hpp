@@ -65,7 +65,16 @@
     std::optional<float> getEligibilityTrace(NodeID param_source_node) const; 
     void clearIntelligenceState(); // Clear gradients/traces 
     bool isCallStackEmpty() const;
-    void clear();
+    // Store state needed to resume after a service call 
+    struct ServiceCallReturnState { 
+        NodeID original_caller_node_id; // The OS_SERVICE_CALL node 
+        NodeID original_resume_node_id; // Where to resume in caller graph 
+    // Potentially store parts of the caller's immediate VM state if needed? 
+    }; 
+    std::vector<ServiceCallReturnState> service_call_stack_; // Separate stack for service calls within a task 
+    void pushServiceCall(NodeID caller_id, NodeID resume_id); 
+    std::optional<ServiceCallReturnState> popServiceCall(); 
+    void clear(); // Ensure this clears service_call_stack_  
 }; 
  private:
     std::unordered_map<PortRef, BDIValueVariant, PortRefHash> port_values_; // Stores variants
