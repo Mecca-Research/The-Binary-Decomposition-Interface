@@ -22,8 +22,15 @@
  class ExecutionContext {
     // --- State for Intelligence --- 
     // Conceptual: Store gradients or traces per parameter source node 
+    // Map <NodeID producing param> -> BDIValueVariant gradient 
     std::unordered_map<NodeID, BDIValueVariant> parameter_gradients; // NodeID producing param -> Gradient Value 
     std::unordered_map<NodeID, float> eligibility_traces; // NodeID producing param -> Trace value 
+    // Map <NodeID producing state feature> -> BDIValueVariant feature value 
+    std::unordered_map<NodeID, BDIValueVariant> current_state_features; 
+    // Map <NodeID representing Q(s,a) param> -> std::pair<StateHash, ActionID> Q-value key (conceptual) 
+    // std::unordered_map<NodeID, QKey> q_value_registry; 
+    void recordStateFeature(NodeID feature_node, BDIValueVariant value); 
+    void recordActionTaken(BDIValueVariant action); // Store action 
     // Add methods to set/get/clear gradients and traces 
  public:
     ExecutionContext() = default;
