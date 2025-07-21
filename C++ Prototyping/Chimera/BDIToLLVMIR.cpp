@@ -6,6 +6,9 @@
 #include <iostream> 
 #include <vector> 
 #include <set> // For visited nodes 
+#include "Intrinsics.h" // For intrinsics like frameaddress, memcpy 
+#include "SmallVector.h" // For GEP indices 
+#include <map> // For mapping struct field names to indices 
 namespace chimera::backend { 
 BDIToLLVMIR::BDIToLLVMIR() : builder_(llvm_context_) { 
      // Module will be created per graph conversion 
@@ -30,6 +33,19 @@ llvm::Type* BDIToLLVMIR::mapBDITypeToLLVM(BDIType bdi_type) {
         case BDIType::FUNC_PTR: // Use opaque pointer or pointer to function type 
             // For simplicity, use generic byte pointer (i8*) 
             return llvm::Type::getInt8PtrTy(llvm_context_); 
+            // Handle aggregate types (requires definition lookup) 
+            // case BDIType::STRUCT: { 
+            // Lookup struct definition associated with this BDIType tag 
+            // Construct llvm::StructType based on field types 
+            // return llvm::StructType::get(llvm_context_, field_llvm_types); 
+            // return llvm::StructType::get(llvm_context_); // Placeholder opaque struct 
+            // } 
+            // case BDIType::ARRAY: { 
+            // Lookup array definition (element type, size) 
+            // llvm::Type* element_llvm_type = mapBDITypeToLLVM(element_bdi_type); 
+            // return llvm::ArrayType::get(element_llvm_type, array_size); 
+            // return llvm::ArrayType::get(builder_.getInt8Ty(), 0); // Placeholder 
+            // } 
         default: 
             llvm::errs() << "BDIToLLVMIR Error: Cannot map BDI type " << static_cast<int>(bdi_type) << " to LLVM type.\n"; 
             return nullptr; 
@@ -49,7 +65,7 @@ llvm::Constant* BDIToLLVMIR::getLLVMConstant(const BDIValueVariant& value_var) {
         else { return nullptr; } 
     }, value_var); 
 } 
-void BDIToLLVMIR::setupBasicBlocks(BDIGraph& graph) { 
+void BDIToLLVMIR::setupBasicBlocks(BDIGraph& graph, NodeID entry_node_id) { 
     // Create entry block for the function 
     BDINode* start_node = graph.getNodeMutable(1); // Assume start node ID 1? Need reliable way. 
     if (!start_node) throw std::runtime_error("Cannot find graph entry node for LLVM setup"); 
@@ -58,17 +74,73 @@ void BDIToLLVMIR::setupBasicBlocks(BDIGraph& graph) {
     // Iterate and create blocks for targets of jumps/branches and function entry points 
     // Requires graph analysis to identify block headers 
     // For now, just the entry block 
+    bdi_node_to_llvm_block_.clear(); 
+    std::set<NodeID> headers; 
+    std::vector<NodeID> worklist; 
+    std::set<NodeID> visited; 
+    // Entry node is always a header 
+    headers.insert(entry_node_id); 
+    worklist.push_back(entry_node_id); 
+    // Find all block headers (targets of jumps/branches) 
+    while (!worklist.empty()) { 
+        NodeID current_id = worklist.back(); 
+        worklist.pop_back(); 
+        if (visited.count(current_id)) continue; 
+        visited.insert(current_id); 
+        auto node_opt = graph.getNode(current_id); 
+        if (!node_opt) continue; 
+        const BDINode& node = node_opt.value(); 
+        // Check successors based on op type 
+        BDIOperationType op = node.operation; 
+        if (op == BDIOperationType::CTRL_JUMP || op == BDIOperationType::CTRL_BRANCH_COND || op == BDIOperationType::CTRL_CALL) { 
+            // All direct control flow successors are potential headers 
+            for (NodeID target_id : node.control_outputs) { 
+                headers.insert(target_id); 
+                if (!visited.count(target_id)) worklist.push_back(target_id); 
+            } 
+             // Also, the node *after* a branch/jump (if any, fallthrough concept) might start a block 
+             // This requires more sophisticated CFG analysis from BDI graph. 
+             // For simplicity now, assume only explicit targets start blocks. 
+        } else if (op != BDIOperationType::CTRL_RETURN && op != BDIOperationType::META_END) { 
+             // Continue DFS for sequential flow 
+             for (NodeID target_id : node.control_outputs) { // Assume sequential is in control_outputs[0] 
+                  if (!visited.count(target_id)) worklist.push_back(target_id); 
+                  break; // Only follow first sequential successor for this simple analysis 
+             } 
+        } 
+    }
+    // Create LLVM Basic Blocks for headers 
+    for (NodeID header_id : headers) { 
+        llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm_context_, "bb_" + std::to_string(header_id), current_function_); 
+        bdi_node_to_llvm_block_[header_id] = bb; 
+    }
+     // Ensure entry block exists if somehow missed (shouldn't happen) 
+     if (bdi_node_to_llvm_block_.find(entry_node_id) == bdi_node_to_llvm_block_.end()) { 
+         llvm::BasicBlock* entry_bb = llvm::BasicBlock::Create(llvm_context_, "entry", current_function_); 
+         bdi_node_to_llvm_block_[entry_node_id] = entry_bb; 
+     }  
 } 
-void BDIToLLVMIR::setupFunction(BDINode& start_node /* BDI Start Node */, const IRGraph& chiir_graph /* For signature */) { 
+void BDIToLLVMIR::setupFunction(BDINode& start_node /* BDI Start Node */, const IRGraph& ir_graph /* For signature */ /* Need graph for params/return */) { 
      // 1. Determine Function Signature from IR Graph or annotations  
      std::vector<llvm::Type*> llvm_arg_types; 
      llvm::Type* llvm_return_type = llvm::Type::getVoidTy(llvm_context_); 
-     // Iterate ChiIR PARAM nodes linked from ChiIR ENTRY node 
+     std::vector<NodeID> param_bdi_nodes; // Store BDI Nodes representing params 
+     // Iterate IR PARAM nodes linked from IR ENTRY node 
      // For each param, map its ChimeraType to llvm::Type and add to llvm_arg_types 
-     // Find ChiIR RETURN_VALUE node and map its input type to llvm_return_type  
+     // Find IR RETURN_VALUE node and map its input type to llvm_return_type  
      // Define function type (e.g., void func()) - needs proper signature based on graph later 
-     llvm::FunctionType* func_type = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm_context_), false); // Placeholder 
-     current_function_ = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, /* Function Name */ "bdi_func", module_.get()); 
+     // Find PARAM ChiIR nodes (conceptually) mapped to BDI nodes following START 
+     // Or use metadata on START node? Assume metadata for now. 
+     // Example: Metadata indicates function signature 
+     // const FunctionSignature* sig = findFunctionSignatureMetadata(start_node); 
+     // if (sig) { 
+     //     llvm_return_type = mapBDITypeToLLVM(sig->return_type); 
+     //     for(BDIType param_type : sig->param_types) { 
+     //         llvm_arg_types.push_back(mapBDITypeToLLVM(param_type)); 
+     //     } 
+     // } 
+     llvm::FunctionType* func_type = llvm::FunctionType::get(llvm::Type::getVoidTy(llvm_context_), llvm_return_type, llvm_arg_types, false); // Placeholder 
+     current_function_ = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, /* Function Name */ "bdi_func", + std::to_string(start_node.id), module_.get()); 
      // TODO: Set argument names, types based on PARAM nodes 
      // 2. Create Entry Basic Block 
      llvm::BasicBlock* entry_bb = llvm::BasicBlock::Create(llvm_context_, "entry", current_function_); 
@@ -86,6 +158,11 @@ void BDIToLLVMIR::setupFunction(BDINode& start_node /* BDI Start Node */, const 
      //     // Store the AllocaInst* as the value for the BDI PARAM node ID 
      //     bdi_node_to_llvm_value_[bdi_param_node_id] = arg_alloc; // Param node provides address 
      // } 
+     // --- Frame Pointer Setup (Example for standard ABI) --- 
+     // llvm::Value* fp_reg_ptr = builder_.CreateCall(llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::addressofreturnaddress), 
+     // Note: Stack handling is highly target dependent. Using intrinsics or inline asm might be needed. 
+     // Or rely on LLVM itself to manage the frame pointer if requested via function attributes/target options. 
+     // For simplicity, we might skip explicit FP manipulation in BDI->LLVM if possible. 
      // 4. Create Alloca for stack frame pointer storage (if needed by target ABI) 
      // llvm::AllocaInst* fp_alloc = builder_.CreateAlloca(builder_.getInt8PtrTy(), nullptr, "fp.addr"); 
      // builder_.CreateStore(builder_.CreateCall(llvm::Intrinsic::getDeclaration(module_.get(), llvm::Intrinsic::frameaddress), {builder_.getI
@@ -120,6 +197,7 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
     }
     // ... (Get input llvm::Value*s as before) ... 
     llvm::Value* result_val = nullptr; 
+    // ... SetInsertPoint for current block ... 
     // Generate LLVM instruction based on BDI OpType 
     switch (node.operation) { 
     // ... Meta Start/End, Const ... 
@@ -133,6 +211,17 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
              // ... Arithmetic, Bitwise, Comparison, Logical -> LLVM instructions ... 
         case BDIOperationType::ARITH_ADD: { 
              if (llvm_inputs.size() != 2) return; // Error 
+             llvm::Value* lhs = llvm_inputs[0]; 
+                 llvm::Value* rhs = llvm_inputs[1]; 
+                 // Check for Pointer + Integer -> GEP 
+                 if (lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()) { 
+                     llvm::Type* pointee_type = lhs->getType()->getPointerElementType(); // Needs correct type! 
+                     result_val = builder_.CreateGEP(pointee_type, lhs, rhs, "addptr"); 
+                 } else if (rhs->getType()->isPointerTy() && lhs->getType()->isIntegerTy()) { 
+                     llvm::Type* pointee_type = rhs->getType()->getPointerElementType(); 
+                     result_val = builder_.CreateGEP(pointee_type, rhs, lhs, "addptr"); 
+                 } 
+             // ... Handle standard integer/float add ... 
              // Check if one input is pointer and other is integer offset 
              if (llvm_inputs[0]->getType()->isPointerTy() && llvm_inputs[1]->getType()->isIntegerTy()) { 
                     result_val = builder_.CreateGEP(mapBDITypeToLLVM(node.getOutputType(0))->getPointerElementType(), llvm_inputs[0], llvm_inp
@@ -145,6 +234,8 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
              else if (llvm_inputs[0]->getType()->isFloatingPointTy()) result_val = builder_.CreateFAdd(llvm_inputs[0], llvm_inputs[1], 
              } else { /* Error */ } 
              break; 
+             // Handle MUL used for array index calculation before ADD -> GEP 
+             // A dedicated BDI op for GEP calculation mapped from ChiIR would be cleaner. 
              // ... Implement MUL, DIV (SDiv/UDiv/FDiv), REM (SRem/URem/FRem), NEG (Sub 0, X / FNeg) ... 
              // Bitwise (Use integer instructions) 
              case BDIOperationType::BIT_AND: if(llvm_inputs.size()==2) result_val = builder_.CreateAnd(llvm_inputs[0], llvm_inputs[1], "andtmp"); b
@@ -162,6 +253,74 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
              // ... Control Flow -> CreateBr, CreateCondBr, CreateRet ... 
              // ... Function Calls -> CreateCall ... 
              // ... Conversions -> CreateTrunc/SExt/ZExt/SIToFP/FPToSI/BitCast ... 
+             case BDIOperationType::CONV_TRUNC: result_val = builder_.CreateTrunc(llvm_inputs[0], mapBDITypeToLLVM(node.getOutputType(0)), "trunc")
+        case BDIOperationType::CONV_EXTEND_SIGN: result_val = builder_.CreateSExt(llvm_inputs[0], mapBDITypeToLLVM(node.getOutputType(0)), "se
+        case BDIOperationType::CONV_EXTEND_ZERO: result_val = builder_.CreateZExt(llvm_inputs[0], mapBDITypeToLLVM(node.getOutputType(0)), "ze
+        case BDIOperationType::CONV_FLOAT_TO_INT: // Need SIToFP or UIToFP based on target int type 
+             if (TypeSystem::isSigned(node.getOutputType(0))) result_val = builder_.CreateFPToSI(llvm_inputs[0], mapBDITypeToLLVM(node.getOutp
+             else result_val = builder_.CreateFPToUI(llvm_inputs[0], mapBDITypeToLLVM(node.getOutputType(0)), "fptoui"); 
+             break; 
+        case BDIOperationType::CONV_INT_TO_FLOAT: // Need FPToSI or FPToUI 
+             if (TypeSystem::isSigned(getBDIType(llvm_inputs[0]))) result_val = builder_.CreateSIToFP(llvm_inputs[0], mapBDITypeToLLVM(node.ge
+             else result_val = builder_.CreateUIToFP(llvm_inputs[0], mapBDITypeToLLVM(node.getOutputType(0)), "uitofp"); 
+             break; 
+        case BDIOperationType::CONV_BITCAST: result_val = builder_.CreateBitCast(llvm_inputs[0], mapBDITypeToLLVM(node.getOutputType(0)), "bit
+         // --- Control Flow Terminators --- 
+         case BDIOperationType::CTRL_JUMP: { 
+              if (node.control_outputs.empty()) return; // Error 
+              NodeID target_id = node.control_outputs[0]; 
+              if (bdi_node_to_llvm_block_.count(target_id)) { 
+                  builder_.CreateBr(bdi_node_to_llvm_block_.at(target_id)); 
+              } else { /* Error: Target block not found */ } 
+              break;
+         }
+          case BDIOperationType::CTRL_BRANCH_COND: { 
+               if (node.control_outputs.size() < 2 || llvm_inputs.empty()) return; // Error 
+               NodeID true_target_id = node.control_outputs[0]; 
+               NodeID false_target_id = node.control_outputs[1]; 
+               if (bdi_node_to_llvm_block_.count(true_target_id) && bdi_node_to_llvm_block_.count(false_target_id)) { 
+                    llvm::Value* cond = llvm_inputs[0]; 
+                    // Ensure condition is i1 
+                    if (cond->getType() != builder_.getInt1Ty()) { cond = builder_.CreateIsNotNull(cond, "condbool"); } // Example conversion 
+                    builder_.CreateCondBr(cond, bdi_node_to_llvm_block_.at(true_target_id), bdi_node_to_llvm_block_.at(false_target_id)); 
+               } else { /* Error: Target block(s) not found */ } 
+               break; 
+          } 
+          case BDIOperationType::CTRL_RETURN: { /* ... CreateRet / CreateRetVoid as before ... */ break; } 
+        // ... other ops ... 
+    }
+    // ... Store result_val map ... 
+} 
+// Update convertGraph to perform full CFG linking after node conversion 
+std::unique_ptr<llvm::Module> BDIToLLVMIR::convertGraph(BDIGraph& graph, const std::string& module_id) { 
+    // ... Init module ... 
+    NodeID entry_node_id = 1; // Find entry reliably 
+    // ... Find entry node ... 
+    setupFunction(*entry_node_ptr, graph); // Setup function signature 
+    setupBasicBlocks(graph, entry_node_id); // Create all BBs first 
+    // Process nodes block by block, or use traversal that respects blocks 
+    std::vector<NodeID> processing_order; // RPO order ideal 
+    // ... Populate processing_order via traversal ... 
+    for (NodeID node_id : processing_order) { 
+        BDINode* node = graph.getNodeMutable(node_id); 
+        if (!node) continue; 
+         // Ensure builder is set to the correct block for this node 
+if (bdi_node_to_llvm_block_.count(node_id)) { 
+            builder_.SetInsertPoint(bdi_node_to_llvm_block_.at(node_id)); 
+        } 
+else if (!builder_.GetInsertBlock()) { 
+// Node doesn't start block and no predecessor set insert point? Error or find predecessor block. 
+             llvm::errs() << "BDIToLLVMIR Error: Cannot determine basic block for Node " << node_id << "\n"; 
+continue; 
+        } 
+else { 
+// Belongs to the block currently being built 
+        } 
+        convertNode(*node); // Convert node instructions (incl. terminators) 
+    }
+ // ... Verify module ... 
+return std::move(module_);
+ }
         }
              // ... Store result_val map ... 
    } 
