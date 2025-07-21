@@ -105,7 +105,7 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
         case BDIOperationType::ARITH_ADD: { 
              if (llvm_inputs.size() != 2) return; // Error 
              if (llvm_inputs[0]->getType()->isIntegerTy()) result_val = builder_.CreateAdd(llvm_inputs[0], llvm_inputs[1], "addtmp"); 
-             else if (llvm_inputs[0]->getType()->isFloatingPointTy()) result_val = builder_.CreateFAdd(llvm_inputs[0], llvm_inputs[1], "faddtm
+             else if (llvm_inputs[0]->getType()->isFloatingPointTy()) result_val = builder_.CreateFAdd(llvm_inputs[0], llvm_inputs[1], 
              } else { /* Error */ } 
              break; 
              // ... Implement MUL, DIV (SDiv/UDiv/FDiv), REM (SRem/URem/FRem), NEG (Sub 0, X / FNeg) ... 
