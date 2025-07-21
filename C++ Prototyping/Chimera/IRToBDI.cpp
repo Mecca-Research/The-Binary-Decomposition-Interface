@@ -340,9 +340,15 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              if (op) { 
                  // Map "+", "*", etc. used in address calculation to BDI ARITH ops 
                  BDIOperationType bdi_op = mapIRArithOpToBDI(op->representation); // Use helper 
+                 if (bdi_op == BDIOperationType::META_NOP) return false; // Check mapping result 
                  bdi_node_id = ctx.builder.addNode(bdi_op, ir_node.label); 
                  // Connect data inputs (base address, offset, index, size) 
                  for(size_t i=0; i < ir_node.inputs.size(); ++i) { /* ... connect using getBDIPortRef ... */ } 
+                 auto bdi_ref = getBDIPortRef(ir_node.inputs[i], ctx); 
+                     if (!bdi_ref) return false; 
+                     if (!ctx.builder.connectData(bdi_ref->node_id, bdi_ref->port_index, bdi_node_id, i)) return false; 
+                 } 
+                 // Define output port 
                  // Define output port with correct type (POINTER or integer offset) 
                  if (ir_node.output_type) ctx.builder.defineDataOutput(bdi_node_id, 0, ir_node.output_type->getBaseBDIType()); 
              } else return false; 
@@ -529,6 +535,9 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
             if (ir_node.output_type) builder_.defineDataOutput(bdi_node_id, 0, ir_node.output_type->getBaseBDIType()); 
              break;
        } 
+            // LOAD_SYMBOL and STORE_MEM cases need to connect the result of the 
+            // address calculation IR node (which might be BINARY_OP(+)) 
+            // to the address input (Port 0) of the BDI MEM_LOAD/MEM_STORE node.
         case IROpCode::LOAD_MEM: { // Load from variable address 
             const auto* symbol = std::get_if<Symbol>(&ir_node.operation_data); // Address source handled here 
             if (!symbol) return false; 
@@ -548,7 +557,10 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
             NodeID bdi_addr_node_id = 123; // Placeholder 
             bdi_op = BDIOperationType::MEM_LOAD; 
             bdi_node_id = ctx.builder.addNode(bdi_op, ir_node.label); 
-            ctx.builder.connectData(bdi_addr_node_id, 0, bdi_node_id, 0); // Connect address source  // Address source 
+            if (ir_node.inputs.empty()) return false; // Should have address input 
+               auto bdi_addr_ref = getBDIPortRef(ir_node.inputs[0], ctx); // Get BDI node providing address 
+            if (!bdi_addr_ref) return false; 
+               ctx.builder.connectData(bdi_addr_node_id, 0, bdi_node_id, 0); // Connect address source  // Address source 
             if (ir_node.output_type) ctx.builder.defineDataOutput(bdi_node_id, 0, ir_node.output_type->getBaseBDIType()); 
             break; 
        }
@@ -573,11 +585,15 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              } else { // STORE_MEM 
                  bdi_op = BDIOperationType::MEM_STORE; 
                  bdi_node_id = ctx.builder.addNode(bdi_op, ir_node.label); 
-                 ctx.builder.connectData(bdi_addr_node_id, 0, bdi_node_id, 0); // Connect address 
+                 if (ir_node.inputs.size() < 2) return false; // Addr, Value 
+                 auto bdi_addr_ref = getBDIPortRef(ir_node.inputs[0], ctx); // Address node ref 
+                 auto bdi_value_ref = getBDIPortRef(ir_node.inputs[1], ctx); // Value node ref 
+                 if (!bdi_addr_ref || !bdi_value_ref) return false; 
+                 ctx.builder.connectData(bdi_addr_node_id, 0, bdi_node_id, 0); // Connect address -> Input 0 
                  // Connect value input (IR input 0 -> BDI input 1) 
                  auto bdi_value_ref = getBDIPortRef(ir_node.inputs[0], ctx); 
                  if (!bdi_value_ref) return false; 
-                 ctx.builder.connectData(bdi_value_ref->node_id, bdi_value_ref->port_index, bdi_node_id, 1); 
+                 ctx.builder.connectData(bdi_value_ref->node_id, bdi_value_ref->port_index, bdi_node_id, 1); // Connect Value -> Input 1 
              }
              bdi_node_id = ctx.builder_.addNode(bdi_op, ir_node.label); 
              if (ir_node.inputs.size() != 2) return false; // Expect Addr, Value Ref 
@@ -717,7 +733,7 @@ bool IRToBDI::convertNode(const IRNode& ir_node, BDIConversionContext& ctx) { //
              // ... 
              return std::nullopt; // Placeholder
         } 
-             // ... map IDs, define outputs, connect data, connect control flow ... 
+             // ... map IDs, define outputs, connect data, store output refs, connect control flow ... 
              return true;
     }
             // Implement generateBDIAddressCalc using adjustPointer helper and ctx.frame_pointer_bdi_node 
