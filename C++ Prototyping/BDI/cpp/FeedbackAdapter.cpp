@@ -221,17 +221,40 @@ public:
     // Configurable params: learning rate (alpha), discount factor (gamma) 
     // Needs info about: State representation nodes, Action taken node, Reward node 
     QLearningFeedbackAdapter(float alpha, float gamma, /* config telling where state/action/reward are */); 
-    void processFeedback(ExecutionContext& context, BDIGraph& graph) override { 
-        pending_updates_.clear(); 
-        // 1. Get current state S (representation from context) 
-        // auto current_state_features = getCurrentStateFeatures(context); 
-        // 2. Get action A taken in state S 
+    void QLearningFeedbackAdapter::processFeedback(ExecutionContext& context, BDIGraph& graph) { 
+    pending_updates_.clear(); 
+    try { 
+        // 1. Get S, A, R, S' (Assuming these NodeIDs/Ports are configured) 
+        //    Requires a mechanism to identify the nodes holding these values in the context. 
+        //    e.g., reading from specific output ports set by the BDI graph execution. 
+        auto current_state_repr = context.getPortValue(config_.current_state_port).value_or(BDIValueVariant{}); 
+        auto action_taken_repr = context.getPortValue(config_.action_taken_port).value_or(BDIValueVariant{}); 
+        auto reward_val = vm_ops::convertValueOrThrow<float>(context.getPortValue(config_.reward_port).value()); 
+        auto next_state_repr = context.getPortValue(config_.next_state_port).value_or(BDIValueVariant{}); 
+        // 2. Find max Q(S', a') for all possible next actions a' 
+        float max_next_q = 0.0f; 
+        // This requires iterating possible actions, finding/querying their Q-value nodes (or a function) 
+        // for next_state_repr, and finding the max. Highly dependent on Q-value representation. 
+        // max_next_q = lookupMaxQValue(next_state_repr, graph, context); // Placeholder lookup 
         // auto action_taken = getActionTaken(context); 
-        // 3. Get reward R received 
+        // 3. Get current Q(S, A) 
+        // NodeID current_q_node_id = findQValueNodeID(current_state_repr, action_taken_repr); // Lookup mechanism needed 
+        NodeID current_q_node_id = 1000; // Placeholder ID 
+        auto current_q_val_var = context.getPortValue(current_q_node_id, 0).value_or(BDIValueVariant{0.0f}); // Default Q=0 
+        float current_q = vm_ops::convertValueOrThrow<float>(current_q_val_var); 
         // auto reward_val = getReward(context); 
         // 4. Get next state S' features (from context after next step simulation?) 
+        // Calculate Update Delta: alpha * (R + gamma * max_next_q - current_q) 
+        float td_error = reward_val + gamma_ * max_next_q - current_q; 
+        float delta_q = alpha_ * td_error; 
         // auto next_state_features = getNextStateFeatures(context);  
         // 5. Find max Q(S', a') over all possible next actions a' 
+        // Generate update 
+        pending_updates_.push_back({current_q_node_id, BDIValueVariant{delta_q}}); 
+        } catch (const std::exception& e) { 
+           std::cerr << "QLearningFeedbackAdapter Error: " << e.what() << std::endl; 
+       }
+    }
         // float max_next_q = findMaxQValueForState(next_state_features); // Needs access to Q-value table/network 
         // 6. Get current Q(S, A) 
         // NodeID current_q_node_id = findQValueNode(current_state_features, action_taken); // Find node storing Q(S,A) 
