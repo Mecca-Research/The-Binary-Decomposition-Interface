@@ -171,7 +171,10 @@ IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckConte
               else if constexpr (std::is_same_v<T, DSLArrayIndexExpr>)   { result_node_id = convertArrayIndex(arg, context, current_cfg_nod    
               else if constexpr (std::is_same_v<T, DSLFuncCallExpr>)  { result_node_id = convertFunctionCall(arg, context, current_cfg_node); }
               else if constexpr (std::is_same_v<T, DSLReturnExpr>)   { result_node_id = convertReturn(arg, context, current_cfg_node); } 
-              // Add cases for struct/array literals, other control flow (match/switch)     
+              else if constexpr (std::is_same_v<T, DSLStructDefExpr>)  { convertStructDefinition(arg, context, current_cfg_node); result_node_i
+              else if constexpr (std::is_same_v<T, DSLStructLiteralExpr>){ result_node_id = convertStructLiteral(arg, context, current_cfg_node
+              else if constexpr (std::is_same_v<T, DSLArrayLiteralExpr>) { result_node_id = convertArrayLiteral(arg, context, current_cfg_node)
+              else if constexpr (std::is_same_v<T, DSLForLoopExpr>)     { result_node_id = convertForLoop(arg, context, current_cfg_node); }    
               // Handle different kinds of definitions 
               // if (isFunctionDefinition(arg)) { convertFunctionDefinition(arg, context, current_cfg_node); } 
               // else { convertVariableDefinition(arg, context, current_cfg_node); } 
@@ -711,6 +714,103 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
      } 
 } 
 // ... Implement convertDefinition, convertSequence, convertDSLBlock, convertSymbolLoad etc. ... 
+void ASTToChiIR::convertStructDefinition(const DSLStructDefExpr& struct_def, TypeChecker::CheckContext& context, ChiIRNodeId& current_cfg_node
+    // Type checking phase should have already processed the struct definition 
+    // and added its type information to the type registry / context. 
+    // No ChiIR nodes are generated for the definition itself, only for its usage (literals, allocs). 
+    std::cout << "ASTToChiIR: Processed struct definition for '" << struct_def.name.name << "' (No ChiIR generated)." << std::endl; 
+} 
+ChiIRNodeId ASTToChiIR::convertStructLiteral(const DSLStructLiteralExpr& literal_expr, TypeChecker::CheckContext& context, ChiIRNodeId& curren
+    // 1. Resolve the struct type being instantiated 
+    // auto struct_type_ptr = type_checker_.resolveTypeExpr(literal_expr.type_name, context); // Needs type resolution logic 
+    auto struct_type_ptr = std::make_shared<ChimeraType>(); // Placeholder 
+    if (!struct_type_ptr || !struct_type_ptr->isStruct()) throw BDIExecutionError("Invalid struct type for literal"); 
+    const auto& struct_type = std::get<ChimeraStructType>(struct_type_ptr->content); 
+    // 2. Allocate memory for the struct instance (on the stack for now) 
+    ChiIRNodeId alloc_node_id = current_graph_->addNode(ChiIROpCode::ALLOC_MEM, "alloc_struct_" + struct_type.name); 
+    auto* alloc_node = getNode(alloc_node_id); 
+    // alloc_node->operation_data = AllocInfo{struct_type.total_size, struct_type.alignment, struct_type_ptr}; 
+    alloc_node->output_type = std::make_shared<ChimeraType>(); // POINTER to struct_type 
+    current_graph_->addEdge(current_cfg_node, alloc_node_id); 
+    current_cfg_node = alloc_node_id; 
+    ChiIRNodeId base_addr_node_id = alloc_node_id; // Node producing the base address 
+    // 3. Convert and store each field initializer 
+    // Assume literal_expr.fields is map<string, unique_ptr<DSLExpression>> 
+    // for (const auto& field_pair : literal_expr.fields) { 
+    //     const std::string& field_name = field_pair.first; 
+    //     const DSLExpression* field_expr = field_pair.second.get(); 
+    // 
+    //     // Find field info in struct type 
+    //     auto field_it = struct_type.field_name_to_index.find(field_name); 
+    //     if (field_it == struct_type.field_name_to_index.end()) throw BDIExecutionError("Unknown field '" + field_name + "' in struct litera
+    //     size_t field_offset = struct_type.fields[field_it->second].offset; 
+    //     auto field_type = struct_type.fields[field_it->second].type; 
+    // 
+    //     // Convert initializer value 
+    //     ChiIRNodeId value_node_id = convertNode(field_expr, context, current_cfg_node); 
+    //     auto* value_ir_node = getNode(value_node_id); 
+    //     // Check type compatibility(field_type, value_ir_node->output_type)... 
+    // 
+    //     // Calculate field address: BaseAddr + Offset 
+    //     ChiIRNodeId field_addr_node_id = generateAddressCalculation(field_offset, context, current_cfg_node, base_addr_node_id); 
+    // 
+    //     // Generate STORE_MEM 
+    //     ChiIRNodeId store_node_id = current_graph_->addNode(ChiIROpCode::STORE_MEM, "store_field_" + field_name); 
+    //     // ... connect inputs (field_addr_node_id, value_node_id) ... connect CFG ... 
+    //     current_cfg_node = store_node_id; 
+    // } 
+    return base_addr_node_id; // Return the node producing the address of the allocated struct 
+}
+// Implement convertArrayLiteral similarly (ALLOC + sequence of STOREs for elements) 
+ChiIRNodeId ASTToChiIR::convertForLoop(const DSLForLoopExpr& for_loop, TypeChecker::CheckContext& context, ChiIRNodeId& current_cfg_node) { 
+// Example C-style For: for (init; condition; increment) { body } 
+// Structure: 
+// -> Convert Init Expression 
+// -> LOOP_HEADER (Jump Target) 
+// -> Convert Condition Expression 
+// -> BRANCH_COND (condition result) 
+//      |      \ 
+    //      |       -> EXIT_LOOP (Jump Target) 
+//      -> LOOP_BODY_START 
+//      -> Convert Body Sequence 
+//      -> LOOP_INCREMENT_START (Jump Target) 
+//      -> Convert Increment Expression 
+//      -> JUMP back to LOOP_HEADER 
+// -> EXIT_LOOP (Merge Point) 
+// 1. Convert Init expression (creates variables in loop scope) 
+    TypeChecker::CheckContext loop_context; // Create new scope for loop vars + body 
+    loop_context.parent_scope = std::make_shared<TypeChecker::CheckContext>(context); 
+    convertNode(for_loop.initializer.get(), loop_context, current_cfg_node); // Init runs once before loop 
+// 2. Create Header, Condition, Branch (similar to While loop) 
+    ChiIRNodeId loop_header_id = current_graph_->addNode(ChiIROpCode::JUMP, "for_header"); 
+    current_graph_->addEdge(current_cfg_node, loop_header_id); 
+    ChiIRNodeId cond_cfg_node = loop_header_id; 
+    ChiIRNodeId cond_value_node_id = convertNode(for_loop.condition.get(), loop_context, cond_cfg_node); 
+    ChiIRNodeId branch_node_id = current_graph_->addNode(ChiIROpCode::BRANCH_COND, "for_branch"); 
+// ... connect condition to branch input ... connect cond_cfg_node to branch ... 
+// 3. Create Body and Increment entry points (as JUMP targets/labels) 
+    ChiIRNodeId body_entry_id = current_graph_->addNode(ChiIROpCode::JUMP, "for_body_entry"); 
+    ChiIRNodeId increment_entry_id = current_graph_->addNode(ChiIROpCode::JUMP, "for_increment_entry"); 
+    ChiIRNodeId exit_loop_id = current_graph_->addNode(ChiIROpCode::JUMP, "for_exit"); 
+// 4. Set Branch targets 
+auto* branch_node = getNode(branch_node_id); 
+// branch_node->operation_data = std::pair<ChiIRNodeId, ChiIRNodeId>{body_entry_id, exit_loop_id}; 
+    current_graph_->addEdge(branch_node_id, body_entry_id); // True -> Body 
+    current_graph_->addEdge(branch_node_id, exit_loop_id); // False -> Exit 
+// 5. Convert Body, connecting from body_entry 
+    ChiIRNodeId body_cfg_node = body_entry_id; 
+    ChiIRNodeId body_end_node = convertNode(for_loop.body.get(), loop_context, body_cfg_node); 
+    current_graph_->addEdge(body_end_node, increment_entry_id); // End of body jumps to increment 
+// 6. Convert Increment, connecting from increment_entry 
+    ChiIRNodeId increment_cfg_node = increment_entry_id; 
+    ChiIRNodeId increment_end_node = convertNode(for_loop.increment.get(), loop_context, increment_cfg_node); 
+// 7. Jump from end of increment back to header 
+    ChiIRNodeId back_jump_id = current_graph_->addNode(ChiIROpCode::JUMP, "for_back_jump"); 
+    getNode(back_jump_id)->operation_data = loop_header_id; // Target header 
+    current_graph_->addEdge(increment_end_node, back_jump_id); 
+    current_cfg_node = exit_loop_id; // Continue after loop exit 
+return 0; // Loops don't produce a value 
+} 
 // --- IRToBDI --- (Structure - Implementation heavily stubbed) --- 
 IRToBDI::IRToBDI(GraphBuilder& builder, DSLRegistry& dsl_registry, MetadataStore& meta_store) 
     : builder_(builder), dsl_registry_(dsl_registry), meta_store_(meta_store) {} 
