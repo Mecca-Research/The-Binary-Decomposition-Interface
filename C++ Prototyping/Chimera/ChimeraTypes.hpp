@@ -13,7 +13,7 @@ using namespace bdi::core::types;
 // Using std::shared_ptr to handle recursive type definitions (like Function args/return) 
 // Forward declare for recursive use (e.g., field types) 
 struct ChimeraType {
- using Content = std::variant< 
+using Content = std::variant< 
 std::monostate, // Unresolved / Error / Void 
          ChimeraScalarType, 
          ChimeraTensorType, 
@@ -70,6 +70,9 @@ std::shared_ptr<ChimeraType> type = nullptr;
 size_t offset = 0; // Calculated offset within the struct 
 // Add visibility? const? 
 bool operator==(const ChimeraStructField&) const; // Needs implementation 
+// Compare name and recursively compare types 
+return name == other.name && type && other.type && (*type == *other.type); 
+}
 }; 
 // Struct Type Definition 
 struct ChimeraStructType { 
@@ -78,19 +81,50 @@ size_t count = 0; // Number of elements (fixed size)
 size_t element_size_bytes = 0; 
 size_t total_size = 0;
 size_t alignment = 1; 
+std::unordered_map<std::string, size_t> field_name_to_index; 
 void calculateLayout(); // Calculate size/alignment based on element type 
 // ... ChimeraType variant includes ChimeraStructType, ChimeraArrayType ... 
 // Scope for member functions? 
-bool operator==(const ChimeraStructType&) const; // Needs implementation 
+bool operator==(const ChimeraStructType&) const;
+            // Compare name (if relevant), field count, and each field recursively 
+            if (fields.size() != other.fields.size()) return false; 
+            // Note: Field order matters for equality here 
+            for (size_t i = 0; i < fields.size(); ++i) { 
+                if (!(fields[i] == other.fields[i])) return false; // Use field's operator== 
+            } 
+            return name == other.name; // Also compare name if named struct 
+        } 
 }; 
 // Array Type Definition 
 struct ChimeraArrayType {
 std::shared_ptr<ChimeraType> element_type = nullptr; 
 size_t size = 0; // Number of elements (0 for dynamic/slice?) - Fixed size for now 
 size_t element_size_bytes = 0; // Cache element size 
+void calculateLayout(); // Assumed implemented 
 // Bounds checking info? 
-bool operator==(const ChimeraArrayType&) const; // Needs implementation 
+bool operator==(const ChimeraArrayType&) const;
+return count == other.count && element_type && other.element_type && (*element_type == *other.element_type); 
+        }
 }; 
+// --- ChimeraType operator== Implementation --- 
+    bool ChimeraType::operator==(const ChimeraType& other) const { 
+         if (content.index() != other.content.index()) return false; 
+         bool result = true; 
+         std::visit(
+             [&](auto&& arg) { 
+                 using T = std::decay_t<decltype(arg)>; 
+                 if constexpr (!std::is_same_v<T, std::monostate>) { 
+                     // Check if 'other' holds the same type, then compare content 
+                     if (const auto* other_arg = std::get_if<T>(&other.content)) { 
+                          result = (arg == *other_arg); // Use the specific type's operator== 
+                     } else { 
+                         result = false; // Should not happen if indices match, but defensive check 
+                     } 
+                 } // else: monostate compares equal only to monostate (implicit via index check) 
+             }, 
+             content); 
+         return result && (user_defined_name == other.user_defined_name); // Compare name too 
+    }
 // Function type 
 struct ChimeraFunctionType { 
 std::vector<std::shared_ptr<struct ChimeraType>> argument_types; 
