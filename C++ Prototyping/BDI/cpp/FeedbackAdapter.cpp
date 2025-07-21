@@ -213,9 +213,45 @@ else {
             } 
         } 
     }
- // Clear gradients after processing? Optional, depends on usage. 
+// Clear gradients after processing? Optional, depends on usage. 
 // context.clearIntelligenceState(); // Or just clear gradients 
 // ... get/clear updates ... 
+class QLearningFeedbackAdapter : public FeedbackAdapter { 
+public: 
+    // Configurable params: learning rate (alpha), discount factor (gamma) 
+    // Needs info about: State representation nodes, Action taken node, Reward node 
+    QLearningFeedbackAdapter(float alpha, float gamma, /* config telling where state/action/reward are */); 
+    void processFeedback(ExecutionContext& context, BDIGraph& graph) override { 
+        pending_updates_.clear(); 
+        // 1. Get current state S (representation from context) 
+        // auto current_state_features = getCurrentStateFeatures(context); 
+        // 2. Get action A taken in state S 
+        // auto action_taken = getActionTaken(context); 
+        // 3. Get reward R received 
+        // auto reward_val = getReward(context); 
+        // 4. Get next state S' features (from context after next step simulation?) 
+        // auto next_state_features = getNextStateFeatures(context);  
+        // 5. Find max Q(S', a') over all possible next actions a' 
+        // float max_next_q = findMaxQValueForState(next_state_features); // Needs access to Q-value table/network 
+        // 6. Get current Q(S, A) 
+        // NodeID current_q_node_id = findQValueNode(current_state_features, action_taken); // Find node storing Q(S,A) 
+        // auto current_q_opt = context.getPortValue(current_q_node_id, 0); 
+        // auto current_q = vm_ops::convertValue<float>(current_q_opt.value()); 
+        // 7. Calculate TD Error: R + gamma * max_next_q - current_q 
+        // float td_error = reward_val + gamma_ * max_next_q - current_q.value(); 
+        // 8. Calculate Update Delta: alpha * td_error 
+        // float delta_q = alpha_ * td_error; 
+        // 9. Add pending update for Q(S,A) node 
+        // pending_updates_.push_back({current_q_node_id, BDIValueVariant{delta_q}}); 
+        std::cout << "QLearningFeedbackAdapter::processFeedback - STUBBED" << std::endl; 
+    }
+    // ... other methods ... 
+private: 
+    float alpha_; // Learning rate 
+    float gamma_; // Discount factor 
+    // ... configuration ... 
+    std::vector<ParameterUpdate> pending_updates_; 
+}; 
 private: 
 float learning_rate_; 
 std::vector<ParameterUpdate> pending_updates_; 
