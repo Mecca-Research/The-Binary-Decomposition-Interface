@@ -1055,4 +1055,119 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
    // else if (task_halt_requested_) { /* Remove task, switch to scheduler */ } 
    // else if (wait_requested_) { /* Move task to wait queue, switch to scheduler */ } 
    // else { current_node_id_ = determineNextNode(...); } 
+   // --- Simplified OS Run Loop --- 
+ void BDIVirtualMachine::runOS() { 
+    is_os_running_ = true; // Add member flag 
+    current_task_id_ = 0; // No task initially 
+    current_context_ = nullptr; // No context 
+    std::cout << "BDIOS: Starting Scheduler Loop..." << std::endl; 
+    // Initial jump to scheduler graph entry point (assumed loaded) 
+    current_node_id_ = SCHEDULER_ENTRY_NODE_ID; // Predefined constant 
+    while(is_os_running_) { 
+        // Execute Scheduler Logic (runs until it performs SYS_DISPATCH or SYS_WAIT_EVENT) 
+        // This execution needs its own context or operate carefully on shared state 
+        std::cout << "BDIOS: Running Scheduler..." << std::endl; 
+        // For simplicity, assume scheduler logic finds next task and sets up state 
+        // then signals VM via a conceptual "dispatch request" state 
+        // runSlice(*scheduler_graph_, SCHEDULER_ENTRY_NODE_ID); // Simplified conceptual call 
+        // --- Simulate Scheduler Finding Task --- 
+        uint64_t next_task_id = 1; // Assume task 1 is ready 
+        NodeID resume_at = 100; // Assume task 1 resumes at node 100 
+        std::cout << "BDIOS Scheduler: Dispatching Task " << next_task_id << " at Node " << resume_at << std::endl; 
+        // --- End Simulation --- 
+        // Perform Context Switch & Run Task Slice 
+        if (current_task_id_ != 0) { 
+             if (!saveCurrentContext(current_task_id_)) { /* Error */ is_os_running_ = false; continue; } 
+        } 
+        if (!restoreContext(next_task_id)) { 
+            // Create new context if restore fails? 
+             std::cerr << "BDIOS Error: Failed to restore context for Task " << next_task_id << std::endl; 
+             is_os_running_ = false; continue; 
+        } 
+        current_task_id_ = next_task_id; 
+        current_node_id_ = resume_at; 
+        // Execute the task slice 
+        // Assume graph for task is found based on task_id or stored context 
+        BDIGraph& task_graph = findGraphForTask(current_task_id_); // Needs implementation 
+        VMExecResult result = runTaskSlice(task_graph, current_node_id_, 1000); // Run task 
+        // --- Handle Task Slice Result --- 
+        std::cout << "BDIOS: Task " << current_task_id_ << " finished slice with result: " << static_cast<int>(result) << std::endl; 
+        switch(result) { 
+            case VMExecResult::YIELDED: 
+            case VMExecResult::COMPLETED: // Treat completion same as yield for now 
+                 // Task goes back to ready queue (scheduler logic handles this implicitly on next run) 
+                 break; // Continue to scheduler loop 
+            case VMExecResult::HALTED_TASK: 
+                 // Task finished permanently (scheduler logic handles removal) 
+                 current_task_id_ = 0; // No current task 
+                 current_context_ = nullptr; 
+                 // Remove from task_contexts_ map? 
+                 break; // Continue to scheduler loop 
+            case VMExecResult::WAITING: 
+                 // Task is waiting for event (scheduler logic handles moving to wait queue) 
+                 // Store wait condition associated with task 
+                 break; // Continue to scheduler loop 
+            case VMExecResult::ERROR: 
+                 // Handle task error: terminate task? Log error? Halt system? 
+                 std::cerr << "BDIOS Error: Task " << current_task_id_ << " encountered execution error. Halting task." << std::endl; 
+                 halt_task_requested_ = true; // Signal halt for next scheduler cycle check 
+                 break; // Continue to scheduler loop 
+        } 
+        // Set current_node_id_ back to scheduler entry for next iteration 
+        current_node_id_ = SCHEDULER_ENTRY_NODE_ID; // Or scheduler continues from where it left off? 
+    } // End while(is_os_running_) 
+     std::cout << "BDIOS: Exiting Scheduler Loop." << std::endl; 
+} 
+// --- Internal Context Switch Logic (Simplified) --- 
+bool BDIVirtualMachine::saveCurrentContext(uint64_t task_id) { 
+    if (!current_context_ || task_id == 0) return false; 
+    std::cout << "VM Internal: Saving context for Task " << task_id << " (Resume Node: " << current_node_id_ << ")" << std::endl; 
+    // In reality, this would involve copying the ExecutionContext contents 
+    // (port_values_, call_stack_) to a structure associated with task_id 
+    // managed by the OS/Scheduler layer. It might involve SYS_CONTEXT_SAVE op. 
+    // Store resume point 
+    // TCB* tcb = scheduler_->getTCB(task_id); tcb->resume_node_id = current_node_id_; 
+    return true; // Placeholder 
+} 
+bool BDIVirtualMachine::restoreContext(uint64_t task_id) { 
+    if (task_id == 0) return false; 
+    std::cout << "VM Internal: Restoring context for Task " << task_id << std::endl; 
+    // Find context structure associated with task_id (managed by OS/Scheduler) 
+    // Copy saved state back into this->execution_context_ (port_values_, call_stack_) 
+    // This might involve SYS_CONTEXT_RESTORE op. 
+    // For now, just clear and assume restore happens externally or context is persistent per task 
+    execution_context_->clear(); // Clear previous task's temp state 
+    // Retrieve resume node ID from TCB 
+    // current_node_id_ = scheduler_->getTCB(task_id)->resume_node_id; // Handled by runOS loop instead 
+    return true; // Placeholder 
+} 
+// --- Implement OS_SERVICE_CALL --- 
+bool BDIVirtualMachine::executeNode(BDINode& node, BDIGraph& graph) { 
+    // ...
+    switch (node.operation) { 
+        // ... 
+         case OpType::OS_SERVICE_CALL: { 
+             // Highly Complex: Synchronous call to another BDI graph 
+             // 1. Get Service ID from payload 
+             uint64_t service_id = node.payload.getAs<uint64_t>(); // Assume payload is service ID 
+             // 2. Find Service Graph Entry Point Node ID 
+             NodeID service_entry_node = findServiceEntryNode(service_id); // Needs registry 
+             if (service_entry_node == 0) throw BDIExecutionError("OS Service not found: " + std::to_string(service_id)); 
+             // 3. Package Inputs[] into arguments for the service call (e.g., push to temp stack or dedicated context area) 
+             // 4. Conceptually: Save current context state (like a function call but synchronous within VM) 
+             // 5. Set current_node_id_ to service_entry_node 
+             // 6. *** Execute the service graph within the VM loop until it hits RETURN *** 
+             //    This requires nesting or modification of the main execution loop mechanism. 
+             // 7. Restore original context state. 
+             // 8. Get return value(s) from service execution (from context's last_return_value_?) 
+             // 9. Set result_var for the OS_SERVICE_CALL node. 
+             std::cout << "VM Op: OS_SERVICE_CALL (Complex Stub) - Service " << service_id << std::endl; 
+             result_var = BDIValueVariant{uint64_t{0}}; // Dummy success code 
+             break; 
+         }
+        // ... 
+    }
+    // ...
+    return op_success; 
+} 
  } // namespace bdi::runtime
