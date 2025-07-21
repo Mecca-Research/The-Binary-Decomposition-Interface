@@ -171,10 +171,14 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
     // ... (determine next node) ...
     return true;
  }
+
  // --- Execute Node Implementation (Refactored for Variant & Core Ops) --
  bool BDIVirtualMachine::executeNode(BDINode& node, BDIGraph& graph) { // Added graph param
     // Need access to intelligence components if VM manages them directly 
     // Or intelligence ops interact via ExecutionContext state / MetadataStore 
+    // Add member variable to store service graph entry points 
+    // std::unordered_map<uint64_t, NodeID> service_entry_points_; 
+    // void registerService(uint64_t service_id, NodeID entry_node); 
     using OpType = core::graph::BDIOperationType;
     using BDIType = core::types::BDIType;
     using TypeSys = core::types::TypeSystem;
@@ -336,8 +340,44 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
                   recurrence_manager_->writeCurrentState(node.id, inputs[0]); // Use manager 
                   break; // No output value 
             } 
+             case OpType::OS_SERVICE_CALL: { 
+                 if (node.payload.type != BDIType::UINT64) throw BDIExecutionError("OS_SERVICE_CALL payload must be UINT64 (ServiceID)"); 
+                 uint64_t service_id = node.payload.getAs<uint64_t>(); 
+                 NodeID service_entry_node = findServiceEntryNode(service_id); // Lookup service 
+                 if (service_entry_node == 0) throw BDIExecutionError("OS Service not found: " + std::to_string(service_id)); 
+                 // 1. Prepare Arguments for service call (stage them) 
+                 ctx.next_arguments_.clear(); 
+                 for(size_t i = 0; i < node.data_inputs.size(); ++i) { 
+                     auto arg_opt = ctx.getPortValue(node.data_inputs[i]); 
+                     if (!arg_opt) throw BDIExecutionError("Missing argument for OS Service Call"); 
+                     ctx.setNextArgument(static_cast<PortIndex>(i), arg_opt.value()); 
+                 } 
+                 // 2. Save current state and push call frame *for the service call* 
+                 // Need a way to return *after* the service call finishes. 
+                 // Use the *next* sequential node ID as the return address. 
+                 NodeID return_addr_node = 0; 
+                 if (!node.control_outputs.empty()) return_addr_node = node.control_outputs[0]; // Assume sequential successor 
+                 if (return_addr_node == 0) throw BDIExecutionError("OS_SERVICE_CALL needs a successor node to return to"); 
+                 ctx.pushCallFrame(node.id /* Caller is OS_SERVICE_CALL node */, return_addr_node); 
+                 // 3. Set VM state to execute the service graph 
+                 current_node_id_ = service_entry_node; // Jump to service entry 
+                 // The main loop will now execute the service graph. 
+                 // The service graph MUST end with a RETURN node. 
+                 // Prevent standard control flow advance after this node 
+                 service_call_pending_return_ = true; // Add a VM flag 
+                 break; // Execution continues within the service graph in the next cycle 
+            } 
+            // ... 
+        } // End Switch 
     } // ... catch ... 
-     // ... Store Result ... 
+      // ... Store Result ... 
+      // Result setting logic needs adjustment for OS_SERVICE_CALL. The result 
+      // will be available only *after* the service call returns and is processed 
+      // in the next execution cycle of the original caller node's successor. 
+      // The logic that sets the output for CTRL_CALL needs to be invoked somehow. 
+      if (op_success && !node.data_outputs.empty() && !std::holds_alternative<std::monostate>(result_var)) { 
+           if (!setOutputValueVariant(ctx, node, 0, result_var)) op_success = false; 
+    } // ... existing checks ... 
     return op_success; 
 } 
     // --- Operation Dispatch --
@@ -653,6 +693,61 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
     current_node_id_ = next_id;
     return true;
  }
+    // --- Handle return from OS_SERVICE_CALL --- 
+    if (service_call_pending_return_) { 
+        // A service call just finished via a RETURN node. 
+        // The RETURN handler in determineNextNode already popped the frame 
+        // and set ctx.last_return_value_ and set current_node_id_ to return_addr. 
+        // Now, we need to place the return value into the original OS_SERVICE_CALL node's output. 
+        auto frame_info = ctx.last_popped_call_frame_; // Need to store the popped frame info temporarily 
+        if (frame_info && frame_info.value().caller_node_id != 0) { // Check if caller ID stored 
+             auto caller_node_opt = graph.getNodeMutable(frame_info.value().caller_node_id); 
+             if (caller_node_opt && caller_node_opt.value().get().operation == OpType::OS_SERVICE_CALL) { 
+                 if (ctx.getLastReturnValue().has_value()) { 
+                     setOutputValueVariant(ctx, *caller_node_opt, 0, ctx.getLastReturnValue().value()); 
+                 } 
+             } 
+        } 
+        service_call_pending_return_ = false; // Reset flag 
+    }
+    // --- Fetch Node --- 
+    auto node_opt = graph.getNode(current_node_id_); 
+    // ... error check ... 
+    BDINode& current_node = node_opt.value().get(); 
+    // --- Execute Node --- 
+    bool success = executeNode(current_node, graph); 
+    // ... debugger hook ... 
+    if (!success) return false; // Halt on error 
+    // --- Check for Yield/Halt/Wait flags set by executeNode --- 
+    if (halt_task_requested_) { /* Signal scheduler: HALTED */ return true; /* Let outer loop handle switch */} 
+    if (yield_requested_) { /* Signal scheduler: YIELDED */ return true; } 
+    if (wait_event_requested_) { /* Signal scheduler: WAITING */ return true; } 
+    if (service_call_pending_return_) { /* Handled at top of next cycle */ } 
+    else {
+        // --- Determine Next Node (only if not yielding/halting/waiting/servicing) --- 
+        NodeID next_id = determineNextNode(current_node, graph); 
+        current_node_id_ = next_id; 
+    }
+        return current_node_id_ != 0; // Continue if next node ID is valid 
+} 
+// Modify determineNextNode for CTRL_RETURN to store popped frame info 
+NodeID BDIVirtualMachine::determineNextNode(BDINode& node, BDIGraph& graph) { 
+// ...
+ case OpType::CTRL_RETURN: { 
+auto frame_opt = ctx.popCallFrame(); 
+        ctx.last_popped_call_frame_ = frame_opt; // Store for next cycle processing 
+if (frame_opt) { 
+            next_id = frame_opt.value().return_node_id; 
+// Check if this was return from OS Service Call? Need flag maybe. 
+// If previous node was OS_SERVICE_CALL, set service_call_pending_return_? No, do after pop. 
+// Need to know if the *popped frame* belonged to an OS Service call. Store in frame? 
+        } 
+else { next_id = 0; } 
+break; 
+    }
+ // ...
+ return next_id; 
+} 
  // Add graph access to determineNextNode if needed (e.g., to get caller node)
  NodeID BDIVirtualMachine::determineNextNode(BDINode& node, BDIGraph& graph) { // Added graph
     // ... existing logic ...
