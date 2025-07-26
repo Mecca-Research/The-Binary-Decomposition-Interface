@@ -170,9 +170,17 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
     }
     // ... (determine next node) ...
     return true;
- }
-
- // --- Execute Node Implementation (Refactored for Variant & Core Ops) --
+}
+    // Add member variable to store service graph entry points 
+    std::unordered_map<uint64_t /*ServiceID*/, NodeID /*EntryNodeID*/> service_entry_points_; 
+    // Add member variable to store service graphs (or access them via a manager) 
+    // std::unordered_map<uint64_t /*ServiceID*/, BDIGraph*> service_graphs_; 
+    // Method to register services (called by Genesis Graph logic or OS init) 
+ void registerService(uint64_t service_id, NodeID entry_node_id /*, BDIGraph* service_graph*/) { 
+    service_entry_points_[service_id] = entry_node_id; 
+    // service_graphs_[service_id] = service_graph; 
+} 
+    // --- Execute Node Implementation (Refactored for Variant & Core Ops) --
  bool BDIVirtualMachine::executeNode(BDINode& node, BDIGraph& graph) { // Added graph param
     // Need access to intelligence components if VM manages them directly 
     // Or intelligence ops interact via ExecutionContext state / MetadataStore 
@@ -182,7 +190,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
     using OpType = core::graph::BDIOperationType;
     using BDIType = core::types::BDIType;
     using TypeSys = core::types::TypeSystem;
-    ExecutionContext& ctx = *execution_context_;
+    ExecutionContext& ctx = *execution_context_; // Use current task's context
     // Need access to RecurrenceManager, e.g., pass via constructor or member 
     // RecurrenceManager* recurrence_manager_;
     try {
@@ -266,7 +274,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
                  // the VM pausing the current task and switching to execute the scheduler 
                  // or event dispatcher BDI graph. 
                  // For now, treat as NOPs but log the intent. Requires VM scheduler integration. 
-                 std::cout << "VM Op: System Control Op (" << static_cast<int>(node.operation) << ") Triggered (Requires Scheduler/Dispatcher 
+                 std::cout << "VM Op: System Control Op (" << static_cast<int>(node.operation) << ") Triggered Requires Scheduler/Dispatcher 
                  // Example: Yield might set a flag that the main VM loop checks after this node executes. 
                  // yield_requested_ = true; 
                  break; 
@@ -307,7 +315,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
                   break; // No output value 
             }  
              case OpType::LEARN_GET_GRADIENT: { 
-                  if (inputs.size() != 1 || node.data_outputs.empty()) throw BDIExecutionError("GET_GRADIENT needs ParamSourceID input and an o
+                  if (inputs.size() != 1 || node.data_outputs.empty()) throw BDIExecutionError("GET_GRADIENT needs ParamSourceID input and an output");
                   NodeID param_source_node = convertValueOrThrow<NodeID>(inputs[0]); 
                   auto gradient_opt = ctx.getGradient(param_source_node); 
                   if (!gradient_opt) throw BDIExecutionError("No gradient found for param source " + std::to_string(param_source_node)); 
@@ -321,14 +329,14 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
                   NodeID param_node_id = convertValueOrThrow<NodeID>(inputs[0]); 
                   BDIValueVariant delta_val = inputs[1]; 
                   BDINode* target_node = graph.getNodeMutable(param_node_id); // Need graph access 
-                  if (!target_node || target_node->operation != OpType::META_CONST) throw BDIExecutionError("APPLY_DELTA target node is not MET
+                  if (!target_node || target_node->operation != OpType::META_CONST) throw BDIExecutionError("APPLY_DELTA target node is not MET_DATA");
                   BDIValueVariant current_val = ExecutionContext::payloadToVariant(target_node->payload); 
                   BDIValueVariant updated_val = vm_ops::performAddition(current_val, delta_val); // Assume simple add 
                   target_node->payload = ExecutionContext::variantToPayload(updated_val); // Update payload directly 
                   break; // No output value 
             } 
             case OpType::RECUR_READ_STATE: { 
-                  if (inputs.size() != 1 || node.data_outputs.empty()) throw BDIExecutionError("RECUR_READ needs SourceNodeID input and an outp
+                  if (inputs.size() != 1 || node.data_outputs.empty()) throw BDIExecutionError("RECUR_READ needs SourceNodeID input and an output");
                   NodeID source_state_node_id = convertValueOrThrow<NodeID>(inputs[0]); 
                   auto previous_state = recurrence_manager_->readPreviousState(source_state_node_id); // Use manager 
                   if (!previous_state) throw BDIExecutionError("Previous recurrent state not found for node " + std::to_string(source_state_nod
@@ -380,6 +388,31 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
     } // ... existing checks ... 
     return op_success; 
 } 
+           case OpType::OS_SERVICE_CALL: { 
+                if (node.payload.type != BDIType::UINT64) throw BDIExecutionError(...); 
+                uint64_t service_id = node.payload.getAs<uint64_t>(); 
+                auto entry_it = service_entry_points_.find(service_id); 
+                if (entry_it == service_entry_points_.end()) throw BDIExecutionError("OS Service not found: " + std::to_string(service_id
+                NodeID service_entry_node = entry_it->second; 
+                // Assume service graph uses the *same* context for simplicity, OR 
+                // implement temporary context switching for services if needed. 
+                // 1. Stage arguments (already done conceptually) 
+                ctx.next_arguments_.clear(); 
+                for(size_t i = 0; i < node.data_inputs.size(); ++i) { /* ... get inputs -> setNextArgument ... */ } 
+                // 2. Determine where execution should resume *after* the service call 
+                NodeID resume_node = 0; 
+                if (!node.control_outputs.empty()) resume_node = node.control_outputs[0]; // Assume sequential successor 
+                if (resume_node == 0) throw BDIExecutionError("OS_SERVICE_CALL needs a successor node to return control to"); 
+                // 3. Push service call state (caller node ID, resume node ID) 
+                ctx.pushServiceCall(node.id, resume_node); 
+                // 4. Set next node to service entry point 
+                // The main loop will pick this up after this node 'finishes' 
+                service_call_jump_target_ = service_entry_node; // Use a temporary member flag/variable 
+                // Prevent standard control flow advance after this node 
+                connect_standard_control_flow = false; // Handled by jump target 
+                // Indicate that execution should jump, not just step sequentially 
+                break; // Execution jumps at end of cycle 
+            } 
     // --- Operation Dispatch --
     BDIValueVariant result_var = std::monostate{}; // Default result is error/void
     bool op_success = true;
@@ -410,11 +443,17 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
             case OpType::CTRL_BRANCH_COND: break; // Condition checked in determineNextNode
             case OpType::CTRL_CALL: break; // Args staged here by determineNextNode, jump/flow handled later
             case OpType::CTRL_RETURN: { if (!inputs.empty()) ctx.setCurrentReturnValue(inputs[0]); else ctx.setCurrentReturnValue(std::monostate{});
-     break; } // Flow handled later
+           }     // Flow handled later
                  if (!inputs.empty()) { ctx.setCurrentReturnValue(inputs[0]); }
                  else { ctx.setCurrentReturnValue(std::monostate{}); }
-                 break;
-            }
+                 // ... (Set return value in context's frame as before) ... 
+                 // Now, also check if we are returning from a service call stack 
+                 if (!ctx.service_call_stack_.empty() && ctx.call_stack_.empty()) { 
+                    // This RETURN is terminating an OS_SERVICE_CALL 
+                    service_return_pending_ = true; // Set flag for main loop 
+                 } 
+                 break; // Let determineNextNode handle popping function call stack if any 
+            } 
              case OpType::META_ASSERT: {
                  if (inputs.empty()) { op_success = false; break; }
                  auto condition = vm_ops::convertValue<bool>(inputs[0]);
@@ -465,11 +504,10 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
              // ... other bitwise ops ...
              // Logical (Use helpers)
               case OpType::LOGIC_AND: if (inputs.size()==2) result_var = vm_ops::performLogicalAND(inputs[0], inputs[1]); else op_success = false; break;
- // Need performLogicalAND
+             // Need performLogicalAND
              case OpType::LOGIC_OR:  if (inputs.size()==2) result_var = vm_ops::performLogicalOR(inputs[0], inputs[1]); else op_success = false; break;
              case OpType::LOGIC_XOR: if (inputs.size()==2) result_var = vm_ops::performLogicalXOR(inputs[0], inputs[1]); else op_success = false; break;
              case OpType::LOGIC_NOT: if (inputs.size()==1) result_var = vm_ops::performLogicalNOT(inputs[0]); else op_success = false; break; // Need
- performLogicalNOT
              // Conversions
              case OpType::CONV_INT_TO_FLOAT: case OpType::CONV_FLOAT_TO_INT:
              case OpType::CONV_EXTEND_SIGN: case OpType::CONV_EXTEND_ZERO:
@@ -493,6 +531,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
     } catch (const std::exception& e) { /* ... Error Handling ...*/ op_success = false; }
     // --- Store Result --
     // ... (Logic remains the same) ...
+    // ... Store Result (for non-service-call ops) ... 
     return op_success;
  }
               // ... other logical ops ...
@@ -512,8 +551,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
                  TypedPayload loaded_payload(load_type, BinaryData(load_size));
                  if (!memory_manager_->readMemory(address, loaded_payload.data.data(), load_size)) throw BDIExecutionError("Memory read failed");
                  result_var = ExecutionContext::payloadToVariant(loaded_payload); // Static call ok
-                 if (std::holds_alternative<std::monostate>(result_var) && load_type != BDIType::VOID) throw BDIExecutionError("Payload to variant
- conversion failed");
+                 if (std::holds_alternative<std::monostate>(result_var) && load_type != BDIType::VOID) throw BDIExecutionError("Payload to variant conversion failed");
                  result_var = ExecutionContext::payloadToVariant(loaded_payload);
                  break;
             }
@@ -688,7 +726,65 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
     BDINode& current_node = node_opt.value().get();
     if (!executeNode(current_node, graph)) { // Pass graph
          return false;
-    }
+     BDIVirtualMachine::VMExecResult BDIVirtualMachine::runTaskSlice(/*...*/) { 
+    // ... setup ... 
+    while (current_node_id_ != 0 && instructions_executed < timeslice_instructions) { 
+        // ... Get node ... 
+        // --- Service Call Return Processing --- 
+        // Check *before* execution if we just returned from a service call 
+        if (service_return_pending_) { 
+            service_return_pending_ = false; 
+         auto return_state_opt = execution_context_->popServiceCall(); 
+if (!return_state_opt) { /* Error: Return without active service call */ return VMExecResult::ERROR; } 
+auto return_state = return_state_opt.value(); 
+// Retrieve return value (set by RETURN node) 
+auto return_value = execution_context_->getLastReturnValue(); // Already stored by popServiceCall 
+// Find original OS_SERVICE_CALL node in the *current task graph* 
+auto caller_node_opt = graph.getNodeMutable(return_state.original_caller_node_id); 
+if (caller_node_opt && caller_node_opt.value().get().operation == OpType::OS_SERVICE_CALL) { 
+if (return_value.has_value()) { 
+                    setOutputValueVariant(*execution_context_, *caller_node_opt, 0, return_value.value()); // Set caller's output 
+                } 
+            } 
+// else: void return 
+else { /* Warning: Caller node not found or invalid */ } 
+// Set execution to resume where the caller expected 
+            current_node_id_ = return_state.original_resume_node_id; 
+// Continue execution loop immediately from the resume point 
+continue; // Skip rest of this loop iteration 
+        } 
+// --- Normal Execution --- 
+// ... Debugger Hook ... 
+bool success = executeNode(current_node, graph); 
+// ... Debugger Hook ... 
+if (!success) return VMExecResult::ERROR; 
+        instructions_executed++; 
+// --- Check for Scheduler Interaction / Service Call Jump --- 
+if (halt_task_requested_) return VMExecResult::HALTED_TASK; 
+if (yield_requested_) return VMExecResult::YIELDED; 
+if (wait_event_requested_) return VMExecResult::WAITING; 
+if (service_call_jump_target_ != 0) { // Jump requested by OS_SERVICE_CALL 
+            current_node_id_ = service_call_jump_target_; 
+            service_call_jump_target_ = 0; // Reset flag 
+        } 
+else { 
+// Determine Next Node normally (handles RETURN from regular functions) 
+            NodeID next_id = determineNextNode(current_node, graph); 
+// Check if RETURN just popped the last function call stack frame 
+if (current_node.operation == OpType::CTRL_RETURN && execution_context_->isCallStackEmpty() && !execution_context_->service_
+ // This RETURN finishes the *service graph* execution 
+                service_return_pending_ = true; 
+// Don't update current_node_id yet, let the logic at the top of the loop handle popServiceCall and resume 
+             } 
+else { 
+                 current_node_id_ = next_id; 
+             } 
+        } 
+    } 
+// ... Check halt ... 
+// End while 
+// ... Return status ... 
+} 
     NodeID next_id = determineNextNode(current_node, graph); // Pass graph
     current_node_id_ = next_id;
     return true;
