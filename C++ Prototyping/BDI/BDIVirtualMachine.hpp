@@ -25,7 +25,7 @@
     bool halt_task_requested_ = false; 
     bool wait_event_requested_ = false; 
     // Add structure to hold info for WAIT/DISPATCH/SEND ops (e.g., event filter, target task) 
- DebuggerInterface* debugger_ = nullptr; // Attached debugger 
+    DebuggerInterface* debugger_ = nullptr; // Attached debugger 
     std::atomic<bool> pause_requested_ = false; 
     std::atomic<bool> step_requested_ = false; 
     std::mutex vm_mutex_; // For state synchronization with debugger 
