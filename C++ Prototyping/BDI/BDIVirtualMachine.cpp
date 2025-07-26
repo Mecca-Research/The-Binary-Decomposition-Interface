@@ -221,7 +221,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
                  break; // No output value 
             } 
             case OpType::SYS_MEM_MAP: { // Privileged, Complex 
-                 if (inputs.size() != 3 || node.data_outputs.empty()) throw BDIExecutionError("SYS_MEM_MAP requires PhysAddr, Size, Flags inpu
+                 if (inputs.size() != 3 || node.data_outputs.empty()) throw BDIExecutionError("SYS_MEM_MAP requires PhysAddr, Size, Flags input");
                  uint64_t phys_addr = convertValueOrThrow<uint64_t>(inputs[0]); 
                  uint64_t map_size = convertValueOrThrow<uint64_t>(inputs[1]); 
                  uint64_t map_flags = convertValueOrThrow<uint64_t>(inputs[2]); 
@@ -288,7 +288,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
                 break; // No output 
             } 
             case OpType::RECUR_READ_STATE: { 
-                if (node.data_outputs.empty() || inputs.size() != 1) throw BDIExecutionError("RECUR_READ needs SourceNodeID input and an outpu
+                if (node.data_outputs.empty() || inputs.size() != 1) throw BDIExecutionError("RECUR_READ needs SourceNodeID input and an output"); 
                 // Input 0: NodeID from previous timestep whose state we want 
                 NodeID source_state_node_id = convertValueOrThrow<NodeID>(inputs[0]); 
                 // Assume RecurrenceManager is accessible (e.g., member of VM) 
