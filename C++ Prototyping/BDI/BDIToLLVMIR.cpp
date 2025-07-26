@@ -3,6 +3,8 @@
 #include "BDIValueVariant.hpp" // For constants 
 #include "Verifier.h" // To verify generated module 
 #include "raw_ostream.h" // For printing errors 
+#include "PostOrderIterator.h" // For RPO traversal 
+#include "BasicBlockUtils.h" // For ReplaceInstWithInst 
 #include <iostream> 
 #include <vector> 
 #include <set> // For visited nodes 
@@ -294,34 +296,99 @@ void BDIToLLVMIR::convertNode(BDINode& node) {
 // Update convertGraph to perform full CFG linking after node conversion 
 std::unique_ptr<llvm::Module> BDIToLLVMIR::convertGraph(BDIGraph& graph, const std::string& module_id) { 
     // ... Init module ... 
-    NodeID entry_node_id = 1; // Find entry reliably 
-    // ... Find entry node ... 
-    setupFunction(*entry_node_ptr, graph); // Setup function signature 
-    setupBasicBlocks(graph, entry_node_id); // Create all BBs first 
-    // Process nodes block by block, or use traversal that respects blocks 
-    std::vector<NodeID> processing_order; // RPO order ideal 
-    // ... Populate processing_order via traversal ... 
+    module_ = std::make_unique<llvm::Module>(module_id, llvm_context_); 
+    bdi_node_to_llvm_value_.clear(); 
+    bdi_node_to_llvm_block_.clear(); 
+    current_function_ = nullptr; 
+    phi_worklist_.clear(); // Clear PHI node worklist 
+    // --- Find Entry Node --- 
+    NodeID entry_node_id = 0; 
+    for (const auto& pair : graph) { 
+        if (pair.second && pair.second->operation == BDIOperationType::META_START) { 
+            entry_node_id = pair.first; 
+            break; 
+        } 
+    }
+    if (entry_node_id == 0) { throw std::runtime_error("BDI graph has no META_START node"); } 
+    BDINode* entry_node_ptr = graph.getNodeMutable(entry_node_id); // Assume getNodeMutable exists 
+    if (!entry_node_ptr) return nullptr; // Should not happen 
+    // --- Function and Basic Block Setup --- 
+    setupFunction(*entry_node_ptr, graph); // Creates LLVM Function & entry BB 
+    setupBasicBlocks(graph, entry_node_id); // Creates all BBs for headers 
+    // --- Process Nodes in Reverse Post-Order (RPO) for better SSA --- 
+    // LLVM provides RPO iterators if we build its CFG first, or do manual DFS. 
+    // Simplified: Use processing order from previous conceptual step (needs real RPO) 
+    std::vector<NodeID> processing_order; 
+    std::set<NodeID> visited; 
+    std::vector<NodeID> worklist = {entry_node_id}; 
+    // ... (Perform DFS/BFS/RPO to populate processing_order) ... 
+    // Example simple DFS population (order might not be optimal for SSA): 
+     std::function<void(NodeID)> dfs = [&](NodeID id) { 
+         if(visited.count(id)) return; 
+         visited.insert(id); 
+    }
+         auto node = graph.getNode(id); 
+         if(!node) return; 
+         for(auto succ : node.value().get().control_outputs) dfs(succ); 
+         processing_order.push_back(id); // Post-order 
+    }; 
+     dfs(entry_node_id); 
+     std::reverse(processing_order.begin(), processing_order.end()); // Make it RPO-like 
+    // --- Convert Nodes --- 
     for (NodeID node_id : processing_order) { 
         BDINode* node = graph.getNodeMutable(node_id); 
         if (!node) continue; 
-         // Ensure builder is set to the correct block for this node 
-if (bdi_node_to_llvm_block_.count(node_id)) { 
-            builder_.SetInsertPoint(bdi_node_to_llvm_block_.at(node_id)); 
-        } 
-else if (!builder_.GetInsertBlock()) { 
-// Node doesn't start block and no predecessor set insert point? Error or find predecessor block. 
-             llvm::errs() << "BDIToLLVMIR Error: Cannot determine basic block for Node " << node_id << "\n"; 
-continue; 
-        } 
-else { 
-// Belongs to the block currently being built 
-        } 
-        convertNode(*node); // Convert node instructions (incl. terminators) 
+        convertNode(*node); // Fills bdi_node_to_llvm_value_ map 
     }
- // ... Verify module ... 
-return std::move(module_);
- }
-        }
+    // --- Handle PHI Nodes --- 
+    // Process the worklist generated during convertNode for branches/merges 
+    // For each PhiWorkItem { block, incoming_block, bdi_source_node, bdi_source_port } 
+    // Create llvm::PHINode in 'block', add incoming value (bdi_node_to_llvm_value_[bdi_source_node]) 
+    // associated with 'incoming_block'. 
+    // --- Finalize Control Flow (Connect Terminators) --- 
+    // Iterate again or integrate into convertNode 
+    for (NodeID node_id : processing_order) { 
+        BDINode* node = graph.getNodeMutable(node_id); 
+        if (!node || !bdi_node_to_llvm_block_.count(node_id)) continue; // Must be block entry 
+        builder_.SetInsertPoint(bdi_node_to_llvm_block_.at(node_id)); 
+        // Find the *last* non-terminator instruction in the block 
+        // builder_.SetInsertPoint(bdi_node_to_llvm_block_.at(node_id)->getTerminator()); // If terminator exists? Be careful. 
+        // Generate terminator based on BDI node that *ended* the block 
+        // (Requires tracking which node terminated the preceding block during node conversion) 
+         if (node->operation == BDIOperationType::CTRL_JUMP) { 
+             if (!node->control_outputs.empty() && bdi_node_to_llvm_block_.count(node->control_outputs[0])) { 
+                 builder_.CreateBr(bdi_node_to_llvm_block_.at(node->control_outputs[0])); 
+             } else { /* Error or Unreachable */ } 
+         } else if (node->operation == BDIOperationType::CTRL_BRANCH_COND) { 
+             if (node->control_outputs.size() >= 2 && bdi_node_to_llvm_block_.count(node->control_outputs[0]) && bdi_node_to_llvm_block_.count
+                  llvm::Value* condition = bdi_node_to_llvm_value_.at(/* NodeID of condition value */ 0); // Need condition value mapping 
+                  builder_.CreateCondBr(condition, bdi_node_to_llvm_block_.at(node->control_outputs[0]), bdi_node_to_llvm_block_.at(node.contr
+             } else { /* Error */ } 
+         } else if (node->operation == BDIOperationType::CTRL_RETURN) { 
+             // Ret handled during node conversion itself 
+         } else if (node->operation == BDIOperationType::META_END) { 
+              builder_.CreateRetVoid(); // Assume end is void return 
+         } else if (node->control_outputs.size() == 1) { // Default fallthrough? Only if successor starts new block. 
+             if (bdi_node_to_llvm_block_.count(node->control_outputs[0])) { 
+                  builder_.CreateBr(bdi_node_to_llvm_block_.at(node->control_outputs[0])); 
+             } else { /* Error: Dangling block */ } 
+         } else { 
+             // Block doesn't end with known terminator? Maybe error or implicit return? 
+             // Could happen if CFG links weren't fully built. 
+             // Ensure last block is terminated. 
+             if (¤t_function_->back() == bdi_node_to_llvm_block_.at(node_id) && !bdi_node_to_llvm_block_.at(node_id)->getTerminator()) { 
+                  builder_.CreateRetVoid(); // Add default return if needed 
+             } 
+         }
+    }
+    // --- Verify --- 
+    if (llvm::verifyFunction(*current_function_, &llvm::errs()) || llvm::verifyModule(*module_, &llvm::errs())) { 
+         llvm::errs() << "LLVM Verification Failed!\n"; 
+         module_->print(llvm::errs(), nullptr); // Print faulty IR 
+         return nullptr; 
+    }
+    return std::move(module_);
+ } 
              // ... Store result_val map ... 
    } 
          // Memory (Using GEP for address calculation is crucial here) 
