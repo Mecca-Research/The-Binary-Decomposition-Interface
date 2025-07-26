@@ -170,6 +170,21 @@ void ExecutionContext::pushCallFrame(NodeID return_node_id) { // << MODIFIED
     last_return_value_ = std::nullopt;
     }
  }
+ void ExecutionContext::pushServiceCall(NodeID caller_id, NodeID resume_id) { 
+    service_call_stack_.push_back({caller_id, resume_id}); 
+    last_return_value_ = std::nullopt; // Clear return value before service call 
+ } 
+ std::optional<ExecutionContext::ServiceCallReturnState> ExecutionContext::popServiceCall() { 
+    if (service_call_stack_.empty()) return std::nullopt; 
+    auto state = service_call_stack_.back(); 
+    service_call_stack_.pop_back(); 
+    // last_return_value_ is set by the service's RETURN node handler 
+    return state; 
+ } 
+ void ExecutionContext::clear() { 
+    // ... clear other state ... 
+    service_call_stack_.clear(); 
+ }
  // namespace bdi::runtime
  BDIValueVariant ExecutionContext::payloadToVariant(const TypedPayload& payload) {
     using Type = core::types::BDIType;
