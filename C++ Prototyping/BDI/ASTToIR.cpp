@@ -13,11 +13,43 @@ namespace ir::ir {
 // struct DSLReturnExpr { std::unique_ptr<DSLExpression> value; }; // Optional value 
 // --- ASTToIR --- 
 ASTToIR::ASTToIR(TypeChecker& type_checker) : type_checker_(type_checker) {} 
+// --- Error Reporting --- 
+// Replace direct throws with error collection for better user feedback 
+void ASTToChiIR::reportError(const std::string& message /*, SourceLocation loc */) { 
+std::cerr << "Compiler Error: " << message << " /* Add source location info */" << std::endl; 
+    has_errors_ = true; // Add boolean member to track errors 
+} 
 std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLFuncDefExpr& func_def, TypeChecker::CheckContext& parent_context) { 
+     if (!func_def || !std::holds_alternative<std::monostate>(func_def->value_expr->content) /* check if value holds function body */) { 
+         throw std::runtime_error("Invalid function definition AST node passed to convertFunction"); 
+     } 
+     current_graph_ = std::make_unique<IRGraph>(func_def->name.name); 
+     next_node_id_ = 1; 
+     TypeChecker::CheckContext func_context; // Create new scope 
+     func_context.parent_scope = std::make_shared<TypeChecker::CheckContext>(parent_context); 
      // ... (Setup graph, func_context as before) ... 
      IRNodeId entry_node = current_graph_->addNode(IROpCode::ENTRY, "func_entry"); 
      current_graph_->entry_node_id_ = entry_node; 
      IRNodeId current_cfg_node = entry_node; 
+      // 2. Resolve signature types & Create PARAM nodes 
+     std::vector<std::shared_ptr<ChimeraType>> param_types; 
+     // Assuming func_def has a structure for parameters like std::vector<Symbol> params; 
+     // for(size_t i = 0; i < func_def->parameters.size(); ++i) { 
+     //     const auto& param_symbol = func_def->parameters[i]; 
+     //     auto param_type = type_checker_.resolveTypeExpr(func_def->parameter_types[i], parent_context); // Resolve type 
+     //     param_types.push_back(param_type); 
+     //     IRNodeId param_node_id = current_graph_->addNode(IROpCode::PARAM, param_symbol.name); 
+     //     auto* param_ir_node = getNode(param_node_id); 
+     //     param_ir_node->output_type = param_type; 
+     //     param_ir_node->operation_data = param_symbol; // Store symbol info 
+     //     param_ir_node->operation_data = static_cast<uint32_t>(i); // Store param index in op_data? 
+     //     func_context.addSymbol(param_symbol.name, param_type true, true, 0, param_node_id}); // Add to function scope (as immutable parameter) 
+     //     current_graph_->addEdge(current_cfg_node, param_node_id); // Link control flow 
+     //     current_cfg_node = param_node_id; 
+     // } 
+     // Store function type in context? func_context.addSymbol(func_def.signature.name.name, make_function_type(param_types, return_type)); 
+     // 3. Convert function body 
+     // Assume body is in func_def->value_expr (might be sequence) 
      // --- Generate Prologue --- 
      current_cfg_node = generateFunctionPrologue(func_def.signature, func_context, current_cfg_node); // Helper generates STACK/FP ops 
      // Process Parameters - associate PARAM nodes with stack locations relative to FP 
@@ -102,58 +134,40 @@ else {
         current_graph_->addNode(IROpCode::EXIT, "empty_exit"); 
     }
     return std::move(current_graph_); 
-}
-    
-std::unique_ptr<IRGraph> ASTToIR::convertFunction(const DSLDefinition* func_def, TypeChecker::CheckContext& parent_context) { 
-     if (!func_def || !std::holds_alternative<std::monostate>(func_def->value_expr->content) /* check if value holds function body */) { 
-         throw std::runtime_error("Invalid function definition AST node passed to convertFunction"); 
-     } 
-     current_graph_ = std::make_unique<IRGraph>(func_def->name.name); 
-     next_node_id_ = 1; 
-     TypeChecker::CheckContext func_context; // Create new scope 
-     func_context.parent_scope = std::make_shared<TypeChecker::CheckContext>(parent_context); 
-     // 1. Create ENTRY node 
-     IRNodeId entry_node = current_graph_->addNode(IROpCode::ENTRY, "func_entry"); 
-     current_graph_->entry_node_id_ = entry_node; 
-     IRNodeId current_cfg_node = entry_node; 
-     // 2. Resolve signature types & Create PARAM nodes 
-     std::vector<std::shared_ptr<ChimeraType>> param_types; 
-     // Assuming func_def has a structure for parameters like std::vector<Symbol> params; 
-     // for(size_t i = 0; i < func_def->parameters.size(); ++i) { 
-     //     const auto& param_symbol = func_def->parameters[i]; 
-     //     auto param_type = type_checker_.resolveTypeExpr(func_def->parameter_types[i], parent_context); // Resolve type 
-     //     param_types.push_back(param_type); 
-     //     IRNodeId param_node_id = current_graph_->addNode(IROpCode::PARAM, param_symbol.name); 
-     //     auto* param_ir_node = getNode(param_node_id); 
-     //     param_ir_node->output_type = param_type; 
-     //     param_ir_node->operation_data = param_symbol; // Store symbol info 
-     //     param_ir_node->operation_data = static_cast<uint32_t>(i); // Store param index in op_data? 
-     //     func_context.addSymbol(param_symbol.name, param_type true, true, 0, param_node_id}); // Add to function scope (as immutable parameter) 
-     //     current_graph_->addEdge(current_cfg_node, param_node_id); // Link control flow 
-     //     current_cfg_node = param_node_id; 
-     // } 
-     // Store function type in context? func_context.addSymbol(func_def.signature.name.name, make_function_type(param_types, return_type)); 
-     // 3. Convert function body 
-     // Assume body is in func_def->value_expr (might be sequence) 
-     IRNodeId last_body_node = convertNode(func_def->value_expr.get(), func_context, current_cfg_node); 
-     // 4. Ensure proper termination (implicit RETURN for void functions?) 
-     // For now, assume convertNode adds RETURN_VALUE if needed by sequence semantics. 
-     // If the last node isn't a RETURN or other terminator, add one? Depends on language semantics. Or rely on checkExpression to add RETURN_VALUE?
-     // Store function graph mapping? 
-     // function_graphs_[func_def.signature.name.name] = current_graph_.get(); // Store raw ptr? Or manage elsewhere. 
-     // This needs modification to `convertReturn` or graph post-processing 
-     // Add implicit return for void functions if last node isn't RETURN 
-     return std::move(current_graph_); 
-} 
-// Recursive Conversion Helpers 
-// struct DSLLoopExpr { DSLExpression condition; DSLExpressionSequence body; }; 
-// struct DSLFuncDefExpr { DSLDefinition signature; DSLExpressionSequence body; }; // Simplified 
-// struct DSLAssignmentExpr { Symbol target; DSLExpression value; }; 
+}        
 IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
      if (!expr) return 0; 
+     // Store current CFG node in case of error/branching 
+     IRNodeId incoming_cfg_node = current_cfg_node; 
      IRNodeId result_node_id = 0; // ID of node producing the value of this expression 
      auto chimera_type = type_checker_.checkExpression(expr, context); // Get type first 
+     try { // Wrap conversion logic 
      std::visit([&](auto&& arg) { 
+     // ... dispatch logic ... 
+     // Example: For Loop Conversion 
+     // else if constexpr (std::is_same_v<T, DSLForLoopExpr>) { 
+     //     result_node_id = convertForLoop(arg, context, current_cfg_node); // No value result 
+     // } 
+     // Example: Struct Literal Conversion 
+     // else if constexpr (std::is_same_v<T, DSLStructLiteralExpr>) { 
+     //     result_node_id = convertStructLiteral(arg, context, current_cfg_node); // Returns address node 
+     // } 
+     // ... 
+             }, expr->content); 
+        } 
+    } 
+}
+ catch (const BDIExecutionError& e) { // Catch compiler errors 
+        reportError(e.what() /*, expr->source_location */); 
+       // How to handle CFG on error? Try to recover or stop? Stop for now. 
+       current_cfg_node = 0; // Invalidate CFG 
+       return 0; // Return invalid node ID 
+       catch (const std::exception& e) { 
+       reportError("Unexpected exception: " + std::string(e.what())); 
+       current_cfg_node = 0; return 0; 
+       // ... Annotation handling ... 
+       return result_node_id; 
+} 
      // ... (Literal, Symbol, Operation cases) ... 
          using T = std::decay_t<decltype(arg)>; 
               if constexpr (std::is_same_v<T, std::monostate>) { /* No node */ }
@@ -204,6 +218,20 @@ IRNodeId ASTToIR::convertNode(const DSLExpression* expr, TypeChecker::CheckConte
      // Attach annotations from AST node to resulting IR node(s) if applicable 
      // if (result_node_id != 0 && expr->hasAnnotations()) { ... getNode(result_node_id)->annotations = ... } 
      return result_node_id; 
+IRNodeId last_body_node = convertNode(func_def->value_expr.get(), func_context, current_cfg_node); 
+     // 4. Ensure proper termination (implicit RETURN for void functions?) 
+     // For now, assume convertNode adds RETURN_VALUE if needed by sequence semantics. 
+     // If the last node isn't a RETURN or other terminator, add one? Depends on language semantics. Or rely on checkExpression to add RETURN_VALUE?
+     // Store function graph mapping? 
+     // function_graphs_[func_def.signature.name.name] = current_graph_.get(); // Store raw ptr? Or manage elsewhere. 
+     // This needs modification to `convertReturn` or graph post-processing 
+     // Add implicit return for void functions if last node isn't RETURN 
+     return std::move(current_graph_); 
+} 
+// Recursive Conversion Helpers 
+// struct DSLLoopExpr { DSLExpression condition; DSLExpressionSequence body; }; 
+// struct DSLFuncDefExpr { DSLDefinition signature; DSLExpressionSequence body; }; // Simplified 
+// struct DSLAssignmentExpr { Symbol target; DSLExpression value; }; 
 } 
 IRNodeId ASTToIR::convertVariableDefinition(const DSLDefinition& def, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node)
     // --- Type checking phase already added symbol info to context --- 
@@ -795,18 +823,19 @@ IRNodeId ASTToIR::convertOperation(const DSLOperation& op, TypeChecker::CheckCon
      } 
 } 
 // ... Implement convertDefinition, convertSequence, convertDSLBlock, convertSymbolLoad etc. ... 
-void ASTToIR::convertStructDefinition(const DSLStructDefExpr& struct_def, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node
+void ASTToIR::convertStructDefinition(const DSLStructDefExpr& struct_def, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node);
     // Type checking phase should have already processed the struct definition 
     // and added its type information to the type registry / context. 
     // No IR nodes are generated for the definition itself, only for its usage (literals, allocs). 
     std::cout << "ASTToIR: Processed struct definition for '" << struct_def.name.name << "' (No IR generated)." << std::endl; 
 } 
-IRNodeId ASTToIR::convertStructLiteral(const DSLStructLiteralExpr& literal_expr, TypeChecker::CheckContext& context, IRNodeId& curren
-    // 1. Resolve the struct type being instantiated 
-    // auto struct_type_ptr = type_checker_.resolveTypeExpr(literal_expr.type_name, context); // Needs type resolution logic 
-    auto struct_type_ptr = std::make_shared<ChimeraType>(); // Placeholder 
+IRNodeId ASTToIR::convertStructLiteral(const DSLStructLiteralExpr& literal_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node);
+    // 1. Type check the literal expression itself to get the target struct type 
+    auto struct_type_ptr = type_checker_.checkExpression(&literal_expr, context); // Assuming checkExpression handles literals 
     if (!struct_type_ptr || !struct_type_ptr->isStruct()) throw BDIExecutionError("Invalid struct type for literal"); 
     const auto& struct_type = std::get<ChimeraStructType>(struct_type_ptr->content); 
+    size_t struct_size = struct_type.total_size; 
+    size_t struct_align = struct_type.alignment; 
     // 2. Allocate memory for the struct instance (on the stack for now) 
     IRNodeId alloc_node_id = current_graph_->addNode(IROpCode::ALLOC_MEM, "alloc_struct_" + struct_type.name); 
     auto* alloc_node = getNode(alloc_node_id); 
@@ -817,10 +846,18 @@ IRNodeId ASTToIR::convertStructLiteral(const DSLStructLiteralExpr& literal_expr,
     IRNodeId base_addr_node_id = alloc_node_id; // Node producing the base address 
     // 3. Convert and store each field initializer 
     // Assume literal_expr.fields is map<string, unique_ptr<DSLExpression>> 
+    // std::set<std::string> initialized_fields; 
     // for (const auto& field_pair : literal_expr.fields) { 
     //     const std::string& field_name = field_pair.first; 
     //     const DSLExpression* field_expr = field_pair.second.get(); 
-    // 
+    // // Find field info, check compatibility, calculate address, generate STORE_MEM 
+    //     // ... (logic similar to convertAssignment, using generateAddressCalculation) ... 
+    //     IRNodeId value_node_id = convertNode(field_expr, context, current_cfg_node); 
+    //     // ... check type compatibility with struct_type.fields[...].type ... 
+    //     IRNodeId field_addr_node_id = generateAddressCalculation(field_offset, context, current_cfg_node, base_addr_node_id); 
+    //     // ... generate STORE_MEM node, connect CFG and data edges ... 
+    //     current_cfg_node = store_node_id; 
+    //
     //     // Find field info in struct type 
     //     auto field_it = struct_type.field_name_to_index.find(field_name); 
     //     if (field_it == struct_type.field_name_to_index.end()) throw BDIExecutionError("Unknown field '" + field_name + "' in struct litera
