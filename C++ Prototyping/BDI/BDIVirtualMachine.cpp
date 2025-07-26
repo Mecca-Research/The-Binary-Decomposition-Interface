@@ -131,7 +131,87 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
         if (!node_opt) { /* Error */ return VMExecResult::ERROR; } 
         BDINode& current_node = node_opt.value().get(); 
         // --- Debugger Hook --- 
+        // --- Debugger Attachment --- 
+    void BDIVirtualMachine::attachDebugger(DebuggerInterface* dbg) { debugger_ = dbg; } 
+    void BDIVirtualMachine::detachDebugger() { debugger_ = nullptr; } 
+    // --- Debugger Control --- 
+    void BDIVirtualMachine::requestPause() { pause_requested_ = true; } 
+    void BDIVirtualMachine::requestResume(bool single_step) { 
+        std::lock_guard lock(vm_mutex_); 
+        if (vm_state_ == VMState::PAUSED) { 
+            step_requested_ = single_step; 
+            pause_requested_ = false; 
+            vm_state_ = VMState::RUNNING; 
+            vm_cv_.notify_one(); // Signal waiting execution loop 
+        } 
         // if (debugger_) { debugger_->onPreNodeExecute(current_node_id); /* Check pause/bp */ } 
+         BDIVirtualMachine::VMState BDIVirtualMachine::getState() const { 
+        // std::lock_guard lock(vm_mutex_); // If accessed from other threads 
+        return vm_state_; 
+    }
+     NodeID BDIVirtualMachine::getCurrentNodeId() const { return current_node_id_; } 
+    // --- Internal Signaling --- 
+    void BDIVirtualMachine::signalPaused() { 
+         std::lock_guard lock(vm_mutex_); 
+         vm_state_ = VMState::PAUSED; 
+         vm_cv_.notify_all(); // Notify potentially waiting debugger thread 
+    }
+    void BDIVirtualMachine::waitForResume() { 
+        std::unique_lock lock(vm_mutex_); 
+        // std::cout << "VM Waiting for resume..." << std::endl; 
+        vm_cv_.wait(lock, [&]{ return vm_state_ == VMState::RUNNING || vm_state_ == VMState::HALTED; }); 
+        // std::cout << "VM Resumed." << std::endl; 
+    }
+        // --- Update fetchDecodeExecuteCycle --- 
+        BDIVirtualMachine::VMExecResult BDIVirtualMachine::runTaskSlice(/*...*/) { 
+        // ... setup ... 
+        vm_state_ = VMState::RUNNING; // Mark as running 
+        while (current_node_id_ != 0 /* && instruction limit */) { 
+            // --- Check for Pause Request / Wait for Resume --- 
+            if (pause_requested_) { 
+                 pause_requested_ = false; 
+                 step_requested_ = false; // Cancel step if paused explicitly 
+                 signalPaused(); // Signal debugger we are paused 
+                 waitForResume(); // Block until resumed 
+                 if (vm_state_ == VMState::HALTED) return VMExecResult::ERROR; // External halt? 
+            } 
+            // ... Get Node ... 
+            // --- Debugger Pre-Hook & Breakpoint Check --- 
+            if (debugger_) { 
+                 debugger_->onPreNodeExecute(current_node_id_); 
+                 if (debugger_->isBreakpoint(current_node_id_)) { // Add isBreakpoint to DebuggerInterface 
+                     debugger_->onBreakpointHit(current_node_id_); 
+                     signalPaused(); 
+                     waitForResume(); 
+                     if (vm_state_ == VMState::HALTED) return VMExecResult::ERROR; 
+                 } 
+                  // Handle single-step pause *before* execution 
+                 if (step_requested_) { 
+                     step_requested_ = false; // Consume step request 
+                     signalPaused(); 
+                     waitForResume(); 
+                     if (vm_state_ == VMState::HALTED) return VMExecResult::ERROR; 
+                 } 
+            } 
+            // --- Execute Node --- 
+            bool success = executeNode(current_node, graph); 
+            // --- Debugger Post-Hook --- 
+            // if (debugger_) { debugger_->onPostNodeExecute(current_node_id, success); } 
+            if (!success) { signalPaused(); return VMExecResult::ERROR; } // Halt on error 
+            // --- Check for Yield/Halt/Wait flags --- 
+            // ... Handle flags, potentially return YIELDED/HALTED_TASK/WAITING ... 
+            // --- Determine Next Node --- 
+            // ... (Handle service call returns as before) ... 
+            if (!service_call_pending_return_) { // Avoid advancing PC if service call return pending 
+                 NodeID next_id = determineNextNode(current_node, graph); 
+                 current_node_id_ = next_id; 
+            } 
+            // ... Check halt condition ... 
+        } // End while 
+        signalPaused(); // Paused when timeslice ends or graph completes normally 
+        return (current_node_id_ == 0) ? VMExecResult::COMPLETED : VMExecResult::YIELDED; 
+    }
+ } 
         // --- Execute --- 
         bool success = executeNode(current_node, graph); // Assume this sets internal flags on SYS ops 
         // if (debugger_) { debugger_->onPostNodeExecute(current_node_id, success); } 
@@ -562,8 +642,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
                  // Input 1 is the value variant to store
                  core::payload::TypedPayload payload_to_store = ExecutionContext::variantToPayload(inputs[1]);
                  if (payload_to_store.type == BDIType::UNKNOWN) throw BDIExecutionError("Variant to payload conversion failed for store"); { op_success = false; break; }
-                 if (!memory_manager_->writeMemory(address_opt.value(), payload_to_store.data.data(), payload_to_store.data.size())) throw BDIExecutionError("Memory
- write failed"); {
+                 if (!memory_manager_->writeMemory(address_opt.value(), payload_to_store.data.data(), payload_to_store.data.size())) throw BDIExecutionError("Memory write failed"); {
                      op_success = false;
                  }
                  // Store has no output variant (result_var remains monostate)
@@ -594,8 +673,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
              }
             // Default
             default: /* ... Error ... */ op_success = false;
-                std::cerr << "VM Error: UNIMPLEMENTED/UNKNOWN Operation Type (" << static_cast<int>(node.operation) << ") for Node " << node.id
- << std::endl;
+                std::cerr << "VM Error: UNIMPLEMENTED/UNKNOWN Operation Type (" << static_cast<int>(node.operation) << ") for Node " << node.id<< std::endl;
                 op_success = false;
         }
     } catch (const std::exception& e) { /* ... */ op_success = false; }
@@ -608,8 +686,7 @@ BDIVirtualMachine::VMExecResult BDIVirtualMachine::runSlice(BDIGraph& graph, Nod
      } else if (op_success && !node.data_outputs.empty() && node.getOutputType(0) != BDIType::VOID) {
          // Operation succeeded but didn't produce a value for a non-void output port? Error.
          // Only try to store if op succeeded and produced non-error result
-         if (!std::holds_alternative<std::monostate>(result_var) && getBDIType(result_var) == BDIType::VOID && node.getOutputType(0) !=
- BDIType::VOID) {
+         if (!std::holds_alternative<std::monostate>(result_var) && getBDIType(result_var) == BDIType::VOID && node.getOutputType(0) !=BDIType::VOID) {
              // Handle void result assignment if needed, currently error
              std::cerr << "VM Error: Operation for Node " << node.id << " produced VOID for non-VOID output port 0." << std::endl;
              op_success = false;
@@ -1015,8 +1092,7 @@ break;
             }
             // --- Add BOOL logic if needed --
             else {
-                 std::cerr << "VM Error: Unhandled promoted type " << core::types::bdiTypeToString(promoted_type) << " in " << opName << " Node " <<
- node.id << std::endl;
+                 std::cerr << "VM Error: Unhandled promoted type " << core::types::bdiTypeToString(promoted_type) << " in " << opName << " Node " <<node.id << std::endl;
                  return false;
             }
         } catch (const std::exception& e) {
@@ -1093,9 +1169,9 @@ break;
  throw std::runtime_error("BIT_OR requires integers"); });
              case OpType::BIT_XOR: return executeBinaryOpHelper("XOR", [](auto a, auto b){ if constexpr (std::is_integral_v<decltype(a)>) return a ^ b; else
  throw std::runtime_error("BIT_XOR requires integers"); });
-             case OpType::BIT_NOT: return executeUnaryOpHelper("NOT", [](auto a){ if constexpr (std::is_integral_v<decltype(a)>) return ~a; else throw
- std::runtime_error("BIT_NOT requires integers"); });
-             // --- SHL, SHR etc. require second operand type check --
+             case OpType::BIT_NOT: return executeUnaryOpHelper("NOT", [](auto a){ if constexpr (std::is_integral_v<decltype(a)>) return ~a; else 
+ throw std::runtime_error("BIT_NOT requires integers"); });
+            // --- SHL, SHR etc. require second operand type check --
             // --- Comparison Ops --
             case OpType::CMP_EQ: return executeBinaryOpHelper("CMP_EQ", [](auto a, auto b){ return bool(a == b); });
             case OpType::CMP_NE: return executeBinaryOpHelper("CMP_NE", [](auto a, auto b){ return bool(a != b); });
@@ -1356,6 +1432,7 @@ bool BDIVirtualMachine::executeNode(BDINode& node, BDIGraph& graph) {
              result_var = BDIValueVariant{uint64_t{0}}; // Dummy success code 
              break; 
          }
+     
         // ... 
     }
     // ...
