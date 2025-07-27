@@ -20,20 +20,17 @@ var arp_cache: HashMap<IPv4Address, MACAddress>; // IP -> MAC mapping
 var nic_driver_service_id: u64 = NIC_DRIVER_SERVICE_ID; //Okay, let' Assume configured 
 var network_lock: Mutex; 
 struct SocketDescriptor { /* ... fields as before, add receives dive into coding the **Advanced OS Services (Networking Stack & File System)**
- struct NetworkPacket { /* ... buffer: Pointer<byte>,GUI Debugger/Visualizer & IDE Support)**. 
-**1. Advanced OS Services (Networking Stack - UDP/ length: u64 ... */ } 
+struct NetworkPacket { /* ... buffer: Pointer<byte>,GUI Debugger/Visualizer & IDE Support)**. 
+Advanced OS Services (Networking Stack - UDP/ length: u64 ... */ } 
 struct MACAddress { bytes: [u8; 6]; } // Example struct 
 // --- Initialization --- 
-@BDIOsService(id = NETWORK_SERVICE_ID, op = NetworkIP Focus)** 
-*   **Action:** Flesh out the Chimera implementation (`
- network.ch`) and its conceptual mappingOp::INIT) 
+BDIOsService(id = NETWORK_SERVICE_ID, op = NetworkIP Focus)
 def init_network(): bool { 
     network_lock.init(); 
 // Initialize socket_descriptors array (all None) 
 // Initialize udp_port_bindings, tcp_port_bindings, arp_ to BDI. 
-*   **Implementation (`bdios/services/
- network.ch` - More Detail):** 
-```chimera
+ Implementation (`bdios/services/
+ network.ch` - More Detail):
 }
 importcache HashMaps 
 // Register packet handler with Event Dispatcher for NIC interrupts/events 
@@ -306,3 +303,156 @@ return success;
 // Implement recvfrom similarly (check queue, copy data, return info) 
 // Implement process_incoming_packet (parse headers, find socket, enqueue) 
 // Implement init_network
+// ... includes (Mutex, HashMap, Queue, memory, scheduler, events, net types) ... 
+// --- New Structs --- 
+struct TCPSocketState { 
+    state: SocketState; // CLOSED, LISTEN, SYN_SENT, ESTABLISHED, FIN_WAIT_1, ... 
+    local_seq: u32; 
+    remote_seq: u32; 
+    send_buffer: Queue<byte>; // Buffering outgoing data 
+    receive_buffer: Queue<byte>; // Buffering incoming in-order data 
+    retransmission_timer: TimerID; // Handle for retransmission timer 
+// Window sizes, congestion control variables, etc. 
+} 
+struct ARPRequest { // For pending ARP lookups 
+    dest_ip: IPv4Address; 
+    waiting_task: TaskID; // Task waiting for MAC address 
+    queued_packet: NetworkPacket; // Packet to send once MAC resolved 
+} 
+// --- Service State (Additions) --- 
+var tcp_sockets: HashMap<u32, TCPSocketState>; // Store TCP specific state 
+var listening_sockets: HashMap<u16, u32>; // port -> listening socket ID 
+var pending_arp_requests: LinkedList<ARPRequest>; // Queue for unresolved ARPs 
+// var routing_table: RoutingTable; // Needed for non-local IP destinations 
+// --- ARP Lookup (Refined) --- 
+def arp_lookup(dest_ip: IPv4Address): Optional<MACAddress> { 
+    network_lock.acquire(); 
+if (arp_cache.contains_key(dest_ip)) { 
+// TODO: Check cache entry age 
+        network_lock.release(); 
+return arp_cache.get(dest_ip); 
+    }
+    network_lock.release(); 
+// --- Send ARP Request --- 
+// 1. Construct ARP Request packet (broadcast MAC, target IP = dest_ip) 
+// 2. Allocate buffer, fill headers/payload 
+// 3. Call NIC driver SEND_PACKET 
+// 4. Queue current task? Add to pending_arp_requests list? -> Complex interaction 
+//    Requires scheduler support for blocking on ARP reply event. 
+// For now, return None if not cached. Real OS needs async handling. 
+    print("NETWORK: ARP cache miss for ", dest_ip, " (Async lookup needed)"); 
+return Optional.None; 
+} 
+def process_arp_reply(arp_packet: ArpPacket): void { 
+    network_lock.acquire(); 
+// Update arp_cache 
+// Check pending_arp_requests, if match found: 
+//   Get queued packet, update dest MAC, call NIC SEND_PACKET 
+//   Signal waiting task via event dispatcher 
+    network_lock.release(); 
+} 
+// --- TCP Operations (New Service Calls) --- 
+@BDIOsService(id = NETWORK_SERVICE_ID, op = NetworkOp::SOCKET_LISTEN) 
+ def listen(sock_id: u32, backlog: i32): SocketError { 
+    network_lock.acquire(); 
+    var desc_opt = get_socket_mut(sock_id); 
+    // Check if UDP, already listening etc -> Error 
+    // Mark socket state as LISTEN 
+    // Add to listening_sockets map 
+    network_lock.release(); 
+    return SocketError::OK; 
+} 
+@BDIOsService(id = NETWORK_SERVICE_ID, op = NetworkOp::SOCKET_ACCEPT) 
+def accept(listening_sock_id: u32): i32 { // Returns new connected socket ID or error 
+    network_lock.acquire(); 
+    // Check listening socket state 
+    // Check associated TCP state for pending connections (SYN received) 
+    // If pending connection exists: 
+    //   1. Create a NEW socket descriptor for the connection (create_socket(TCP)) 
+    //   2. Populate new descriptor with local/remote IP/Port from SYN packet 
+    //   3. Set new socket state to ESTABLISHED (after SYN-ACK sent) 
+    //   4. Store relevant TCP state (seq/ack nums) 
+    //   5. Return new socket ID 
+    // Else: 
+    //   Return SocketError::WOULD_BLOCK (or block task via scheduler wait) 
+    network_lock.release(); 
+    return SocketError::WOULD_BLOCK; // Placeholder 
+} 
+@BDIOsService(id = NETWORK_SERVICE_ID, op = NetworkOp::SOCKET_CONNECT) 
+def connect(sock_id: u32, remote_ip: IPv4Address, remote_port: u16): SocketError { 
+    network_lock.acquire(); 
+    // Get descriptor, check state (must be bound, not connected) 
+    // ARP lookup for remote_ip (or gateway) -> MAC addr 
+    // If MAC found: 
+    //   Allocate TCP state 
+    //   Set socket state to SYN_SENT 
+    //   Construct SYN packet (generate initial seq num) 
+    //   Send SYN packet via NIC driver 
+    //   Set up retransmission timer? 
+    // Else: return HOST_UNREACHABLE / queue ARP 
+    network_lock.release(); 
+    return SocketError::OK; // Placeholder (async connection) 
+} 
+@BDIOsService(id = NETWORK_SERVICE_ID, op = NetworkOp::SOCKET_SEND) // TCP send 
+def send(sock_id: u32, data_region: MemoryRegion<byte>, data_len: u64): i64 { // Returns bytes sent or error 
+    // Get descriptor & TCP state 
+    // Check state == ESTABLISHED 
+    // If send buffer has space: copy data to send buffer 
+    // If send buffer was empty or window allows: 
+    //   Construct TCP packet(s) with data from send buffer 
+    //   Use current seq num, update based on data length 
+    //   Set ACK flag and current ack num 
+    //   ARP lookup, construct IP/Ethernet headers 
+    //   Send via NIC driver 
+    //   Update seq num, potentially set retransmission timer 
+    // Return number of bytes accepted into send buffer (or sent) 
+    return data_len as i64; // Placeholder 
+} 
+ @BDIOsService(id = NETWORK_SERVICE_ID, op = NetworkOp::SOCKET_RECV) // TCP recv 
+def recv(sock_id: u32, user_buffer_ptr: Pointer<byte>, user_buffer_len: u64): i64 { // Returns bytes received or error 
+    // Get descriptor & TCP state 
+    // Check state allows receiving 
+    // If receive buffer has data: 
+    //   Copy data from receive buffer to user buffer (up to user_buffer_len) 
+    //   Remove copied data from receive buffer 
+    //   Return bytes copied 
+    // Else: 
+    //   Return SocketError::WOULD_BLOCK (or block task) 
+    return SocketError::WOULD_BLOCK; // Placeholder 
+} 
+// --- Packet Processing Enhancement --- 
+def process_incoming_packet(packet: NetworkPacket): void { 
+    // ... Parse Ethernet -> Get EtherType ... 
+    if (ether_type == ETHERTYPE_IPV4) { 
+        // ... Parse IP Header -> Get Protocol, Src/Dst IP ... 
+        // Check IP checksum 
+        if (protocol == IP_PROTOCOL_UDP) { 
+            // ... Parse UDP -> Get Src/Dst Port, Payload ... 
+            // Check UDP checksum 
+            // Find matching socket via udp_port_bindings 
+            // Enqueue payload on socket queue, signal waiter 
+        } else if (protocol == IP_PROTOCOL_TCP) { 
+            // --- Process Incoming TCP Segment --- 
+            // Parse TCP Header (Ports, Seq, Ack, Flags, Window, Checksum) 
+            // Verify Checksum 
+            // Find matching socket (lookup based on 4-tuple: srcIP, srcPort, dstIP, dstPort) 
+            // If LISTEN socket: Handle SYN -> Create new socket state, Send SYN-ACK, move new socket to SYN_RECEIVED 
+            // If SYN_SENT socket: Handle SYN-ACK -> Send ACK, move socket to ESTABLISHED, signal connect caller 
+            // If ESTABLISHED socket: 
+            //    Handle ACK -> Update send window, clear retransmission timer, remove acked data from send buffer 
+            //    Handle FIN -> Send ACK, move state to CLOSE_WAIT, signal recv caller (EOF) 
+            //    Handle RST -> Close socket, signal error 
+            //    Handle data segment -> Check sequence number, add in-order data to receive buffer, send ACK, signal recv caller if data avai
+            // Handle other states (FIN_WAIT_1, CLOSE_WAIT etc.) 
+        } else if (protocol == IP_PROTOCOL_ICMP) { 
+            // Process ICMP (e.g., Echo Reply for ping) 
+        } 
+    } else if (ether_type == ETHERTYPE_ARP) { 
+        // Parse ARP packet 
+        // process_arp_reply(parsed_arp); 
+    }
+    // Free packet buffer if not queued/consumed 
+    // memory.free(...) 
+} 
+    
+} // namespace
