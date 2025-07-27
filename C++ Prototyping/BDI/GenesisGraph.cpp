@@ -19,8 +19,8 @@ bool generateGenesisGraph(
     NodeID ledger_init_entry, 
     NodeID idle_task_entry, // Entry point of the compiled idle task BDI graph 
     NodeID scheduler_loop_entry // Entry point of the compiled scheduler loop BDI graph 
-/* Removed service_entry_nodes map - assumes lookup mechanism */ 
-/* Removed scheduler_loop_entry_id - assumes lookup mechanism */ 
+    /* Removed service_entry_nodes map - assumes lookup mechanism */  
+    /* Removed scheduler_loop_entry_id - assumes lookup mechanism */ 
         ) 
 { 
 std::cout << "Generating Final BDIOS Genesis Graph..." << std::endl; 
