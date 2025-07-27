@@ -3,7 +3,7 @@
  #include <iostream>
  namespace bdi::intelligence {
  // --- BasicRewardFeedbackAdapter --
-BasicRewardFeedbackAdapter::BasicRewardFeedbackAdapter(PortRef reward_signal_port, float learning_rate)
+ BasicRewardFeedbackAdapter::BasicRewardFeedbackAdapter(PortRef reward_signal_port, float learning_rate)
     : reward_port_(reward_signal_port), learning_rate_(learning_rate) {}
  void BasicRewardFeedbackAdapter::processFeedback(ExecutionContext& context, BDIGraph& graph) {
     pending_updates_.clear(); // Clear previous updates
@@ -186,6 +186,54 @@ float weight_delta = learning_rate_ * layer_delta * input_act.value();
             pending_updates_.push_back({weight_node_ids[i], BDIValueVariant{weight_delta}}); 
 // std::cout << "  BP Update for Weight Node " << weight_node_ids[i] << ": Delta " << weight_delta << std::endl; 
         } 
+ // Assume config provides NodeIDs for: 
+// output_activation_node, target_node, downstream_delta_node (if hidden), 
+// activation_derivative_node (node calculating derivative of activation func), 
+// weight_nodes (vector<NodeID>), input_activation_nodes (vector<NodeID>) 
+// Also error_signal_output_nodes (map<NodeID input_act_node, NodeID output_for_its_error>) 
+void BackpropFeedbackAdapter::processFeedback(ExecutionContext& context, BDIGraph& graph) { 
+         pending_updates_.clear(); 
+         context.clearGradients(); // Clear gradients from previous step 
+try { 
+// 1. Get required values (assume float) 
+auto actual = vm_ops::convertValueOrThrow<float>(context.getPortValue(config_.output_activation_node, 0).value()); 
+auto activation_deriv = vm_ops::convertValueOrThrow<float>(context.getPortValue(config_.activation_derivative_node, 0).value()); 
+float layer_error_signal; // This layer's delta * activation_derivative 
+// 2. Calculate Error Signal (Delta * Derivative) for this layer 
+if (config_.is_output_layer) { 
+auto target = vm_ops::convertValueOrThrow<float>(context.getPortValue(config_.target_node, 0).value()); 
+float error = target - actual; // Simple error for now 
+                 layer_error_signal = error * activation_deriv; 
+             } 
+else { 
+// Hidden layer: Sum weighted deltas from downstream layer 
+auto downstream_delta_sum = vm_ops::convertValueOrThrow<float>(context.getPortValue(config_.downstream_delta_sum_node, 0).val
+                 layer_error_signal = downstream_delta_sum * activation_deriv; 
+             } 
+// 3. Calculate Weight Updates & Gradients for Previous Layer 
+if (config_.input_activation_nodes.size() != config_.weight_node_ids.size()) throw BDIExecutionError("Input/Weight mismatch"); 
+for (size_t i = 0; i < config_.weight_node_ids.size(); ++i) { 
+                 NodeID weight_node_id = config_.weight_node_ids[i]; 
+                 NodeID input_act_node_id = config_.input_activation_nodes[i]; 
+auto input_activation_val = context.getPortValue(input_act_node_id, 0); 
+if (!input_activation_val) throw BDIExecutionError("Missing input activation for backprop"); 
+auto input_act = vm_ops::convertValueOrThrow<float>(input_activation_val.value()); 
+// Calculate Weight Delta: eta * error_signal * input_activation 
+float weight_delta = config_.learning_rate * layer_error_signal * input_act; 
+                 pending_updates_.push_back({weight_node_id, BDIValueVariant{weight_delta}}); // Add delta (negative for descent) 
+// Calculate Error Signal for Previous Layer (Propagate Backwards) 
+if (!config_.is_input_layer) { 
+auto weight_val_var = context.getPortValue(weight_node_id, 0); // Read current weight value 
+if (!weight_val_var) throw BDIExecutionError("Cannot read weight for backprop"); 
+auto weight_val = vm_ops::convertValueOrThrow<float>(weight_val_var.value()); 
+                     BDIValueVariant error_for_prev_layer = BDIValueVariant{layer_error_signal * weight_val}; 
+// Store this gradient/error signal associated with the *input activation* node 
+// This allows the previous layer's adapter to sum incoming signals 
+                     context.recordGradient(input_act_node_id, error_for_prev_layer); // Use gradient storage for backprop signal 
+                 } 
+             } 
+       } catch (const std::exception& e) { /* ... error ... */ } 
+    }
 // 4. (Optional) Calculate and store gradient w.r.t inputs for previous layer 
 // gradient_for_prev_layer = layer_delta * weight; Store this in context for prev layer adapter. 
 // Assume a GradientDescentAdapter 
