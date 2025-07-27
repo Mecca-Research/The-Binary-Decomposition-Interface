@@ -830,7 +830,7 @@ void ASTToIR::convertStructDefinition(const DSLStructDefExpr& struct_def, TypeCh
     std::cout << "ASTToIR: Processed struct definition for '" << struct_def.name.name << "' (No IR generated)." << std::endl; 
 } 
 IRNodeId ASTToIR::convertStructLiteral(const DSLStructLiteralExpr& literal_expr, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node);
-    // 1. Type check the literal expression itself to get the target struct type 
+    // 1. Type check the literal expression itself to get the target struct type, Resolve struct type (via type checking the literal maybe?) 
     auto struct_type_ptr = type_checker_.checkExpression(&literal_expr, context); // Assuming checkExpression handles literals 
     if (!struct_type_ptr || !struct_type_ptr->isStruct()) throw BDIExecutionError("Invalid struct type for literal"); 
     const auto& struct_type = std::get<ChimeraStructType>(struct_type_ptr->content); 
@@ -843,6 +843,7 @@ IRNodeId ASTToIR::convertStructLiteral(const DSLStructLiteralExpr& literal_expr,
     alloc_node->output_type = std::make_shared<ChimeraType>(); // POINTER to struct_type 
     current_graph_->addEdge(current_cfg_node, alloc_node_id); 
     current_cfg_node = alloc_node_id; 
+    // ... set AllocInfo, define output type (Pointer), connect CFG ... 
     IRNodeId base_addr_node_id = alloc_node_id; // Node producing the base address 
     // 3. Convert and store each field initializer 
     // Assume literal_expr.fields is map<string, unique_ptr<DSLExpression>> 
@@ -856,6 +857,12 @@ IRNodeId ASTToIR::convertStructLiteral(const DSLStructLiteralExpr& literal_expr,
     //     // ... check type compatibility with struct_type.fields[...].type ... 
     //     IRNodeId field_addr_node_id = generateAddressCalculation(field_offset, context, current_cfg_node, base_addr_node_id); 
     //     // ... generate STORE_MEM node, connect CFG and data edges ... 
+    //     // ... find field offset/type from struct_type ... 
+    //     IRNodeId value_node_id = convertNode(field_expr, context, current_cfg_node); 
+    //     // ... check type compatibility ... 
+    //     IRNodeId field_addr_node_id = generateAddressCalculation(field_offset, context, current_cfg_node, base_addr_node_id); 
+    //     IRNodeId store_node_id = current_graph_->addNode(ChiIROpCode::STORE_MEM); 
+    //     // ... connect inputs (addr, value), connect CFG ... 
     //     current_cfg_node = store_node_id; 
     //
     //     // Find field info in struct type 
@@ -880,6 +887,17 @@ IRNodeId ASTToIR::convertStructLiteral(const DSLStructLiteralExpr& literal_expr,
     return base_addr_node_id; // Return the node producing the address of the allocated struct 
 }
 // Implement convertArrayLiteral similarly (ALLOC + sequence of STOREs for elements) 
+ChiIRNodeId ASTToChiIR::convertArrayLiteral(const DSLArrayLiteralExpr& literal_expr, TypeChecker::CheckContext& context, ChiIRNodeId& cur
+         // Similar to struct literal: 
+         // 1. Resolve array type 
+         // 2. ALLOC_MEM for total array size 
+         // 3. Loop through literal elements: 
+         //    a. Convert element expression -> value_node_id 
+         //    b. Calculate element address (Base + Index * ElemSize) -> elem_addr_node_id 
+         //    c. STORE_MEM (elem_addr_node_id, value_node_id) 
+         // 4. Return base_addr_node_id 
+         return 0; // Placeholder 
+     } 
 IRNodeId ASTToIR::convertForLoop(const DSLForLoopExpr& for_loop, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node) { 
 // Example C-style For: for (init; condition; increment) { body } 
 // Structure: 
@@ -1039,4 +1057,12 @@ bool IRToBDI::convertNode(const IRNode& ir_node) {
      return true; 
 } 
 // ... getBDIPortRef implementation ... 
+// --- Module/Import Handling --- 
+     // Needs modification to handle qualified names (Module::Function) 
+     // `convertFunctionCall` needs to check if function_name is imported and generate 
+     // a specific ChiIR node (e.g., EXTERNAL_CALL) or embed linking info. 
+     // `convertDefinition` for functions needs to handle export visibility. 
+     // --- Error Handling Refinement --- 
+     // Replace direct throws in helpers with calls to `reportError` and return 0/nullptr. 
+     // Check return values of recursive `convertNode` calls and propagate errors. 
 } // namespace ir::ir 
