@@ -206,3 +206,54 @@ for entry in dir_entries {
     if (entry.name_hash == component_hash) { 
         current_inode_hash = Implementation:** Requires efficient hashing nodes (`CRYPTO_HASH`), interaction with the Ledger Service (`OS
 //Implement READ, WRITE, CREATE, MKDIR etc. following the principles Debugger Interface 
+// ... includes, structs ... 
+// Helper: Commit block, returns new hash 
+def commit_block(data: MemoryRegion<byte>): HashValue { 
+    var hash = crypto::hash::compute(data); 
+    if (!ledger.commit(hash, data)) { // Call Ledger Service 
+         throw BDIExecutionError("FS Error: Failed to commit block to ledger"); 
+    }
+    return hash; 
+} 
+// Helper: Update parent directory listing 
+def update_parent_dir(parent_inode_hash: HashValue, entry_name: string, new_entry_inode_hash: HashValue): Optional<HashValue> { // Returns NEW
+    // 1. Read parent inode metadata 
+    // 2. Read parent directory listing block 
+    // 3. Find/Update/Add DirectoryEntry for entry_name with new_entry_inode_hash 
+    // 4. Serialize updated directory listing 
+    // 5. Commit new directory block -> new_dir_block_hash 
+    // 6. Create updated parent inode metadata (update timestamp, point to new_dir_block_hash) 
+    // 7. Commit new parent inode metadata -> new_parent_inode_hash 
+    // 8. Return new_parent_inode_hash 
+    return Optional.None; // Placeholder 
+} 
+@BDIOsService(id = FS_SERVICE_ID, op = FSOp::WRITE) 
+def write(inode_hash: HashValue, offset: u64, data_to_write: MemoryRegion<byte>): bool { 
+    // fs_lock.acquire_write(); // Exclusive lock 
+    // 1. Load InodeMetadata, check type=FILE, permissions, offset 
+    // 2. --- Complex Block Handling --- 
+    //    - Determine which data block(s) correspond to the write range [offset, offset + data.size). 
+    //    - May involve traversing indirect block pointers if offset is large. 
+    //    - Load necessary existing blocks from Ledger (copy-on-write). 
+    // 3. Modify loaded blocks in memory with data_to_write. Handle partial block writes. 
+    // 4. If write extends file size, potentially allocate *new* data blocks using Allocator service. 
+    // 5. Commit all *modified* or *new* data blocks to Ledger -> get new block hashes. 
+    // 6. Create updated InodeMetadata: update size, timestamps, direct/indirect block hashes. 
+    // 7. Commit updated InodeMetadata -> new_inode_hash. 
+    // 8. Update parent directory entry to point to new_inode_hash (calls update_parent_dir recursively potentially). 
+    // fs_lock.release(); 
+    return false; // Placeholder 
+} 
+@BDIOsService(id = FS_SERVICE_ID, op = FSOp::CREATE_FILE) 
+def create_file(parent_dir_inode_hash: HashValue, filename: string): Optional<HashValue> { // Returns new file Inode HASH 
+    // fs_lock.acquire_write(); 
+    // 1. Check parent is directory and permissions allow creation. 
+    // 2. Check if filename already exists in parent directory listing (read via get_block). -> Error if exists. 
+    // 3. Create new empty InodeMetadata (type=FILE, size=0, initial block hash = null/empty). 
+    // 4. Commit new inode -> new_file_inode_hash. 
+    // 5. Update parent directory (via update_parent_dir) to add entry {hash(filename), new_file_inode_hash}. 
+    // fs_lock.release(); 
+    return Optional.None; // Placeholder 
+} 
+// Implement MKDIR similarly (create Inode type=DIR, create empty DirectoryListing block, commit both, update parent). 
+// Implement RMDIR, UNLINK (remove entry from parent, potentially decrement link count on inode, free blocks if link count reaches 0). 
