@@ -210,3 +210,66 @@ def blit_rect_alpha(
 // 3. Glyph rendering logic (blit individual character bitmaps/paths with color). 
 // Extremely complex to do purely in software rendering via BDI ops. Usually relies on HAL/GPU. 
 def draw_text(...) { /* ... Complex ... */ } 
+import bdios::services::gui_rendering; // Import rendering functions 
+// --- Service Operations (Drawing) --- 
+@BDIOsService(id = GUI_SERVICE_ID, op = GUIOp::DRAW_RECT) 
+def draw_rect(window_id: u64, rect: Rect, color: Color): bool { 
+    gui_lock.acquire(); 
+    var window_opt = windows.get_mut(window_id); // Need mutable access to buffer 
+    if (window_opt.is_none()) { gui_lock.release(); return false; } 
+    var window = window_opt.unwrap(); 
+    // Option 1: Queue command for compositor 
+    // window.draw_commands.enqueue(FillRectCmd{ rect, color }); 
+    // Option 2: Draw directly to window buffer NOW 
+    gui_rendering::fill_rect(window.framebuffer, window.bounds.width, rect, color); 
+    window.is_dirty = true; 
+    gui_lock.release(); 
+    // Signal compositor task? (e.g., via event dispatcher) 
+    // event_dispatcher.send(compositor_task_id, REDRAW_REQUEST_EVENT); 
+    return true; 
+} 
+// Implement DRAW_BITMAP similarly, calling gui_rendering::blit_rect_alpha 
+// --- Compositor Logic (Refined) --- 
+def compositor_task(): void { 
+    while(true) { 
+        // 1. Wait for redraw signal OR timeout 
+        // scheduler.wait(COMPOSITOR_REDRAW_EVENT, 16 /*ms*/); 
+        // 2. Lock GUI state (briefly if possible) 
+        gui_lock.acquire(); 
+        var dirty_windows: Vector<u64>; 
+        for window_id in z_order { // Iterate back-to-front 
+             var window = windows.get(window_id); // Read-only needed? 
+             if (window.is_some() && window.unwrap().is_dirty) { 
+                 dirty_windows.push(window_id); 
+             } 
+        } 
+        gui_lock.release(); 
+        // 3. If redraw needed, acquire screen buffer access 
+        if (!dirty_windows.is_empty()) { 
+            // Lock screen framebuffer? Or assume single compositor task 
+            // Get screen buffer dimensions 
+            var screen_width = ...; var screen_height = ...; 
+            // 4. Redraw dirty windows / Composite scene 
+            gui_lock.acquire(); // Lock again to access window buffers safely 
+            for window_id in z_order { // Draw back-to-front 
+                 var window = windows.get_mut(window_id); // Need mutable to clear dirty flag 
+                 if (window.is_some()) {
+                     var win = window.unwrap(); 
+                     // If using command queue: 
+                     // execute_draw_commands(win.draw_commands, win.framebuffer, win.bounds.width); 
+                     // win.draw_commands.clear(); 
+                     // Blit window buffer to screen buffer (only dirty regions?) 
+                     gui_rendering::blit_rect_alpha( 
+                         screen_framebuffer, screen_width, win.bounds, // Dest = screen 
+                         win.framebuffer, win.bounds.width, // Source = window 
+                         Rect{0, 0, win.bounds.width, win.bounds.height} // Src Rect = whole window 
+                     ); 
+                     win.is_dirty = false; // Mark as clean 
+                 } 
+            } 
+            gui_lock.release(); 
+            // 5. (Optional) Signal graphics driver to flip buffers 
+             // os_service_call(GRAPHICS_DRIVER_ID, BufferFlipOp, ...); 
+        } 
+    }
+ } 
