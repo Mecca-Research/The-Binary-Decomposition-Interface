@@ -2,11 +2,17 @@
 #include <stdexcept> // For errors 
 #include <iostream>  // For stubs 
 #include <cstring>   // For memcpy 
+#include <cpuid.h> // For __get_cpuid_max, __get_cpuid (GCC/Clang intrinsic) 
+// Potentially include <immintrin.h> or <x86intrin.h> for other intrinsics if needed 
 // --- VERY IMPORTANT --- 
 // This requires inline assembly or platform-specific APIs (like intrinsics) 
 // which cannot be fully represented portably here. Stubs are used. 
 // Use compiler intrinsics or specific assembly blocks for real implementation. 
 // Example using GCC/Clang style inline asm syntax (conceptual) 
+// --- Placeholder for APIC MMIO Base --- 
+// This MUST be determined dynamically during boot via ACPI tables (MADT) 
+volatile uint32_t* local_apic_base = reinterpret_cast<volatile uint32_t*>(0xFEE00000); // Common default, but NOT reliable! 
+const uint32_t LAPIC_EOI_REGISTER_OFFSET = 0xB0 / sizeof(uint32_t); // Offset for End-Of-Interrupt register 
 namespace bdi::hal { 
 // --- Register Access --- 
 // readSpecialRegister(SP): Use `mov rax, rsp` 
@@ -37,109 +43,179 @@ uint64_t X86_64_HAL::readSpecialRegister(SpecialRegister reg) {
     uint64_t value = 0; 
     switch(reg) { 
         case SpecialRegister::StackPointer: 
-             // asm volatile ("mov %%rsp, %0" : "=r" (value)); // Read RSP 
+             asm volatile ("mov %%rsp, %0" : "=r" (value)); // Read RSP 
              value = 0xDEADBEEFSP000000; // Placeholder 
             break; 
         case SpecialRegister::FramePointer: 
-             // asm volatile ("mov %%rbp, %0" : "=r" (value)); // Read RBP 
+             asm volatile ("mov %%rbp, %0" : "=r" (value)); // Read RBP 
              value = 0xDEADBEEFFP000000; // Placeholder 
             break; 
         case SpecialRegister::InstructionPointer: 
+             // Getting precise RIP requires a trick. Call instruction pushes return address. 
+             // Or use LEA relative to RIP (but gives address of data, not code being executed) 
+             // This gives address *after* the call. 
+            asm volatile ( 
+                "call 1f;" 
+                "1: pop %0;" 
+                : "=r"(value) 
+                : // no inputs 
+                : // no clobbers (technically pushes/pops stack) 
+            ); 
+             // A simpler but less precise way for general location: 
+             // asm volatile ("lea .(%0), %1" : "=r" (value) : "r" (value)); // Doesn't work reliably 
              // Need specific mechanism, e.g., call + pop or LEA relative RIP 
              value = 0xFFFFFFFFDEADBEEF; // Placeholder 
             break; 
         case SpecialRegister::FlagsRegister: 
-            // asm volatile ("pushfq; popq %0" : "=r" (value)); // Read RFLAGS 
-            value = 0x202; // Placeholder 
+             asm volatile ("pushfq; popq %0" : "=r" (value)); // Read RFLAGS 
+             value = 0x202; // Placeholder 
             break; 
         case SpecialRegister::CoreID: 
-            // Use CPUID instruction or MSR read (e.g., IA32_TSC_AUX) - complex 
-            value = 0; // Placeholder for core 0 
+             // Use CPUID instruction or MSR read (e.g., IA32_TSC_AUX) - complex 
+             // Or use newer features like leaf 0xB or MSRs if available & preferred 
+             // Or use rdtscp's auxiliary field if kernel configured it (IA32_TSC_AUX MSR) 
+             // Simple CPUID Leaf 1 approach: 
+             uint32_t eax, ebx, ecx, edx; 
+             if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) { 
+                 value = (ebx >> 24) & 0xFF; // Initial Local APIC ID 
+             } else {
+             value = 0; // Placeholder for core 0,  Fallback or error 
+                       throw BDIExecutionError("HAL Error: Failed to execute CPUID leaf 1"); 
+             } 
             break; 
-        case SpecialRegister::PageTableBase: 
-             // asm volatile ("mov %%cr3, %0" : "=r" (value)); // Read CR3 
+        }
+        case SpecialRegister::PageTableBase: // Read CR3 
+             asm volatile ("mov %%cr3, %0" : "=r" (value));
              value = 0x1000; // Placeholder 
              break; 
-        case SpecialRegister::TimerCurrentValue: // Read TSC? Needs calibration. 
-        case SpecialRegister::TimerFrequency: // From CPUID or calibration. 
-        case SpecialRegister::InterruptMask: // Read APIC or PIC registers? Complex. 
+        case SpecialRegister::TimerCurrentValue: // Read time stamp counter, Needs calibration. 
+        // Ensure TSC is available and reliable (check CPUID features, constant_tsc flag) 
+             asm volatile ( 
+                 "rdtsc;"        // Reads TSC into EDX:EAX 
+                 "shl $32, %%rdx;" // Shift high bits 
+                 "or %%rdx, %%rax;" // Combine into RAX 
+                 : "=a"(value)   // Output to RAX ('a') 
+                 : // No inputs 
+                 : "%rdx"        // Clobbers RDX 
+             );
+            break; 
+        case SpecialRegister::TimerFrequency: // From CPUID or calibration, Read from MSR or calibrate? Hard to get reliably. 
+             // Needs calibration loop against known timer or CPUID leaf 0x15/0x16 if supported. 
+             // Return placeholder - BDIOS Init might need to calibrate and store this. 
+             value = 3000000000; // Example 3 GHz (placeholder) 
+             std::cerr << "X86_64_HAL Warning: TimerFrequency is a placeholder value." << std::endl; 
+            break; 
+        case SpecialRegister::InterruptMask: // Read APIC or PIC registers? Complex. Read RFLAGS IF bit
+            value = readSpecialRegister(SpecialRegister::FlagsRegister); 
+            value = (value & 0x200) ? 1 : 0; // Check IF bit (bit 9) - 1=Enabled, 0=Disabled 
+            break; 
         default: 
              std::cerr << "X86_64_HAL Warning: readSpecialRegister for unimplemented/unknown register " << static_cast<int>(reg) << std::endl;
              value = 0; // Return 0 for unimplemented 
              break; 
     }
+             throw BDIExecutionError("HAL Error: readSpecialRegister for unknown/unimplemented register: " + std::to_string(static_cast<int>(r
     return value; 
 } 
 void X86_64_HAL::writeSpecialRegister(SpecialRegister reg, uint64_t value) { 
      switch(reg) { 
         case SpecialRegister::StackPointer: 
-            // asm volatile ("mov %0, %%rsp" :: "r" (value) : "memory"); // Write RSP 
+             asm volatile ("mov %0, %%rsp" :: "r" (value) : "memory"); // Write RSP 
              std::cout << "X86_64_HAL Stub: Write RSP = " << value << std::endl; 
             break; 
         case SpecialRegister::FramePointer: 
-            // asm volatile ("mov %0, %%rbp" :: "r" (value) : "memory"); // Write RBP 
+            asm volatile ("mov %0, %%rbp" :: "r" (value) : "memory"); // Write RBP 
              std::cout << "X86_64_HAL Stub: Write RBP = " << value << std::endl; 
             break; 
         case SpecialRegister::PageTableBase: 
-            // asm volatile ("mov %0, %%cr3" :: "r" (value) : "memory"); // Write CR3 
+            asm volatile ("mov %0, %%cr3" :: "r" (value) : "memory"); // Write CR3 
             std::cout << "X86_64_HAL Stub: Write CR3 = " << value << std::endl; 
             break; 
-        case SpecialRegister::InterruptMask: 
+        case SpecialRegister::FlagsRegister: // RFLAGS (use with caution!) 
+             asm volatile ("pushq %0; popfq" :: "r" (value) : "memory", "cc"); 
+             break; 
+        case SpecialRegister::InterruptMask: // Only controls IF bit in RFLAGS 
+             if (value) enableInterrupts(); else disableInterrupts(); 
+             break; 
+        // Cannot write to CoreID, IP, TimerValue, TimerFrequency directly 
         default: 
              std::cerr << "X86_64_HAL Warning: writeSpecialRegister for unimplemented/unknown register " << static_cast<int>(reg) << std::endl
-             break; 
+             throw BDIExecutionError("HAL Error: writeSpecialRegister for unknown/unwritable register: " + std::to_string(static_cast<int>(re
+             break;                  
     }
  } 
+// --- Memory Access --- 
+// Assumes kernel-level access where virtual addresses map directly to physical 
+// or BDIOS manages its own identity map / simple page table. 
 bool X86_64_HAL::readPhysical(uint64_t physical_address, std::byte* buffer, size_t size_bytes) { 
     // Assumes identity mapping or direct physical access (e.g., in early boot or ring 0) 
     // Very unsafe without proper MMU setup & checks! 
-    std::memcpy(buffer, reinterpret_cast<void*>(physical_address), size_bytes); 
-    return true; // Placeholder - needs validation 
-} 
+    // TODO: Add checks: Is address valid? Mapped? Readable? 
+    try { 
+        std::memcpy(buffer, reinterpret_cast<void*>(physical_address), size_bytes); 
+        return true;
+    } catch (const std::exception& e) { // Catch potential segmentation faults (won't work reliably for HW faults) 
+         std::cerr << "HAL Error: Exception during readPhysical from 0x" << std::hex << physical_address << ": " << e.what() << std::endl; 
+        return false; 
+    }
+ }  
 bool X86_64_HAL::writePhysical(uint64_t physical_address, const std::byte* buffer, size_t size_bytes) { 
-    // Assumes identity mapping or direct physical access 
-    std::memcpy(reinterpret_cast<void*>(physical_address), buffer, size_bytes); 
-    return true; // Placeholder - needs validation & read-only checks
-} 
+    // TODO: Add checks: Is address valid? Mapped? Writable? 
+     try { 
+        std::memcpy(reinterpret_cast<void*>(physical_address), buffer, size_bytes); 
+        return true;
+    } catch (const std::exception& e) { 
+         std::cerr << "HAL Error: Exception during writePhysical to 0x" << std::hex << physical_address << ": " << e.what() << std::endl; 
+        return false; 
+    }
+ } 
+// --- Memory Mapping (Simplified - Assumes Identity Mapping) --- 
 std::optional<uintptr_t> X86_64_HAL::mapPhysicalMemory(uint64_t physical_address, size_t size_bytes, uint64_t flags) { 
-// BDIOS Level 1: Assume identity mapping is already set up by firmware/bootloader. 
-// Return the physical address as the "virtual" address. 
-// A real implementation would program page tables here. 
-std::cout << "X86_64_HAL Stub: mapPhysicalMemory (Identity Map) Addr=" << physical_address << " Size=" << size_bytes << std::endl; 
-return static_cast<uintptr_t>(physical_address); 
+    // In a minimal BDIOS running without complex MMU setup, we might assume 
+    // physical addresses are directly usable as virtual addresses. 
+    // A real implementation *must* interact with page tables (CR3). 
+     std::cout << "X86_64_HAL Info: mapPhysicalMemory (Assuming Identity Map): PA=0x" << std::hex << physical_address << std::dec << " Size=" 
+    // TODO: Store mapping info, check for overlaps if not identity mapped. 
+    return static_cast<uintptr_t>(physical_address); 
 } 
 bool X86_64_HAL::unmapMemory(uintptr_t virtual_address, size_t size_bytes) { 
-// If using identity mapping, unmapping might not be meaningful or possible easily. 
-// If using page tables, unmap entries here. 
-std::cout << "X86_64_HAL Stub: unmapMemory Addr=" << virtual_address << " Size=" << size_bytes << std::endl; 
-return true; // Placeholder 
+    // If using page tables, update PTEs to invalid and flush TLB (`invlpg`). 
+    // If identity mapped, this might be a no-op or just bookkeeping. 
+    std::cout << "X86_64_HAL Info: unmapMemory (Assuming Identity Map): VA=0x" << std::hex << virtual_address << std::dec << " Size=" << size_
+     // TODO: Remove mapping info. 
+    return true; 
 } 
+// --- Interrupt Control --- 
 void X86_64_HAL::enableInterrupts() { 
-// asm volatile ("sti"); 
-std::cout << "X86_64_HAL Stub: enableInterrupts (sti)" << std::endl; 
+    asm volatile ("sti" ::: "memory", "cc"); 
 } 
 void X86_64_HAL::disableInterrupts() { 
-// asm volatile ("cli"); 
-std::cout << "X86_64_HAL Stub: disableInterrupts (cli)" << std::endl; 
+    asm volatile ("cli" ::: "memory", "cc"); 
 } 
 void X86_64_HAL::acknowledgeInterrupt(uint32_t vector) { 
-// Requires writing to local APIC EOI register. Complex MMIO access. 
-std::cout << "X86_64_HAL Stub: acknowledgeInterrupt Vec=" << vector << " (EOI)" << std::endl; 
-} 
+    // Write 0 to the EOI register of the Local APIC. 
+    // This requires knowing the MMIO base address of the Local APIC. 
+    if (local_apic_base) { 
+         *(local_apic_base + LAPIC_EOI_REGISTER_OFFSET) = 0; 
+    } else { 
+        // This is critical - need APIC base from ACPI/firmware! 
+        std::cerr << "X86_64_HAL Error: Local APIC base address not initialized. Cannot send EOI." << std::endl; 
+        // Or use legacy PIC EOI if APIC not present/enabled? 
+    }
+ } 
+// --- System Control --- 
 void X86_64_HAL::waitForInterrupt() { 
-    // 
-asm volatile ("hlt"); 
-std::cout << "X86_64_HAL Stub: waitForInterrupt (hlt)" << std::endl; 
+    // Halt processor until next interrupt arrives 
+    asm volatile ("hlt" ::: "memory"); 
 } 
 void X86_64_HAL::systemHalt() { 
-std::cout << "X86_64_HAL Stub: systemHalt" << std::endl; 
-    // disableInterrupts(); 
-    // 
-while(true) { waitForInterrupt(); } 
-} 
+    disableInterrupts(); // Disable interrupts first 
+    while(true) { 
+        waitForInterrupt(); // Halt in a loop 
+    }
+ } 
 void X86_64_HAL::debugBreak() { 
-    // 
-asm volatile ("int3"); 
+asm volatile ("int3"); // Trigger breakpoint exception 
 std::cout << "X86_64_HAL Stub: debugBreak (int3)" << std::endl; 
 } 
 NodeID generateAllocatorGraph(GraphBuilder& builder, MetadataStore& meta_store, NodeID free_list_head_addr_id, NodeID lock_addr_id) { 
