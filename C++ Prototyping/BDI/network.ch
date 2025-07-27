@@ -454,5 +454,67 @@ def process_incoming_packet(packet: NetworkPacket): void {
     // Free packet buffer if not queued/consumed 
     // memory.free(...) 
 } 
-    
+// ... includes, existing structs (TCPSocketState etc.) ... 
+// Helper function to send TCP segment (constructs headers, calls NIC) 
+def send_tcp_segment(socket_id: u32, flags: u8 /* SYN, ACK, FIN */, seq_num: u32, ack_num: u32, data: Optional<MemoryRegion<byte>>): bool { 
+// ... Get socket descriptor (local/remote IP/Port) ... 
+// ... ARP lookup for destination MAC ... 
+// ... Allocate packet buffer ... 
+// ... Construct Ethernet, IP, TCP headers (set flags, seq, ack, window size, calculate checksums) ... 
+// ... Copy data if present ... 
+// ... Call NIC driver SEND_PACKET service ... 
+// ... Free packet buffer ... 
+return true; // Placeholder 
+} 
+// Called from process_incoming_packet when TCP segment arrives 
+ def handle_tcp_segment(packet_info: ParsedPacketInfo /* Contains headers, payload */): void { 
+    network_lock.acquire(); 
+    // 1. Find matching socket based on 4-tuple (srcIP, srcPort, dstIP, dstPort) 
+    var socket_opt = find_tcp_socket(packet_info.ip_hdr.src_ip, packet_info.udp_hdr.src_port, packet_info.ip_hdr.dest_ip, packet_info.udp_hdr.
+    if (socket_opt.is_some()) { // Existing connection/listen socket 
+        var sock_id = socket_opt.unwrap().id; 
+        var tcp_state = socket_opt.unwrap().tcp_state; // Get mutable TCP state ref 
+        // --- TCP State Machine Logic --- 
+        match (tcp_state.state) { 
+            SocketState::LISTEN => { 
+                if (packet_info.tcp_hdr.flags & TCP_SYN) { 
+                    // Received SYN for listening socket 
+                    // Create NEW socket for the connection (create_socket) 
+                    // Store peer info (IP/Port), set state to SYN_RECEIVED 
+                    // Send SYN-ACK segment (use packet_info.tcp_hdr.seq + 1 for ack) 
+                    print("TCP: Received SYN on LISTEN, sending SYN-ACK..."); 
+                    // Enqueue new socket on listener's accept queue? Or signal listener task? 
+                } // Ignore other packets for LISTEN state 
+            } 
+            SocketState::SYN_SENT => { 
+                if (packet_info.tcp_hdr.flags & TCP_SYN && packet_info.tcp_hdr.flags & TCP_ACK) { 
+                    // Received SYN-ACK 
+                    // Check ACK number validity 
+                    // Update local seq/ack numbers 
+                    // Send final ACK segment 
+                    tcp_state.state = SocketState::ESTABLISHED; 
+                    print("TCP: Connection ESTABLISHED for socket ", sock_id); 
+                    // Signal waiting connect() caller task 
+                } else if (packet_info.tcp_hdr.flags & TCP_SYN) { /* Simultaneous open? Complex */ } 
+                // Ignore other packets 
+            } 
+            SocketState::ESTABLISHED => { 
+                // Check sequence number validity (within window) 
+                // Handle ACK flag: Update send window, acknowledge sent data 
+                // Handle FIN flag: Send ACK, state -> CLOSE_WAIT, signal recv (EOF) 
+                // Handle RST flag: Close socket, signal error 
+                // Handle PSH/URG flags? 
+                if (packet_info.payload.length > 0) { 
+                    // Data segment: Add data to receive buffer (handle ordering/duplicates) 
+                    // Send ACK segment for received data 
+                    // Signal waiting recv() caller task if buffer was empty 
+                } 
+            } 
+            // ... Handle other states: SYN_RECEIVED, FIN_WAIT_1, FIN_WAIT_2, CLOSE_WAIT, CLOSING, LAST_ACK, TIME_WAIT ... 
+            _ => { /* Ignore packet for current state */ } 
+        } 
+    } // else: No matching socket found (send RST?) 
+    network_lock.release(); 
+} 
+// Update process_incoming_packet to call handle_tcp_segment for TCP protocol 
 } // namespace
