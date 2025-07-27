@@ -352,6 +352,57 @@ bool TypeChecker::checkTypeCompatibility(const ChimeraType& expected, const Chim
         } 
         return arr_type.element_type; // Return the element type 
     }
+// Assume TypeChecker has access to a Type Registry storing struct/array definitions 
+std::shared_ptr<ChimeraType> TypeChecker::resolveTypeExpr(const DSLExpression* type_expr, CheckContext& context) { 
+// Simplified: Assume type expression is just a Symbol for now 
+if(const auto* sym = std::get_if<Symbol>(&type_expr->content)) { 
+// Lookup type name in registry/context 
+// return context.lookupTypeDefinition(sym->name); // Needs type registry 
+// Placeholder: Return a pre-defined struct/array type for testing 
+if (sym->name == "Point") { 
+auto point_type = std::make_shared<ChimeraType>(); 
+                ChimeraStructType st; 
+st.name = "Point"; 
+                st.fields.push_back({"x", make_scalar(BDIType::FLOAT32)}); 
+                st.fields.push_back({"y", make_scalar(BDIType::FLOAT32)}); 
+                st.calculateLayout(); // Calculate offsets/size 
+                point_type->content = std::move(st); 
+return point_type; 
+            } 
+if (sym->name == "IntArray3") { 
+auto arr_type = std::make_shared<ChimeraType>(); 
+                 ChimeraArrayType at; 
+                 at.element_type = make_scalar(BDIType::INT32); 
+                 at.count = 3; 
+                 at.calculateLayout(); 
+                        arr_type->content = std::move(at); 
+                 return arr_type; 
+            } 
+        } 
+        throw BDIExecutionError("Type Error: Cannot resolve type expression."); 
+    }
+    std::shared_ptr<ChimeraType> TypeChecker::checkDefinition(const DSLDefinition& def, CheckContext& context) { 
+        // ... (Existing value checking) ... 
+        std::shared_ptr<ChimeraType> final_type = value_type; // Type inferred from value first 
+        if (def.type_expr) { // If explicit type annotation exists 
+           auto annotation_type = resolveTypeExpr(def.type_expr.get(), context); 
+           if (!annotation_type || !annotation_type->isResolved()) { 
+                reportError("Invalid type annotation for '" + def.name.name + "'", /*loc*/); 
+           } else if (!checkTypeCompatibility(*annotation_type, *value_type, context)) { // Check compatibility 
+                reportError("Value type incompatible with annotation for '" + def.name.name + "'", /*loc*/); 
+           } else { 
+               final_type = annotation_type; // Use annotation type if compatible 
+           } 
+        } 
+         // ... (Handle mutability, allocate stack space using final_type size/alignment) ... 
+         SymbolInfo info(final_type, /*mutability*/ true, false, context.getScopeLevel()); 
+         if (info.is_mutable) { 
+             info.location = SymbolInfo::Location::STACK; 
+             info.stack_offset = context.allocateStackSpace(def.name.name, getTypeSize(*final_type, *this), getTypeAlignment(*final_type, *thi
+         } else { /* SSA */ } 
+         context.addSymbol(def.name.name, info); 
+         return make_scalar(BDIType::VOID); 
+    }
 // --- ChimeraType Method Implementations --- 
 bool ChimeraType::operator==(const ChimeraType& other) const { 
      if (content.index() != other.content.index()) return false; 
@@ -383,4 +434,5 @@ bool ChimeraType::operator==(const ChimeraType& other) const {
      return make_scalar(BDIType::VOID); // Definitions themselves evaluate to void 
 } 
 // Add checkMemberAccess, checkArrayIndex ... 
+// Implement checkStructLiteral, checkArrayLiteral similarly, ensuring field/element types match definition. 
 } // namespace chimera::frontend::types 
