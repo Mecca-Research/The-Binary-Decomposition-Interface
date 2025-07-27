@@ -1,8 +1,8 @@
 #ifndef BDIOS_GENESISGRAPH_HPP 
 #define BDIOS_GENESISGRAPH_HPP 
-#include "bdi/core/graph/BDIGraph.hpp" 
-#include "bdi/frontend/api/GraphBuilder.hpp" 
-#include "bdi/meta/MetadataStore.hpp" 
+#include "BDIGraph.hpp" 
+#include "GraphBuilder.hpp" 
+#include "MetadataStore.hpp" 
 namespace bdios { 
 /** 
  * @brief Generates the initial BDIOS Genesis Graph. 
