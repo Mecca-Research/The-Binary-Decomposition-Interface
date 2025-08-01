@@ -1,7 +1,7 @@
  #include "ArithmeticMapper.hpp"
- #include "../../core/graph/OperationTypes.hpp"
- #include "../../core/types/BDITypes.hpp"
- #include "../../core/payload/TypedPayload.hpp"
+ #include "OperationTypes.hpp"
+ #include "BDITypes.hpp"
+ #include "TypedPayload.hpp"
  #include <stdexcept>
  namespace bdi::frontend::dsl {
  using namespace bdi::core::graph;
