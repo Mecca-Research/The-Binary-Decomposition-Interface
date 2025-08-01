@@ -1,4 +1,4 @@
- # Ensure chimera compiler (chimera-cc) is built and in PATH 
+# Ensure chimera compiler (chimera-cc) is built and in PATH 
 # Compile dependencies first if necessary (e.g., core libraries) 
 echo "Compiling BDIOS Services..." 
 chimera-cc bdios/services/
