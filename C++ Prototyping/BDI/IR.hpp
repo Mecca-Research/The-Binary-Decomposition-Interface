@@ -11,7 +11,7 @@
 #include <optional> 
 namespace ir::ir { 
 // --- IR Node Structure --- 
-// ... ChiIRNodeId, ChiIROpCode ... 
+// ... IRNodeId, IROpCode ... 
 /** 
  * @brief Represents Intermediate Representation codes for Chimera operations. 
  * These are higher-level than BDI operations and closer to source constructs. 
@@ -42,7 +42,7 @@ enum class IROpCode {
 }; 
 // Represents a reference to an output value of another IR node 
 /** 
- * @brief Represents a reference to a value produced by another ChiIR node's output. 
+ * @brief Represents a reference to a value produced by another IR node's output. 
  * Includes the source node ID, the specific output port index, and the expected type. 
  */ 
 struct IRValueRef { 
@@ -96,8 +96,8 @@ public:
     IRNodeId addNode(IROpCode opcode, std::string label = ""); 
     bool addEdge(IRNodeId from, IRNodeId to); // Control flow edge 
     // Add methods for setting node inputs, data, type, annotations etc. 
-    // ... ChiIRGraph ... (addEdge might populate successors) 
-    bool ChiIRGraph::addEdge(ChiIRNodeId from, ChiIRNodeId to) { 
+    // ... IRGraph ... (addEdge might populate successors) 
+    bool IRGraph::addEdge(IRNodeId from, IRNodeId to) { 
     auto from_node = getNode(from); 
     auto to_node = getNode(to); // Ensure target exists 
     if (from_node && to_node) { 
@@ -137,6 +137,6 @@ IRNodeId convertOperation(const DSLOperation& op, TypeChecker::CheckContext& con
 IRNodeId convertDefinition(const DSLDefinition& def, TypeChecker::CheckContext& context, IRNodeId& current_cfg_node); 
 // ... other helpers ... 
 }; 
-// ... ASTToChiIR ... 
+// ... ASTToIR ... 
 } // namespace ir::ir 
 #endif // IR_IR_HPP 
