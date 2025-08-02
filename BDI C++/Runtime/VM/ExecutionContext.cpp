@@ -2,6 +2,7 @@
 #include "TypedPayload.hpp"
 #include <cstring>
 #include <stdexcept>
+#include <iostream>
 
 namespace bdi::runtime {
 
@@ -108,6 +109,7 @@ std::optional<float> ExecutionContext::getEligibilityTrace(NodeID param_source_n
 void ExecutionContext::clearIntelligenceState() {
     parameter_gradients.clear();
     eligibility_traces.clear();
+    current_state_features.clear();
 }
 
 // ---------------- Service Calls ----------------
