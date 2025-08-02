@@ -1,6 +1,6 @@
 # The Binary Decomposition Interface
 
- BDI isn't just another IR or a compiler optimization stage. It's proposed as a foundational computational substrate, a universal fabric designed to
+ BDI is a next generation Application Binary Interface (ABI). It's proposed as a foundational computational substrate, a universal fabric designed to
  represent any computation – from mathematical proofs to adaptive AI algorithms – in a verifiable, composable, and directly executable format grounded in
  binary semantics. It’s a radical rethinking of the interface between software and hardware, logic and execution.
  Think of it less like a translation layer (like LLVM IR) and more like the fundamental logic gates of computation itself, but imbued with meaning.
