@@ -1,17 +1,32 @@
- // (Currently, all methods in TypeSystem.hpp are static inline or basic checks,
- // so a separate .cpp might not be strictly necessary unless more complex,
- // non-template logic or state (like a dynamic type registry) is added later.)
- // For now, we assume no separate .cpp is needed for TypeSystem.
-
- // File: bdi/core/payload/TypedPayload.cpp
- // (Similar to TypeSystem, the current TypedPayload.hpp relies heavily on templates
- // and basic struct definitions. The complex part is the C++ type to BDIType mapping
- // within createFrom<T>, which is often best kept in the header for templates.
- // If non-template helpers were needed, they'd go here.)
- // For now, we assume no separate .cpp is needed for TypedPayload.
-
- // File: bdi/core/graph/BDINode.cpp
- #include "BDINode.hpp"
- #include "BDIGraph.hpp" // Include BDIGraph for validation context
- #include "../types/TypeSystem.hpp" // For type compatibility checks
- namespace bdi::core::graph {
+diff --git a//dev/null b/BDI C++/Updates.md	
+index 0000000000000000000000000000000000000000..23573fd7ed31e52e98df58ea1d41595918842ff6 100644
+--- a//dev/null
++++ b/BDI C++/Updates.md	
+@@ -0,0 +1,27 @@
++# Development Notes
++
++This document tracks pending source file updates and considerations in the BDI C++ codebase.
++
++## TypeSystem.cpp
++
++Currently, all methods in `TypeSystem.hpp` are static inline or basic checks, so a separate `.cpp` file is not needed unless more complex, non-template logic or state (such as a dynamic type registry) is introduced.
++
++## TypedPayload.cpp
++
++`TypedPayload.hpp` similarly relies on templates and simple structs. The tricky part is the C++ type to `BDIType` mapping within `createFrom<T>`, which is best kept in the header. A separate `.cpp` would only be necessary if non-template helpers are added.
++
++## BDINode.cpp
++
++`BDINode.cpp` should include:
++
++```cpp
++#include "BDINode.hpp"
++#include "BDIGraph.hpp"          // validation context
++#include "../types/TypeSystem.hpp"  // type compatibility checks
++
++namespace bdi::core::graph {
++    // Implementation goes here.
++}
++```
++
++This file would provide implementations for `BDINode` functions that require access to the graph context or the type system for validation.
