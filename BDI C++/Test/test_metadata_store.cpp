@@ -49,5 +49,6 @@ const MetadataVariant* v2 = store.getMetadata(h2);
      MetadataHandle h1 = store.addMetadata(SemanticTag{"Test:1", "Data"});
      EXPECT_NE(store.getMetadata(h1), nullptr);
      EXPECT_TRUE(store.removeMetadata(h1));
-     EXPECT_EQ(store.getMetadata(h1), nullptr);
-     EXPECT_FALSE(store.removeMetadata(h1)); // Remove again fails
+    EXPECT_EQ(store.getMetadata(h1), nullptr);
+    EXPECT_FALSE(store.removeMetadata(h1)); // Remove again fails
+}
