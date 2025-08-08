@@ -1,10 +1,9 @@
- #include "gtest/gtest.h"
- #include "bdi/optimizer/OptimizationEngine.hpp"
- #include "bdi/optimizer/passes/ConstantFolding.hpp"
- #include "bdi/frontend/api/GraphBuilder.hpp"
- #include "bdi/meta/MetadataStore.hpp" // Need store for builder
- #include "gtest/gtest.h"
- #include "bdi/optimizer/passes/DeadCodeElimination.hpp" // Include DCE (to be created)
+ #include "gtest.h"
+ #include "OptimizationEngine.hpp"
+ #include "ConstantFolding.hpp"
+ #include "GraphBuilder.hpp"
+ #include "MetadataStore.hpp" // Need store for builder
+ #include "DeadCodeElimination.hpp" // Include DCE (to be created)
  using namespace bdi::optimizer;
  using namespace bdi::frontend::api;
  using namespace bdi::core::graph;
