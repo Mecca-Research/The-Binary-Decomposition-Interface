@@ -1,6 +1,6 @@
 #ifndef BDI_HAL_AARCH64_HAL_HPP 
 #define BDI_HAL_AARCH64_HAL_HPP 
-#include "../HardwareAbstractionLayer.hpp" 
+#include "HardwareAbstractionLayer.hpp" 
 namespace bdi::hal { 
 class AArch64_HAL : public HardwareAbstractionLayer { 
 public: 
