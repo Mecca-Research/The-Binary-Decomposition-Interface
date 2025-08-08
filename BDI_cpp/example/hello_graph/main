@@ -2,7 +2,6 @@
 #include <iostream>
 #include "bdi/graph.hpp"
 #include "bdi/runtime.hpp"
-
 int main() {
     std::cout << "[BDI] hello — public umbrella headers present.\n";
     return 0;
