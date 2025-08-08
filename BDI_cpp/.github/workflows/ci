@@ -5,9 +5,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        sanitize: [OFF, ON]
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -DBDI_BUILD_TESTS=ON
+        run: cmake -S . -B build -DBDI_BUILD_TESTS=ON -DBDI_SANITIZE=${{ matrix.sanitize }}
       - name: Build
         run: cmake --build build -j
+      - name: Run hello
+        run: ./build/bdi_hello
