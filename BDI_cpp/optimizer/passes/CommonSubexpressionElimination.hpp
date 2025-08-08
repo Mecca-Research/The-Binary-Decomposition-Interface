@@ -1,6 +1,6 @@
 #ifndef BDI_OPTIMIZER_PASSES_COMMONSUBEXPRESSIONELIMINATION_HPP 
 #define BDI_OPTIMIZER_PASSES_COMMONSUBEXPRESSIONELIMINATION_HPP 
-#include "../OptimizationPassBase.hpp" 
+#include "OptimizationPassBase.hpp" 
 #include <unordered_map> 
 #include <vector> 
 namespace bdi::optimizer { 
