@@ -1,9 +1,9 @@
 #ifndef IR_IR_IRTOBDI_HPP 
 #define IR_IR_IRTOBDI_HPP 
 #include "IR.hpp"
- #include "../frontend/api/GraphBuilder.hpp" 
-#include "../frontend/dsl/DSLRegistry.hpp" // To get DSL mappers 
-#include "../meta/MetadataStore.hpp" // For adding metadata 
+#include "GraphBuilder.hpp" 
+#include "DSLRegistry.hpp" // To get DSL mappers 
+#include "MetadataStore.hpp" // For adding metadata 
 namespace chimera::ir { 
 // Converts a IR graph into a BDI graph 
 class IRToBDI { 
