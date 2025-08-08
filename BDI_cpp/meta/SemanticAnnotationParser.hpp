@@ -5,7 +5,7 @@
 #include <variant> 
 #include <optional> 
 // Include necessary BDI/Chimera types that annotations might refer to 
-#include "../../core/types/BDITypes.hpp" // For BDIType
+#include "BDITypes.hpp" // For BDIType
  namespace chimera::frontend::dsl { 
 // --- Annotation Value Types --- 
 using AnnotationValue = std::variant< 
