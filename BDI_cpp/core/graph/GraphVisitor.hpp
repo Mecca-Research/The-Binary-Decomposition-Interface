@@ -1,7 +1,7 @@
  #ifndef BDI_OPTIMIZER_GRAPHVISITOR_HPP
  #define BDI_OPTIMIZER_GRAPHVISITOR_HPP
- #include "../core/graph/BDIGraph.hpp"
- #include "../core/graph/BDINode.hpp"
+ #include "BDIGraph.hpp"
+ #include "BDINode.hpp"
  namespace bdi::optimizer {
  using bdi::core::graph::BDIGraph;
  using bdi::core::graph::BDINode;
