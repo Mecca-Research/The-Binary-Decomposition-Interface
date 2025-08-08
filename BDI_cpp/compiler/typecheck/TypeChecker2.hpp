@@ -1,7 +1,7 @@
 #ifndef CHIMERA_FRONTEND_TYPES_TYPECHECKER_HPP 
 #define CHIMERA_FRONTEND_TYPES_TYPECHECKER_HPP 
 #include "ChimeraTypes.hpp" 
-#include "../dsl/DSLCoreTypes.hpp" // Need DSL expression structure 
+#include "DSLCoreTypes.hpp" // Need DSL expression structure 
 #include <unordered_map> 
 #include <string> 
 #include <memory> // For expression tree pointers 
