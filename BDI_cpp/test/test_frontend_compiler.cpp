@@ -1,9 +1,9 @@
 #include "gtest/gtest.h" 
-#include "chimera/frontend/dsl/ArithmeticMapper.hpp" 
-#include "chimera/frontend/api/GraphBuilder.hpp" 
-#include "chimera/meta/MetadataStore.hpp" 
-#include "chimera/runtime/BDIVirtualMachine.hpp" 
-#include "chimera/verification/ProofVerifier.hpp" // Stub verifier 
+#include "ArithmeticMapper.hpp" 
+#include "GraphBuilder.hpp" 
+#include "MetadataStore.hpp" 
+#include "BDIVirtualMachine.hpp" 
+#include "ProofVerifier.hpp" // Stub verifier 
 using namespace chimera::frontend::dsl; 
 using namespace chimera::frontend::api; 
 using namespace chimera::ir; // Assuming ChiIR exists 
