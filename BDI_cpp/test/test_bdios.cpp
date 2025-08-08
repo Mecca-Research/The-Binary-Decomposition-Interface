@@ -1,4 +1,4 @@
-#include "gtest/gtest.h" 
+#include "gtest.h" 
 #include "BDIVirtualMachine.hpp" 
 #include "GraphBuilder.hpp" 
 #include "MetadataStore.hpp" 
