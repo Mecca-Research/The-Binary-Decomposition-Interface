@@ -1,7 +1,7 @@
 #ifndef CHIMERA_DEVTOOLS_GRAPHVISUALIZER_HPP 
 #define CHIMERA_DEVTOOLS_GRAPHVISUALIZER_HPP 
-#include "../core/graph/BDIGraph.hpp" 
-#include "../meta/MetadataStore.hpp" // To potentially display metadata 
+#include "BDIGraph.hpp" 
+#include "MetadataStore.hpp" // To potentially display metadata 
 #include <string> 
 #include <ostream> 
 #include <sstream> 
