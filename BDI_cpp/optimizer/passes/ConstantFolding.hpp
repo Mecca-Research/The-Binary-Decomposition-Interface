@@ -1,7 +1,7 @@
  #ifndef BDI_OPTIMIZER_PASSES_CONSTANTFOLDING_HPP
  #define BDI_OPTIMIZER_PASSES_CONSTANTFOLDING_HPP
- #include "../OptimizationPassBase.hpp"
- #include "../../runtime/BDIValueVariant.hpp" // Need variant for evaluation
+ #include "OptimizationPassBase.hpp"
+ #include "BDIValueVariant.hpp" // Need variant for evaluation
  #include <unordered_map>
  #include <optional>
  namespace bdi::optimizer {
