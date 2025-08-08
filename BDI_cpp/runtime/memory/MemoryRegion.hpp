@@ -1,6 +1,6 @@
  #ifndef BDI_RUNTIME_MEMORYREGION_HPP
  #define BDI_RUNTIME_MEMORYREGION_HPP
- #include "../core/types/BDITypes.hpp" // For RegionID
+ #include "BDITypes.hpp" // For RegionID
  #include <cstddef> // For size_t
  #include <cstdint> // For uintptr_t
  namespace bdi::runtime {
