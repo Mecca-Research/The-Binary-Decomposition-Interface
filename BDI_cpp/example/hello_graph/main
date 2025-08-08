@@ -1,2 +1,9 @@
+// Temporary hello — switches to real BDI once public headers settle
 #include <iostream>
-int main(){std::cout<<"[BDI] hello — build skeleton active.\n";}
+#include "bdi/graph.hpp"
+#include "bdi/runtime.hpp"
+
+int main() {
+    std::cout << "[BDI] hello — public umbrella headers present.\n";
+    return 0;
+}
