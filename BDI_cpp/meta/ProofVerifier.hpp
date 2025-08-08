@@ -1,7 +1,7 @@
  #ifndef BDI_VERIFICATION_PROOFVERIFIER_HPP
  #define BDI_VERIFICATION_PROOFVERIFIER_HPP
- #include "../meta/MetadataStore.hpp" // For ProofTag definition
- #include "../core/graph/BDIGraph.hpp" // May need graph context
+ #include "MetadataStore.hpp" // For ProofTag definition
+ #include "BDIGraph.hpp" // May need graph context
  namespace bdi::verification {
  using bdi::meta::ProofTag;
  using bdi::core::graph::BDIGraph;
