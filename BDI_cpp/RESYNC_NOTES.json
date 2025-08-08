@@ -1,0 +1,26 @@
+{
+  "ext_counts": {
+    ".md": 1,
+    ".cpp": 42,
+    ".hpp": 44,
+    ".ch": 5
+  },
+  "critical_headers": {
+    "ExecutionContext.hpp": [
+      "BDI_cpp/Runtime/VM/ExecutionContext.hpp"
+    ],
+    "BDINode.hpp": [
+      "BDI_cpp/Core/Graph/BDINode.hpp"
+    ],
+    "Graph.hpp": [],
+    "TypedPayload.hpp": [
+      "BDI_cpp/Core/Payload/TypedPayload.hpp"
+    ],
+    "BDIValueVariant.hpp": [
+      "BDI_cpp/Core/Types/BDIValueVariant.hpp"
+    ]
+  },
+  "portindex_typedef_locations": [
+    "BDI_cpp/Core/Graph/BDINode.hpp"
+  ]
+}
