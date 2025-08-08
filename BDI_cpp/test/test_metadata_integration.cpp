@@ -1,7 +1,7 @@
  #include "gtest/gtest.h"
- #include "bdi/frontend/api/GraphBuilder.hpp"
- #include "bdi/meta/MetadataStore.hpp"
- #include "bdi/runtime/BDIVirtualMachine.hpp" // Need VM to test assert
+ #include "GraphBuilder.hpp"
+ #include "MetadataStore.hpp"
+ #include "BDIVirtualMachine.hpp" // Need VM to test assert
  using namespace bdi::frontend::api;
  using namespace bdi::meta;
  using namespace bdi::core::graph;
