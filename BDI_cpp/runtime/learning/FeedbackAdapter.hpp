@@ -1,7 +1,7 @@
  #ifndef BDI_INTELLIGENCE_FEEDBACKADAPTER_HPP
  #define BDI_INTELLIGENCE_FEEDBACKADAPTER_HPP
- #include "../runtime/ExecutionContext.hpp"
- #include "../core/graph/BDIGraph.hpp" // Maybe needed for context
+ #include "ExecutionContext.hpp"
+ #include "BDIGraph.hpp" // Maybe needed for context
  namespace bdi::intelligence {
  using namespace bdi::runtime;
  using namespace bdi::core::graph;
