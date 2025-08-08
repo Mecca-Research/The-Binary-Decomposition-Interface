@@ -1,5 +1,5 @@
  #include "gtest/gtest.h"
- #include "bdi/meta/MetadataStore.hpp" // Adjust path as needed
+ #include "MetadataStore.hpp" // Adjust path as needed
  using namespace bdi::meta;
  TEST(MetadataStoreTest, AddAndGet) {
     MetadataStore store;
