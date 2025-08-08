@@ -1,6 +1,6 @@
  #ifndef BDI_OPTIMIZER_PASSES_DEADCODEELIMINATION_HPP
  #define BDI_OPTIMIZER_PASSES_DEADCODEELIMINATION_HPP
- #include "../OptimizationPassBase.hpp"
+ #include "OptimizationPassBase.hpp"
  #include <set>
  namespace bdi::optimizer {
  class DeadCodeElimination : public OptimizationPassBase {
