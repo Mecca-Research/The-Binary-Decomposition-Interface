@@ -1,7 +1,7 @@
  #ifndef BDI_OPTIMIZER_OPTIMIZATIONENGINE_HPP
  #define BDI_OPTIMIZER_OPTIMIZATIONENGINE_HPP
  #include "OptimizationPassBase.hpp"
- #include "../core/graph/BDIGraph.hpp"
+ #include "BDIGraph.hpp"
  #include <vector>
  #include <memory> // For unique_ptr
  namespace bdi::optimizer {
