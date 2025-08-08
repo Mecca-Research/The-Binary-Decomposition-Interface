@@ -1,5 +1,5 @@
- #include "IR.hpp"
- #include <stdexcept> // For errors 
+#include "IR.hpp"
+#include <stdexcept> // For errors 
 namespace chimera::ir { 
 // ---IRNode --- 
 bool IRNode::validate() const { 
