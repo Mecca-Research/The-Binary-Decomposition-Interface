@@ -1,7 +1,7 @@
  #ifndef BDI_CORE_PAYLOAD_TYPEDPAYLOAD_HPP
  #define BDI_CORE_PAYLOAD_TYPEDPAYLOAD_HPP
- #include "../types/BDITypes.hpp"
- #include "../types/BinaryEncoding.hpp" // Placeholder
+ #include "BDITypes.hpp"
+ #include "BinaryEncoding.hpp" // Placeholder
  #include <vector>
  #include <cstddef>
  #include <stdexcept>
