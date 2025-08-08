@@ -1,8 +1,8 @@
- #include "gtest/gtest.h"
- #include "bdi/core/graph/BDIGraph.hpp" // Adjust path as needed
- #include "bdi/core/graph/BDINode.hpp"
- #include "bdi/core/types/BDITypes.hpp"
- #include "bdi/frontend/api/GraphBuilder.hpp" // Use builder for convenience
+ #include "gtest.h"
+ #include "BDIGraph.hpp" // Adjust path as needed
+ #include "BDINode.hpp"
+ #include "BDITypes.hpp"
+ #include "GraphBuilder.hpp" // Use builder for convenience
  #include <fstream>
  #include <filesystem> // Requires C++17
  using namespace bdi::core::graph;
