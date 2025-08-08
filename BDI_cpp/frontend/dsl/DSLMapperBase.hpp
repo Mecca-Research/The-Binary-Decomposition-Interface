@@ -1,6 +1,6 @@
  #ifndef BDI_FRONTEND_DSL_DSLMAPPERSBASE_HPP
  #define BDI_FRONTEND_DSL_DSLMAPPERSBASE_HPP
- #include "../api/GraphBuilder.hpp"
+ #include "GraphBuilder.hpp"
  #include <any> // Or define a common DSL input structure base
  namespace bdi::frontend::dsl {
  using bdi::frontend::api::GraphBuilder;
