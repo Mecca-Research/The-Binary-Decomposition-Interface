@@ -1,8 +1,8 @@
- #include "gtest/gtest.h"
- #include "bdi/runtime/BDIVirtualMachine.hpp"
- #include "bdi/frontend/api/GraphBuilder.hpp"
- #include "bdi/core/types/BDITypes.hpp"
- #include "bdi/core/payload/TypedPayload.hpp"
+ #include "gtest.h"
+ #include "BDIVirtualMachine.hpp"
+ #include "GraphBuilder.hpp"
+ #include "BDITypes.hpp"
+ #include "TypedPayload.hpp"
  #include <limits> // For numeric limits tests
  using namespace bdi::runtime;
  using namespace bdi::frontend::api;
