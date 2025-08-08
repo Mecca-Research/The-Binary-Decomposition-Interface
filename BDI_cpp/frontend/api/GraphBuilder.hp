@@ -1,8 +1,8 @@
  #ifndef BDI_FRONTEND_API_GRAPHBUILDER_HPP
  #define BDI_FRONTEND_API_GRAPHBUILDER_HPP
- #include "../../core/graph/BDIGraph.hpp"
- #include "../../core/graph/BDINode.hpp"
- #include "../../core/types/BDITypes.hpp"
+ #include "BDIGraph.hpp"
+ #include "BDINode.hpp"
+ #include "BDITypes.hpp"
  #include <memory>
  #include <string>
  namespace bdi::frontend::api {
