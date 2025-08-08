@@ -1,6 +1,6 @@
  #ifndef BDI_RUNTIME_BDIVALUEVARIANT_HPP
  #define BDI_RUNTIME_BDIVALUEVARIANT_HPP
- #include "../core/types/BDITypes.hpp"
+ #include "BDITypes.hpp"
  #include <variant>
  #include <cstdint>
  #include <string> // For potential errors
