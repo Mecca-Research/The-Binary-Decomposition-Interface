@@ -1,7 +1,7 @@
  #ifndef BDI_CORE_GRAPH_BDINODE_HPP
  #define BDI_CORE_GRAPH_BDINODE_HPP
- #include "../types/BDITypes.hpp"
- #include "../payload/TypedPayload.hpp"
+ #include "BDITypes.hpp"
+ #include "TypedPayload.hpp"
  #include "OperationTypes.hpp"
  #include <cstdint>
  #include <vector>
