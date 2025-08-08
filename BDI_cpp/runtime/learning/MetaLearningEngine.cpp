@@ -1,5 +1,5 @@
  #include "MetaLearningEngine.hpp"
- #include "../runtime/VMTypeOperations.hpp" // For operations on variants
+ #include "VMTypeOperations.hpp" // For operations on variants
  #include <iostream>
  namespace bdi::intelligence {
  MetaLearningEngine::MetaLearningEngine(BDIGraph& target_graph, ExecutionContext& target_context)
