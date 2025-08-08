@@ -1,8 +1,8 @@
  #ifndef BDI_INTELLIGENCE_METALEARNINGENGINE_HPP
  #define BDI_INTELLIGENCE_METALEARNINGENGINE_HPP
  #include "FeedbackAdapter.hpp" // Uses updates calculated by adapters
- #include "../core/graph/BDIGraph.hpp"
- #include "../runtime/ExecutionContext.hpp" // For applying payload changes
+ #include "BDIGraph.hpp"
+ #include "ExecutionContext.hpp" // For applying payload changes
  namespace bdi::intelligence {
  // Applies parameter updates calculated by FeedbackAdapters to the graph/runtime state
  class MetaLearningEngine {
