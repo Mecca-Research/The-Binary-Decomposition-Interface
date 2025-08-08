@@ -1,8 +1,8 @@
  #include "ConstantFolding.hpp"
- #include "../../core/payload/TypedPayload.hpp"
- #include "../../core/types/TypeSystem.hpp"
- #include "../../runtime/ExecutionContext.hpp" // For payload<->variant conversion
- #include "../../runtime/BDIValueVariant.hpp" // For evaluation result
+ #include "TypedPayload.hpp"
+ #include "TypeSystem.hpp"
+ #include "ExecutionContext.hpp" // For payload<->variant conversion
+ #include "BDIValueVariant.hpp" // For evaluation result
  #include <iostream>
  #include <variant>
  #include <set> // To avoid duplicate rewiring
