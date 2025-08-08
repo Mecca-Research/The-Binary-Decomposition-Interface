@@ -1,7 +1,7 @@
  #ifndef BDI_INTELLIGENCE_RECURRENCEMANAGER_HPP
  #define BDI_INTELLIGENCE_RECURRENCEMANAGER_HPP
- #include "../runtime/ExecutionContext.hpp"
- #include "../core/graph/BDIGraph.hpp" // For node IDs
+ #include "ExecutionContext.hpp"
+ #include "BDIGraph.hpp" // For node IDs
  #include <vector>
  #include <map>
  namespace bdi::intelligence {
