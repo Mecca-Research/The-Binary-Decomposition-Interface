@@ -1,5 +1,5 @@
- #include "gtest/gtest.h"
- #include "bdi/runtime/MemoryManager.hpp" // Adjust path as needed
+ #include "gtest.h"
+ #include "MemoryManager.hpp" // Adjust path as needed
  using namespace bdi::runtime;
  TEST(MemoryManagerTest, Initialization) {
     ASSERT_NO_THROW(MemoryManager manager(1024));
