@@ -1,8 +1,8 @@
 #ifndef BDIOS_SERVICES_MEMORYALLOCATOR_HPP 
 #define BDIOS_SERVICES_MEMORYALLOCATOR_HPP 
-#include "bdi/core/graph/BDIGraph.hpp" 
-#include "bdi/frontend/api/GraphBuilder.hpp" 
-#include "bdi/meta/MetadataStore.hpp" 
+#include "BDIGraph.hpp" 
+#include "GraphBuilder.hpp" 
+#include "MetadataStore.hpp" 
 namespace bdios::services { 
 // Service ID for the allocator 
 const uint64_t ALLOCATOR_SERVICE_ID = 1; 
