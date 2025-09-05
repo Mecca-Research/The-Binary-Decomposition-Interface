@@ -1,3 +1,4 @@
+// Binary Counting Interface (BCI)
 #ifndef CHIMERA_BTL_H
 #define CHIMERA_BTL_H
 
