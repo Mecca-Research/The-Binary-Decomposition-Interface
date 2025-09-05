@@ -1,4 +1,4 @@
-// Binary Counting Interface (BCI)
+// Boolean Translation Layer (BTL)
 #ifndef CHIMERA_BTL_H
 #define CHIMERA_BTL_H
 
