@@ -2,8 +2,8 @@
 // DESC: Defines the structures and interface for Hierarchical
 //       Access Memory (HAM). M0 includes two tiers: CRITICAL & ACTIVE.
 // ===================================================================
-#ifndef AION_HAM_H
-#define AION_HAM_H
+#ifndef AEON_HAM_H
+#define AEON_HAM_H
 
 #include "graph.h" // For RegionId
 
@@ -28,4 +28,4 @@ typedef struct {
     int (*free)(RegionId id);
 } HamVTable;
 
-#endif // AION_HAM_H
+#endif // AEON_HAM_H
