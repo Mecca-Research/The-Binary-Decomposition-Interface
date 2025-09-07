@@ -191,4 +191,7 @@ HamVTable HAM_DEFAULT_IMPL = {
     .free = ham_free_internal,
     .persist = ham_persist_internal,
     .load = ham_load_internal
+    .update_stats = ham_update_stats_internal,
+    .demote_check = ham_demote_check_internal,
+    .intern_check = ham_intern_check_internal
 };
