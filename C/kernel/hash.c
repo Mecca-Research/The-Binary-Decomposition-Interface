@@ -6,7 +6,7 @@
 #include <string.h>
 
 // Simple djb2 hash algorithm for demonstration.
-void aion_hash_meta(const GraphNode* node, uint8_t out_hash[32]) {
+void aeon_hash_meta(const GraphNode* node, uint8_t out_hash[32]) {
     unsigned long hash = 5381;
     const unsigned char* data = (const unsigned char*)node;
     // Hash the core, immutable properties of the node
