@@ -2,13 +2,16 @@
 // DESC: Implements the simple CPU device backend for executing nodes.
 // ===================================================================
 #include "device.h"
-#include <stdio.h> // For printf
+#include "gpu_backend.h" // For GPU specific functions
+#include <stdio.h>
+#include <stdlib.h>
 
 // --- CPU Device Kernel Implementations ---
 // These are the "micro-op" functions that the `lower` step points to.
 // They take raw pointers to memory regions and perform the operation.
 
 static void cpu_kernel_const(void** inputs, void* outputs[1]) {
+    *(float*)outputs[0] = *(float*)inputs[0] + *(float*)inputs[1];
     // The "constant" value is often embedded in the kernel or a metadata region.
     // For M0, we assume it's pre-loaded into the output region by the scheduler.
     // This function is effectively a no-op for this simple model.
@@ -107,9 +110,30 @@ static int cpu_enqueue(const void* kernel, const HamRegion** regions, size_t num
     return 0; // Success
 }
 
-static int cpu_sync() {
     // For a synchronous CPU device, this is a no-op as enqueue executes immediately.
-    return 0; // Success
+static int cpu_sync() { return 0; }
+    DeviceVTable CPU_DEVICE_IMPL = {
+    .id = DEVICE_ID_CPU, .name = "CPU_Baseline", .lower = cpu_lower, .enqueue = cpu_enqueue, .sync = cpu_sync
+};
+
+static int gpu_enqueue(const void* kernel, const HamRegion** regions, size_t num_regions) {
+    // This function is the bridge to the gpu_backend.c API.
+    GpuKernel gpu_kernel = *(GpuKernel*)kernel;
+
+    // A real implementation would involve:
+    // 1. Allocating GPU memory for each region (gpu_alloc).
+    // 2. Copying input data from host (HAM region) to device (gpu_memcpy_h2d).
+    // 3. Setting up kernel launch arguments (an array of device pointers).
+    // 4. Launching the kernel (gpu_launch_kernel).
+    // 5. Copying results back from device to host (gpu_memcpy_d2h).
+    // 6. Freeing GPU memory (gpu_free).
+    
+    // For our M3 test, we will just simulate the launch.
+    return gpu_launch_kernel(gpu_kernel, NULL);
+}
+
+static int gpu_sync_device() {
+    return gpu_sync();
 }
 
 // --- Public Device API Implementation ---
@@ -119,4 +143,12 @@ DeviceVTable CPU_DEVICE_IMPL = {
     .lower = cpu_lower,
     .enqueue = cpu_enqueue,
     .sync = cpu_sync
+};
+
+DeviceVTable GPU_DEVICE_IMPL = {
+    .id = DEVICE_ID_GPU,
+    .name = "GPU_Generic",
+    .lower = gpu_lower,
+    .enqueue = gpu_enqueue,
+    .sync = gpu_sync_device
 };
