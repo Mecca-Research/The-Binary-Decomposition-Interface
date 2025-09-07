@@ -38,6 +38,9 @@ typedef enum {
     OP_RET,
     OP_GRAD,      // Propagate gradients
     OP_UPDATE,    // Apply a parameter update
+    // === FPGA Synthesis Opcodes ===
+    OP_SUBGRAPH_BEGIN, // Marks the start of a subgraph for synthesis
+    OP_SUBGRAPH_END,   // Marks the end of a synthesizable subgraph
 } OpCode;
 
 // --- Verifiable Metadata and Proof Classes ---
@@ -55,6 +58,9 @@ typedef struct {
     uint32_t origin;       // Source of the node (e.g., USER, TRAINER).
 } NodeMeta;
 
+// --- Node Flags ---
+#define NODE_FLAG_SYNTHESIZE (1 << 0) // Hint that this node is part of an FPGA subgraph
+
 // --- Node + edges ---
 typedef struct {
     NodeId id;
@@ -64,7 +70,7 @@ typedef struct {
     uint8_t input_count;
     RegionId region_hint;   // HAM hint
     DeviceId device_hint;   // Dispatch hint (CPU/GPU/FPGA)
-    uint64_t flags;         // Purity, side-effects, determinism
+    uint64_t flags;         // Used for hints like NODE_FLAG_SYNTHESIZE
     uint64_t meta_off;      // Offset into metadata arena
 } GraphNode;
 
