@@ -40,6 +40,21 @@ typedef enum {
     OP_UPDATE,    // Apply a parameter update
 } OpCode;
 
+// --- Verifiable Metadata and Proof Classes ---
+// Defines the class of proof required for a node to be considered secure.
+typedef enum {
+    PROOF_CLASS_NONE   = 0,
+    PROOF_CLASS_SAFETY = 1 << 0, // e.g., memory safety, no UB
+    PROOF_CLASS_BOUNDS = 1 << 1, // e.g., array bounds checks
+} ProofClass;
+
+// The metadata attached to a node, stored in the meta_arena.
+typedef struct {
+    uint8_t hash[32];      // SHA-256/Blake3 hash of (op, types, inputs)
+    uint32_t proof_class;  // Bitmask of required ProofClass flags.
+    uint32_t origin;       // Source of the node (e.g., USER, TRAINER).
+} NodeMeta;
+
 // --- Node + edges ---
 typedef struct {
     NodeId id;
@@ -90,5 +105,7 @@ void aeon_graph_free(BdiGraph* g);
 NodeId aeon_graph_add_node(BdiGraph* g, GraphNode node);
 // Binds an update rule to the graph
 int aeon_bind_update(BdiGraph* g, const UpdateSpec* spec);
+// Attaches metadata to a node and stores it in the meta_arena.
+int aeon_attach_meta(BdiGraph* g, NodeId node_id, const NodeMeta* meta);
 
 #endif // AEON_GRAPH_H
