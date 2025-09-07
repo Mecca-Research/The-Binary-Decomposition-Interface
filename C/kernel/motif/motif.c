@@ -75,5 +75,4 @@ Motif* motif_dict_intern(MotifDictionary* dict, void* data, size_t size) {
 void motif_dict_release(MotifDictionary* dict, uint64_t hash) {
     // In a real system, releasing a motif would require finding it and
     // decrementing its ref_count. If the count reaches zero, the motif's
-    // data can be freed. This is stubbed for M2.
 }
