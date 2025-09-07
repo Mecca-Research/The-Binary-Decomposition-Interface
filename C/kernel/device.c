@@ -34,6 +34,28 @@ static void cpu_kernel_relu_f32(void** inputs, void* outputs[1]) {
     *out = *in > 0 ? *in : 0;
 }
 
+// --- Learning Kernels ---
+// A simplified gradient calculation for a single neuron: grad_in = grad_out * weight
+static void cpu_kernel_grad_f32(void** inputs, void* outputs[1]) {
+    float* grad_out = (float*)inputs[0]; // Gradient from the next layer
+    float* weight = (float*)inputs[1];   // Weight of the connection
+    float* grad_in = (float*)outputs[0]; // Gradient for the previous layer
+    *grad_in = *grad_out * *weight;
+    // Note: A full backprop implementation is much more complex, involving derivatives
+    // of activation functions, but this demonstrates the data flow.
+}
+
+// A simplified parameter update: param = param - learning_rate * grad
+static void cpu_kernel_update_f32(void** inputs, void* outputs[1]) {
+    float* param = (float*)inputs[0];  // The parameter to update (e.g., a weight)
+    float* grad = (float*)inputs[1];   // The calculated gradient for this parameter
+    float* lr = (float*)inputs[2];     // The learning rate
+    
+    *param -= *lr * *grad;
+    // This kernel modifies its input region directly (side-effect).
+    // The output is not used.
+}
+
 // --- DeviceVTable Function Implementations ---
 
 static int cpu_lower(const GraphNode* node, void* out_kernel) {
@@ -55,6 +77,8 @@ static int cpu_lower(const GraphNode* node, void* out_kernel) {
             *kernel_ptr = cpu_kernel_relu_f32;
             break;
         // OP_MATMUL would require a more complex kernel.
+        case OP_GRAD:   *kernel_ptr = cpu_kernel_grad_f32; break;
+        case OP_UPDATE: *kernel_ptr = cpu_kernel_update_f32; break;
         default:
             fprintf(stderr, "CPU_DEVICE Error: Cannot lower OpCode %d\n", node->op);
             return -1; // Failure
@@ -75,7 +99,8 @@ static int cpu_enqueue(const void* kernel, const HamRegion** regions, size_t num
     if (num_regions > 0) inputs[0] = regions[0]->base;
     if (num_regions > 1) inputs[1] = regions[1]->base;
     if (num_regions > 2) outputs[0] = regions[2]->base;
-
+    // For many ops, the last region is the output
+    if (num_regions > 0) outputs[0] = regions[num_regions-1]->base;
     printf("CPU_DEVICE: Executing kernel...\n");
     kernel_func(inputs, outputs);
 
@@ -89,7 +114,7 @@ static int cpu_sync() {
 
 // --- Public Device API Implementation ---
 DeviceVTable CPU_DEVICE_IMPL = {
-    .id = 1,
+    .id = 1, 
     .name = "CPU_Baseline",
     .lower = cpu_lower,
     .enqueue = cpu_enqueue,
