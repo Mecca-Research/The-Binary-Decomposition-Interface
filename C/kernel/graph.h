@@ -1,10 +1,10 @@
 // ===================================================================
 // DESC: Defines the core data structures for the BDI Graph, including
 //       nodes, edges, types, and the main graph container.
-//       This is the central abstraction of the Aion-0 kernel.
+//       This is the central abstraction of the Aeon-0 kernel.
 // ===================================================================
-#ifndef AION_GRAPH_H
-#define AION_GRAPH_H
+#ifndef AEON_GRAPH_H
+#define AEON_GRAPH_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -72,69 +72,8 @@ typedef struct {
 } BdiGraph;
 
 // --- Graph API ---
-BdiGraph* aion_graph_create();
-void aion_graph_free(BdiGraph* g);
-NodeId aion_graph_add_node(BdiGraph* g, GraphNode node);
+BdiGraph* aeon_graph_create();
+void aeon_graph_free(BdiGraph* g);
+NodeId aeon_graph_add_node(BdiGraph* g, GraphNode node);
 
-#endif // AION_GRAPH_H
-
-
-// ===================================================================
-// FILE: kernel/ham.h
-// DESC: Defines the structures and interface for Hierarchical
-//       Access Memory (HAM). M0 includes two tiers: CRITICAL & ACTIVE.
-// ===================================================================
-#ifndef AION_HAM_H
-#define AION_HAM_H
-
-#include "graph.h" // For RegionId
-
-// --- Memory regions (HAM tiers) for M0 ---
-typedef enum {
-    HAM_CRITICAL, // Hot working set, pinned in fastest memory
-    HAM_ACTIVE    // Near-term use, general purpose
-} HamTier;
-
-typedef struct {
-    RegionId id;
-    HamTier tier;
-    size_t capacity_bytes;
-    void* base; // Mapped host pointer
-} HamRegion;
-
-// --- HAM Virtual Table (Interface) ---
-typedef struct {
-    // Allocates a new region of a specific tier and size.
-    int (*alloc)(RegionId* out_id, HamTier tier, size_t size_bytes, void** out_ptr);
-    // Frees a previously allocated region.
-    int (*free)(RegionId id);
-} HamVTable;
-
-#endif // AION_HAM_H
-
-
-// ===================================================================
-// FILE: kernel/device.h
-// DESC: Defines the abstraction for an execution device (e.g., CPU).
-//       M0 includes the CPU device.
-// ===================================================================
-#ifndef AION_DEVICE_H
-#define AION_DEVICE_H
-
-#include "graph.h"
-#include "ham.h"
-
-// --- Device Virtual Table (Interface) ---
-typedef struct {
-    DeviceId id;
-    const char* name;
-    // Lowers a BDI node into a device-specific, executable kernel.
-    // For a CPU, this might be a pointer to a function or a micro-op sequence.
-    int (*lower)(const GraphNode* node, void* out_kernel);
-    // Enqueues the kernel for execution on the device.
-    int (*enqueue)(const void* kernel, const HamRegion** regions, size_t num_regions);
-    // Blocks until all enqueued kernels on the device are complete.
-    int (*sync)(void);
-} DeviceVTable;
-
-#endif // AION_DEVICE_H
+#endif // AEON_GRAPH_H
