@@ -53,4 +53,8 @@ typedef struct {
     int (*intern_check)(RegionId id, MotifDictionary* dict);
 } HamVTable;
 
+// --- Test helpers to inspect region state ---
+HamTier ham_get_region_tier(RegionId id);
+void* ham_get_region_base(RegionId id);
+
 #endif // AEON_HAM_H
