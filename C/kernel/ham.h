@@ -26,6 +26,10 @@ typedef struct {
     int (*alloc)(RegionId* out_id, HamTier tier, size_t size_bytes, void** out_ptr);
     // Frees a previously allocated region.
     int (*free)(RegionId id);
+    // Persists a region's data to its archive path.
+    int (*persist)(RegionId id);
+    // Loads a region's data from its archive path.
+    int (*load)(RegionId id);
 } HamVTable;
 
 #endif // AEON_HAM_H
