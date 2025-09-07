@@ -1,16 +1,16 @@
 // ===================================================================
-// DESC: NEW in M4. Implements the scheduler with its secure policy gate.
+// DESC: Implements the scheduler with its secure policy gate.
 // ===================================================================
 #include "scheduler.h"
 #include <stdlib.h>
 #include <stdio.h>
 
 // Forward declaration for the hash function
-void aion_hash_meta(const GraphNode* node, uint8_t out_hash[32]);
+void aeon_hash_meta(const GraphNode* node, uint8_t out_hash[32]);
 
 // --- Scheduler API Implementation ---
 
-Scheduler* aion_scheduler_create(BdiGraph* g, DeviceVTable** devices, size_t dev_count) {
+Scheduler* aeon_scheduler_create(BdiGraph* g, DeviceVTable** devices, size_t dev_count) {
     Scheduler* sched = (Scheduler*)calloc(1, sizeof(Scheduler));
     if (!sched) return NULL;
     sched->graph = g;
@@ -21,13 +21,13 @@ Scheduler* aion_scheduler_create(BdiGraph* g, DeviceVTable** devices, size_t dev
     return sched;
 }
 
-void aion_scheduler_free(Scheduler* sched) {
+void aeon_scheduler_free(Scheduler* sched) {
     if (!sched) return;
     free(sched->ready_set);
     free(sched);
 }
 
-void aion_scheduler_set_policy(Scheduler* sched, SecurityPolicy policy) {
+void aeon_scheduler_set_policy(Scheduler* sched, SecurityPolicy policy) {
     if (!sched) return;
     sched->policy = policy;
 }
@@ -59,7 +59,7 @@ static bool policy_gate_check(Scheduler* sched, GraphNode* node) {
 
     // Check 2: The metadata hash must be valid (Merkle-hashing).
     uint8_t computed_hash[32];
-    aion_hash_meta(node, computed_hash);
+    aeon_hash_meta(node, computed_hash);
     if (memcmp(meta->hash, computed_hash, 32) != 0) {
         printf("POLICY_GATE: REJECT Node %llu - Metadata hash mismatch! (Tampering detected)\n", (unsigned long long)node->id);
         return false;
@@ -69,7 +69,7 @@ static bool policy_gate_check(Scheduler* sched, GraphNode* node) {
     return true; // All checks passed.
 }
 
-int aion_scheduler_run_wave(Scheduler* sched) {
+int aeon_scheduler_run_wave(Scheduler* sched) {
     if (!sched) return -1;
     BdiGraph* g = sched->graph;
 
