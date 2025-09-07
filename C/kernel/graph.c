@@ -52,3 +52,26 @@ int aeon_bind_update(BdiGraph* g, const UpdateSpec* spec) {
     g->updates[g->update_count++] = *spec;
     return 0; // Success
 }
+
+// --- Implementation of aeon_attach_meta ---
+int aeon_attach_meta(BdiGraph* g, NodeId node_id, const NodeMeta* meta) {
+    if (!g || node_id == 0 || node_id > g->node_count || !meta) return -1;
+
+    // 1. Allocate space in the metadata arena.
+    if (g->meta_size + sizeof(NodeMeta) > g->meta_capacity) {
+        size_t new_capacity = g->meta_capacity < 64 ? 64 : g->meta_capacity * 2;
+        uint8_t* new_arena = (uint8_t*)realloc(g->meta_arena, new_capacity);
+        if (!new_arena) return -1; // Allocation failure
+        g->meta_arena = new_arena;
+        g->meta_capacity = new_capacity;
+    }
+
+    // 2. Copy the metadata into the arena.
+    size_t offset = g->meta_size;
+    memcpy(g->meta_arena + offset, meta, sizeof(NodeMeta));
+    g->meta_size += sizeof(NodeMeta);
+
+    // 3. Update the node to point to this new metadata.
+    g->nodes[node_id - 1].meta_off = offset;
+    return 0; // Success
+}
