@@ -6,13 +6,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-BdiGraph* aion_graph_create() {
+BdiGraph* aeon_graph_create() {
     BdiGraph* g = (BdiGraph*)calloc(1, sizeof(BdiGraph));
     if (!g) return NULL;
     return g;
 }
 
-void aion_graph_free(BdiGraph* g) {
+void aeon_graph_free(BdiGraph* g) {
     if (!g) return;
     free(g->nodes);
     free(g->edges);
@@ -20,7 +20,7 @@ void aion_graph_free(BdiGraph* g) {
     free(g);
 }
 
-NodeId aion_graph_add_node(BdiGraph* g, GraphNode node) {
+NodeId aeon_graph_add_node(BdiGraph* g, GraphNode node) {
     if (g->node_count >= g->node_capacity) {
         size_t new_capacity = g->node_capacity < 8 ? 8 : g->node_capacity * 2;
         GraphNode* new_nodes = (GraphNode*)realloc(g->nodes, new_capacity * sizeof(GraphNode));
