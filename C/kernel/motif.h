@@ -1,10 +1,10 @@
 // ===================================================================
-// DESC: NEW in M2. Defines structures for symbolic compression. A "motif"
+// DESC: Defines structures for symbolic compression. A "motif"
 //       is a unique, deduplicated data pattern stored once and
 //       referenced multiple times.
 // ===================================================================
-#ifndef AION_MOTIF_H
-#define AION_MOTIF_H
+#ifndef AEON_MOTIF_H
+#define AEON_MOTIF_H
 
 #include "graph.h" // For BdiGraph and basic types
 
@@ -32,4 +32,4 @@ Motif* motif_dict_intern(MotifDictionary* dict, void* data, size_t size);
 // Decrements the reference count of a motif.
 void motif_dict_release(MotifDictionary* dict, uint64_t hash);
 
-#endif // AION_MOTIF_H
+#endif // AEON_MOTIF_H
