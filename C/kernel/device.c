@@ -2,7 +2,8 @@
 // DESC: Implements the simple CPU device backend for executing nodes.
 // ===================================================================
 #include "device.h"
-#include "gpu_backend.h" // For GPU specific functions
+#include "gpu_backend.h" 
+#include "fpga_backend.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -136,6 +137,42 @@ static int gpu_sync_device() {
     return gpu_sync();
 }
 
+// --- FPGA Device Implementation ---
+// The 'lower' function for the FPGA is the synthesis step.
+static int fpga_lower(const GraphNode* node, void* out_kernel) {
+    // We assume the node is a special SUBGRAPH_BEGIN node.
+    // The scheduler needs to find the matching SUBGRAPH_END to define the region.
+    // For this simulation, we'll pass the node itself as the "kernel".
+    *(const GraphNode**)out_kernel = node;
+    return 0;
+}
+
+// The 'enqueue' function for the FPGA is the bitstream loading and execution step.
+static int fpga_enqueue(const void* kernel, const HamRegion** regions, size_t num_regions) {
+    const GraphNode* subgraph_start_node = *(const GraphNode**)kernel;
+
+    // A real implementation would traverse the graph from this start node
+    // to find the end of the subgraph. For M5, we'll assume it's just this one node.
+    FpgaBitstream* bitstream = fpga_synthesize_subgraph(NULL, subgraph_start_node->id, subgraph_start_node->id);
+    if (!bitstream) {
+        fprintf(stderr, "FPGA_DEVICE Error: Synthesis failed.\n");
+        return -1;
+    }
+    
+    int result = fpga_load_bitstream(bitstream);
+    
+    // After loading, a real implementation would copy data from HAM regions to the FPGA,
+    // trigger the execution, and copy results back.
+    
+    fpga_free_bitstream(bitstream);
+    return result;
+}
+
+static int fpga_sync() {
+    printf("FPGA_DEVICE: Synchronizing device.\n");
+    return 0;
+}
+
 // --- Public Device API Implementation ---
 DeviceVTable CPU_DEVICE_IMPL = {
     .id = 1, 
@@ -151,4 +188,12 @@ DeviceVTable GPU_DEVICE_IMPL = {
     .lower = gpu_lower,
     .enqueue = gpu_enqueue,
     .sync = gpu_sync_device
+};
+
+DeviceVTable FPGA_DEVICE_IMPL = {
+    .id = DEVICE_ID_FPGA,
+    .name = "FPGA_Reconfigurable",
+    .lower = fpga_lower,
+    .enqueue = fpga_enqueue,
+    .sync = fpga_sync
 };
