@@ -9,6 +9,11 @@
     const char* name;
 #include "ham.h"
 
+// --- Standard Device IDs ---
+#define DEVICE_ID_CPU 1
+#define DEVICE_ID_GPU 2
+#define DEVICE_ID_BPU 3 // Binary Processing Unit
+
 // --- Device Virtual Table (Interface) ---
 typedef struct {
     DeviceId id;
