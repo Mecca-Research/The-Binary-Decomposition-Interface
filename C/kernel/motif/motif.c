@@ -1,5 +1,5 @@
 // ===================================================================
-// DESC: NEW in M2. Implements the logic for symbolic compression via
+// DESC: Implements the logic for symbolic compression via
 //       motif interning.
 // ===================================================================
 #include "motif.h"
