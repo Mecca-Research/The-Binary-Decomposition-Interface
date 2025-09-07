@@ -185,6 +185,25 @@ static int ham_intern_check_internal(RegionId id, MotifDictionary* dict) {
     return -1;
 }
 
+// --- Test helpers to inspect region state ---
+HamTier ham_get_region_tier(RegionId id) {
+    for (size_t i = 0; i < region_count; ++i) {
+        if (ham_regions[i].id == id) {
+            return ham_regions[i].tier;
+        }
+    }
+    return -1; // Invalid tier
+}
+
+void* ham_get_region_base(RegionId id) {
+    for (size_t i = 0; i < region_count; ++i) {
+        if (ham_regions[i].id == id) {
+            return ham_regions[i].base;
+        }
+    }
+    return NULL;
+}
+
 // --- Public HAM API ---
 HamVTable HAM_DEFAULT_IMPL = {
     .alloc = ham_alloc_internal,
