@@ -1,5 +1,5 @@
 // ===================================================================
-// DESC: Final main driver for the Aeon-0 Kernel.
+// DESC: Final main driver for the Aeon Kernel.
 //       This integrates all milestones (M0-M5) into a single
 //       comprehensive test that demonstrates:
 //       - Multi-device dispatch (CPU, GPU, BPU, FPGA)
@@ -42,7 +42,7 @@ void assert_float_eq(float a, float b, const char* msg) {
 
 
 int main(void) {
-    printf("--- Aeon-0 Kernel: Final Integration Test ---\n");
+    printf("--- Aeon Kernel: Final Integration Test ---\n");
 
     // =================================================================
     // 1. Full System Initialization
