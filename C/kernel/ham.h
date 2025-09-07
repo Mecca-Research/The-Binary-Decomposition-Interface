@@ -6,11 +6,21 @@
 #define AEON_HAM_H
 
 #include "graph.h" // For RegionId
+#include "motif.h" 
+
+// --- Statistics for a memory region ---
+typedef struct {
+    uint64_t access_count;
+    uint64_t last_access_cycle; // Or timestamp
+    float entropy_score;      // Score from 0.0 to 1.0+
+} HamStats;
 
 // --- Memory regions (HAM tiers) for M0 ---
 typedef enum {
     HAM_CRITICAL, // Hot working set, pinned in fastest memory
     HAM_ACTIVE    // Near-term use, general purpose
+    HAM_DORMANT, // NEW in M2: Cold, compressible data
+    HAM_ARCHIVE
 } HamTier;
 
 typedef struct {
@@ -18,6 +28,10 @@ typedef struct {
     HamTier tier;
     size_t capacity_bytes;
     void* base; // Mapped host pointer
+    char path[256];
+    // --- NEW in M2: Intelligent Memory Fields ---
+    HamStats stats;
+    Motif* interned_motif; // If not NULL, this region is compressed.
 } HamRegion;
 
 // --- HAM Virtual Table (Interface) ---
@@ -30,6 +44,13 @@ typedef struct {
     int (*persist)(RegionId id);
     // Loads a region's data from its archive path.
     int (*load)(RegionId id);
+    // --- Intelligence Functions ---
+    // Called on memory access to update stats.
+    int (*update_stats)(RegionId id);
+    // Evaluates a region and potentially demotes it (e.g., ACTIVE -> DORMANT).
+    int (*demote_check)(RegionId id);
+    // Checks if a region can be compressed by interning its data.
+    int (*intern_check)(RegionId id, MotifDictionary* dict);
 } HamVTable;
 
 #endif // AEON_HAM_H
