@@ -36,6 +36,8 @@ typedef enum {
     OP_RELU, OP_MATMUL,
     // Control Flow
     OP_RET,
+    OP_GRAD,      // Propagate gradients
+    OP_UPDATE,    // Apply a parameter update
 } OpCode;
 
 // --- Node + edges ---
@@ -71,9 +73,22 @@ typedef struct {
     size_t meta_capacity;
 } BdiGraph;
 
+// --- Structure for defining a parameter update ---
+typedef struct {
+    float lr; // Learning rate
+} OptimizerParams; // Simplified for now
+
+typedef struct {
+    NodeId param_node;      // The node holding the parameter to be updated.
+    NodeId grad_node;       // The node providing the gradient for the update.
+    OptimizerParams opt;
+} UpdateSpec;
+
 // --- Graph API ---
 BdiGraph* aeon_graph_create();
 void aeon_graph_free(BdiGraph* g);
 NodeId aeon_graph_add_node(BdiGraph* g, GraphNode node);
+// Binds an update rule to the graph
+int aeon_bind_update(BdiGraph* g, const UpdateSpec* spec);
 
 #endif // AEON_GRAPH_H
