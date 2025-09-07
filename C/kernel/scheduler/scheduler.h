@@ -1,5 +1,5 @@
 // ===================================================================
-// DESC: NEW in M4. Defines the Scheduler and its policy gate for
+// DESC: Defines the Scheduler and its policy gate for
 //       secure execution.
 // ===================================================================
 #ifndef AEON_SCHEDULER_H
