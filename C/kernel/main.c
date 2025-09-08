@@ -26,7 +26,7 @@
 #include "fpga_backend.h"
 #include "process.h"
 #include "fs.h"
-#include "aeon/syscalls.h"
+#include "syscalls.h"
 
 
 // ===================================================================
