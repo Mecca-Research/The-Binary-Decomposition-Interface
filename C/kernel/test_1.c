@@ -1,5 +1,5 @@
 // ===================================================================
-// DESC: Integration test for the Aeon-0 Kernel's M0.
+// DESC: Integration test for the Aeon Kernel
 //       This test creates a simple graph (c = a + b), allocates memory
 //       with HAM, and executes the nodes on the CPU device.
 // ===================================================================
