@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG -Wall -Wextra CMakeFiles/test_master_memory_manager.dir/tests/test_master_memory_manager.c.o -o test_master_memory_manager  libmaster_memory_manager.a -lm 
