@@ -159,7 +159,7 @@ typedef struct {
     x86_page_directory_t *page_directory;  ///< Current page directory
     uint32_t page_directory_phys;           ///< Physical address of page directory
     x86_page_table_t **page_tables;        ///< Array of page table pointers
-    uint32_t *page_table_phys;              ///< Physical addresses of page tables
+    uintptr_t *page_table_phys;             ///< Physical addresses of page tables (64-bit compatible)
     size_t allocated_tables;                ///< Number of allocated page tables
     uint32_t cr3_value;                     ///< Current CR3 register value
     bool paging_enabled;                    ///< True if paging is enabled
