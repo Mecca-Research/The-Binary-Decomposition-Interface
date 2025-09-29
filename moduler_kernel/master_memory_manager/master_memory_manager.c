@@ -53,6 +53,9 @@ static mmm_status_t mmm_initialize_hal_framework(void);
 static mmm_status_t mmm_initialize_system_integration(void);
 static void mmm_cleanup_resources(void);
 
+// Helper function to map int return codes to mmm_status_t
+static mmm_status_t mmm_map_int_to_status(int result);
+
 // =============================================================================
 // PUBLIC API IMPLEMENTATION
 // =============================================================================
@@ -176,36 +179,65 @@ static mmm_status_t mmm_validate_config(const mmm_config_t *config)
     return MMM_SUCCESS;
 }
 
+// FIXED: Map int return codes to mmm_status_t values
+static mmm_status_t mmm_map_int_to_status(int result)
+{
+    if (result == 0) {
+        return MMM_SUCCESS;
+    } else if (result < 0) {
+        // Map negative error codes to appropriate MMM_ERROR_* values
+        switch (result) {
+            case -1:
+                return MMM_ERROR_HARDWARE_FAULT;
+            case -2:
+                return MMM_ERROR_MEMORY_FAULT;
+            case -3:
+                return MMM_ERROR_INVALID_PARAM;
+            default:
+                return MMM_ERROR_UNKNOWN;
+        }
+    } else {
+        // Positive values are unexpected, treat as unknown error
+        return MMM_ERROR_UNKNOWN;
+    }
+}
+
 static mmm_status_t mmm_initialize_x86_core(void)
 {
+    int result;
     mmm_status_t status;
     
-    // Initialize x86 registers management
-    status = x86_registers_initialize();
+    // Initialize x86 registers management - FIXED: Map int to mmm_status_t
+    result = x86_registers_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
     
-    // Initialize calling convention and ABI
-    status = x86_calling_abi_initialize();
+    // Initialize calling convention and ABI - FIXED: Map int to mmm_status_t
+    result = x86_calling_abi_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
     
-    // Initialize paging and MMU
-    status = x86_paging_mmu_initialize();
+    // Initialize paging and MMU - FIXED: Map int to mmm_status_t
+    result = x86_paging_mmu_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
     
-    // Initialize TLB management
-    status = x86_tlb_mgmt_initialize();
+    // Initialize TLB management - FIXED: Map int to mmm_status_t
+    result = x86_tlb_mgmt_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
     
-    // Initialize cache hints
-    status = x86_cache_hints_initialize();
+    // Initialize cache hints - FIXED: Map int to mmm_status_t
+    result = x86_cache_hints_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
@@ -215,22 +247,26 @@ static mmm_status_t mmm_initialize_x86_core(void)
 
 static mmm_status_t mmm_initialize_hal_framework(void)
 {
+    int result;
     mmm_status_t status;
     
-    // Initialize BSP layer
-    status = mmm_bsp_initialize();
+    // Initialize BSP layer - FIXED: Map int to mmm_status_t
+    result = mmm_bsp_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
     
-    // Initialize peripheral drivers
-    status = mmm_peripheral_drivers_initialize();
+    // Initialize peripheral drivers - FIXED: Map int to mmm_status_t
+    result = mmm_peripheral_drivers_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
     
-    // Initialize hardware access layer
-    status = mmm_hardware_access_initialize();
+    // Initialize hardware access layer - FIXED: Map int to mmm_status_t
+    result = mmm_hardware_access_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
@@ -240,22 +276,26 @@ static mmm_status_t mmm_initialize_hal_framework(void)
 
 static mmm_status_t mmm_initialize_system_integration(void)
 {
+    int result;
     mmm_status_t status;
     
-    // Initialize interrupt management
-    status = mmm_interrupt_mgmt_initialize();
+    // Initialize interrupt management - FIXED: Map int to mmm_status_t
+    result = mmm_interrupt_mgmt_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
     
-    // Initialize memory protection
-    status = mmm_memory_protection_initialize();
+    // Initialize memory protection - FIXED: Map int to mmm_status_t
+    result = mmm_memory_protection_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }
     
-    // Initialize performance optimization
-    status = mmm_performance_initialize();
+    // Initialize performance optimization - FIXED: Map int to mmm_status_t
+    result = mmm_performance_initialize();
+    status = mmm_map_int_to_status(result);
     if (status != MMM_SUCCESS) {
         return status;
     }

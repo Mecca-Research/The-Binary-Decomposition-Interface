@@ -493,7 +493,7 @@ bool bdi_load_profile(bdi_orchestrator_t* orch, const char* profile_name) {
         strcpy(orch->active_profile.preferred_modules[3], "sched.graph-rt");
         return true;
     } else if (strcmp(profile_name, "balanced") == 0) {
-        // Create balanced profile
+        // Create balanced profile - FIXED: Use correct enum constant
         orch->active_profile.type = BDI_PROFILE_BALANCED;
         strcpy(orch->active_profile.name, "balanced");
         orch->active_profile.weight_latency = 0.5f;

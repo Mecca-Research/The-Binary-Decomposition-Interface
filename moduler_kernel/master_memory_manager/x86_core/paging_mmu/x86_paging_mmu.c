@@ -27,7 +27,8 @@ static x86_mmu_context_t g_mmu_context = {0};
 // PRIVATE FUNCTION DECLARATIONS
 // =============================================================================
 
-static uint32_t x86_get_physical_address(void *virtual_addr);
+// FIXED: Use uintptr_t for 64-bit address compatibility
+static uintptr_t x86_get_physical_address(void *virtual_addr);
 static void *x86_allocate_physical_page(void);
 static void x86_free_physical_page(void *page);
 static int x86_ensure_page_table(x86_page_directory_t *page_dir, uint32_t virtual_addr);
@@ -51,8 +52,8 @@ int x86_paging_mmu_initialize(void)
         return -1;
     }
     
-    // Allocate physical address array for page tables
-    g_mmu_context.page_table_phys = calloc(X86_PDE_COUNT, sizeof(uint32_t));
+    // FIXED: Use uintptr_t for 64-bit address compatibility
+    g_mmu_context.page_table_phys = calloc(X86_PDE_COUNT, sizeof(uintptr_t));
     if (g_mmu_context.page_table_phys == NULL) {
         free(g_mmu_context.page_tables);
         return -1;
@@ -130,8 +131,8 @@ void x86_destroy_page_directory(x86_page_directory_t *page_dir)
     // Free all associated page tables
     for (int i = 0; i < X86_PDE_COUNT; i++) {
         if (page_dir->entries[i].fields.present) {
-            // Get page table physical address
-            uint32_t pt_phys = page_dir->entries[i].fields.page_table_addr << 12;
+            // FIXED: Use uintptr_t for 64-bit address compatibility
+            uintptr_t pt_phys = (uintptr_t)page_dir->entries[i].fields.page_table_addr << 12;
             
             // Find corresponding page table in our tracking arrays
             for (size_t j = 0; j < X86_PDE_COUNT; j++) {
@@ -316,16 +317,16 @@ int x86_enable_paging(x86_page_directory_t *page_dir)
         return -1;
     }
     
-    // Get physical address of page directory
-    uint32_t page_dir_phys = x86_get_physical_address(page_dir);
+    // FIXED: Use uintptr_t for 64-bit address compatibility
+    uintptr_t page_dir_phys = x86_get_physical_address(page_dir);
     if (page_dir_phys == 0) {
         return -1;
     }
     
     // Update MMU context
     g_mmu_context.page_directory = page_dir;
-    g_mmu_context.page_directory_phys = page_dir_phys;
-    g_mmu_context.cr3_value = page_dir_phys;
+    g_mmu_context.page_directory_phys = (uint32_t)page_dir_phys; // Cast to uint32_t for x86 CR3
+    g_mmu_context.cr3_value = (uint32_t)page_dir_phys;
     
     // Enable paging (would use inline assembly in real implementation)
     // This is a placeholder for the actual CR0 and CR3 manipulation
@@ -353,16 +354,16 @@ int x86_switch_page_directory(x86_page_directory_t *page_dir)
         return -1;
     }
     
-    // Get physical address of page directory
-    uint32_t page_dir_phys = x86_get_physical_address(page_dir);
+    // FIXED: Use uintptr_t for 64-bit address compatibility
+    uintptr_t page_dir_phys = x86_get_physical_address(page_dir);
     if (page_dir_phys == 0) {
         return -1;
     }
     
     // Update MMU context
     g_mmu_context.page_directory = page_dir;
-    g_mmu_context.page_directory_phys = page_dir_phys;
-    g_mmu_context.cr3_value = page_dir_phys;
+    g_mmu_context.page_directory_phys = (uint32_t)page_dir_phys; // Cast to uint32_t for x86 CR3
+    g_mmu_context.cr3_value = (uint32_t)page_dir_phys;
     
     // Load CR3 register (would use inline assembly in real implementation)
     // This is a placeholder for the actual CR3 load
@@ -442,7 +443,8 @@ x86_pte_t *x86_get_pte(x86_page_directory_t *page_dir, uint32_t virtual_addr)
     }
     
     // Find page table in our tracking arrays
-    uint32_t pt_phys = pde->fields.page_table_addr << 12;
+    // FIXED: Use uintptr_t for 64-bit address compatibility
+    uintptr_t pt_phys = (uintptr_t)pde->fields.page_table_addr << 12;
     for (size_t i = 0; i < X86_PDE_COUNT; i++) {
         if (g_mmu_context.page_table_phys[i] == pt_phys) {
             x86_page_table_t *page_table = g_mmu_context.page_tables[i];
@@ -529,11 +531,12 @@ x86_mmu_context_t *x86_get_mmu_context(void)
 // PRIVATE FUNCTION IMPLEMENTATIONS
 // =============================================================================
 
-static uint32_t x86_get_physical_address(void *virtual_addr)
+// FIXED: Use uintptr_t for 64-bit address compatibility
+static uintptr_t x86_get_physical_address(void *virtual_addr)
 {
     // In a real implementation, this would convert virtual to physical address
     // For now, we assume identity mapping or use a simple conversion
-    return (uint32_t)(uintptr_t)virtual_addr;
+    return (uintptr_t)virtual_addr;
 }
 
 static void *x86_allocate_physical_page(void)
@@ -569,8 +572,8 @@ static int x86_ensure_page_table(x86_page_directory_t *page_dir, uint32_t virtua
         return -1;
     }
     
-    // Get physical address of page table
-    uint32_t pt_phys = x86_get_physical_address(page_table);
+    // FIXED: Use uintptr_t for 64-bit address compatibility
+    uintptr_t pt_phys = x86_get_physical_address(page_table);
     if (pt_phys == 0) {
         x86_destroy_page_table(page_table);
         return -1;
@@ -600,7 +603,7 @@ static int x86_ensure_page_table(x86_page_directory_t *page_dir, uint32_t virtua
     pde->fields.present = 1;
     pde->fields.writable = 1;
     pde->fields.user = 1;
-    pde->fields.page_table_addr = pt_phys >> 12;
+    pde->fields.page_table_addr = (uint32_t)(pt_phys >> 12); // Cast for x86 compatibility
     
     return 0;
 }
