@@ -314,43 +314,58 @@ int x86_context_switch(task_control_block_t* from_task, task_control_block_t* to
 
 /**
  * @brief Save task context
- * CRITICAL FIX: Now saves complete register set instead of just 4 registers
+ * CRITICAL FIX: Split register saves into smaller blocks to satisfy GCC constraints
  */
 int x86_save_context(task_control_block_t* task) {
     if (!task) {
         return -1;
     }
     
-    // Save ALL general purpose registers (CRITICAL FIX)
+    // Save general purpose registers in smaller blocks to avoid GCC constraint errors
+    // Block 1: Basic registers (RAX, RBX, RCX, RDX)
     __asm__ volatile(
         "mov %%rax, %0\n"
         "mov %%rbx, %1\n"
         "mov %%rcx, %2\n"
         "mov %%rdx, %3\n"
-        "mov %%rsi, %4\n"
-        "mov %%rdi, %5\n"
-        "mov %%rbp, %6\n"
-        "mov %%rsp, %7\n"
-        "mov %%r8, %8\n"
-        "mov %%r9, %9\n"
-        "mov %%r10, %10\n"
-        "mov %%r11, %11\n"
-        "mov %%r12, %12\n"
-        "mov %%r13, %13\n"
-        "mov %%r14, %14\n"
-        "mov %%r15, %15\n"
         : "=m"(task->cpu_context.rax), "=m"(task->cpu_context.rbx),
-          "=m"(task->cpu_context.rcx), "=m"(task->cpu_context.rdx),
-          "=m"(task->cpu_context.rsi), "=m"(task->cpu_context.rdi),
-          "=m"(task->cpu_context.rbp), "=m"(task->cpu_context.rsp),
-          "=m"(task->cpu_context.r8),  "=m"(task->cpu_context.r9),
-          "=m"(task->cpu_context.r10), "=m"(task->cpu_context.r11),
-          "=m"(task->cpu_context.r12), "=m"(task->cpu_context.r13),
+          "=m"(task->cpu_context.rcx), "=m"(task->cpu_context.rdx)
+    );
+    
+    // Block 2: Index and pointer registers (RSI, RDI, RBP, RSP)
+    __asm__ volatile(
+        "mov %%rsi, %0\n"
+        "mov %%rdi, %1\n"
+        "mov %%rbp, %2\n"
+        "mov %%rsp, %3\n"
+        : "=m"(task->cpu_context.rsi), "=m"(task->cpu_context.rdi),
+          "=m"(task->cpu_context.rbp), "=m"(task->cpu_context.rsp)
+    );
+    
+    // Block 3: Extended registers R8-R11
+    __asm__ volatile(
+        "mov %%r8, %0\n"
+        "mov %%r9, %1\n"
+        "mov %%r10, %2\n"
+        "mov %%r11, %3\n"
+        : "=m"(task->cpu_context.r8), "=m"(task->cpu_context.r9),
+          "=m"(task->cpu_context.r10), "=m"(task->cpu_context.r11)
+    );
+    
+    // Block 4: Extended registers R12-R15
+    __asm__ volatile(
+        "mov %%r12, %0\n"
+        "mov %%r13, %1\n"
+        "mov %%r14, %2\n"
+        "mov %%r15, %3\n"
+        : "=m"(task->cpu_context.r12), "=m"(task->cpu_context.r13),
           "=m"(task->cpu_context.r14), "=m"(task->cpu_context.r15)
     );
     
     // Save instruction pointer (current location)
-    __asm__ volatile("lea (%%rip), %0" : "=m"(task->cpu_context.rip));
+    register uint64_t rip_value;
+    __asm__ volatile("lea 1f(%%rip), %0\n1:" : "=r"(rip_value));
+    task->cpu_context.rip = rip_value;
     
     // Save flags
     __asm__ volatile("pushfq; popq %0" : "=m"(task->cpu_context.rflags));
@@ -408,33 +423,50 @@ int x86_restore_context(task_control_block_t* task) {
     // Restore flags
     __asm__ volatile("pushq %0; popfq" : : "m"(task->cpu_context.rflags));
     
-    // Restore ALL general purpose registers (CRITICAL FIX)
-    // Note: We restore RSP and RIP last as they affect execution flow
+    // Restore general purpose registers in smaller blocks to avoid GCC constraint errors
+    // Block 1: Basic registers (RAX, RBX, RCX, RDX)
     __asm__ volatile(
         "mov %0, %%rax\n"
         "mov %1, %%rbx\n"
         "mov %2, %%rcx\n"
         "mov %3, %%rdx\n"
-        "mov %4, %%rsi\n"
-        "mov %5, %%rdi\n"
-        "mov %6, %%rbp\n"
-        "mov %8, %%r8\n"
-        "mov %9, %%r9\n"
-        "mov %10, %%r10\n"
-        "mov %11, %%r11\n"
-        "mov %12, %%r12\n"
-        "mov %13, %%r13\n"
-        "mov %14, %%r14\n"
-        "mov %15, %%r15\n"
-        "mov %7, %%rsp\n"
         : : "m"(task->cpu_context.rax), "m"(task->cpu_context.rbx),
-            "m"(task->cpu_context.rcx), "m"(task->cpu_context.rdx),
-            "m"(task->cpu_context.rsi), "m"(task->cpu_context.rdi),
-            "m"(task->cpu_context.rbp), "m"(task->cpu_context.rsp),
-            "m"(task->cpu_context.r8),  "m"(task->cpu_context.r9),
-            "m"(task->cpu_context.r10), "m"(task->cpu_context.r11),
-            "m"(task->cpu_context.r12), "m"(task->cpu_context.r13),
+            "m"(task->cpu_context.rcx), "m"(task->cpu_context.rdx)
+    );
+    
+    // Block 2: Index and pointer registers (RSI, RDI, RBP) - RSP restored last
+    __asm__ volatile(
+        "mov %0, %%rsi\n"
+        "mov %1, %%rdi\n"
+        "mov %2, %%rbp\n"
+        : : "m"(task->cpu_context.rsi), "m"(task->cpu_context.rdi),
+            "m"(task->cpu_context.rbp)
+    );
+    
+    // Block 3: Extended registers R8-R11
+    __asm__ volatile(
+        "mov %0, %%r8\n"
+        "mov %1, %%r9\n"
+        "mov %2, %%r10\n"
+        "mov %3, %%r11\n"
+        : : "m"(task->cpu_context.r8), "m"(task->cpu_context.r9),
+            "m"(task->cpu_context.r10), "m"(task->cpu_context.r11)
+    );
+    
+    // Block 4: Extended registers R12-R15
+    __asm__ volatile(
+        "mov %0, %%r12\n"
+        "mov %1, %%r13\n"
+        "mov %2, %%r14\n"
+        "mov %3, %%r15\n"
+        : : "m"(task->cpu_context.r12), "m"(task->cpu_context.r13),
             "m"(task->cpu_context.r14), "m"(task->cpu_context.r15)
+    );
+    
+    // Block 5: Restore RSP last as it affects execution flow
+    __asm__ volatile(
+        "mov %0, %%rsp\n"
+        : : "m"(task->cpu_context.rsp)
     );
     
     // Note: RIP restoration would typically be handled by a jump or return instruction
