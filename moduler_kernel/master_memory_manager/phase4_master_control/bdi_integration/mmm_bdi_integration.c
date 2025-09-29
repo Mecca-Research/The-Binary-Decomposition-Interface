@@ -50,6 +50,15 @@ int mmm_bdi_integration_init(mmm_bdi_config_t *config) {
         return MMM_ERROR_INVALID_PARAM;
     }
     
+    // CRITICAL FIX: Initialize mutex BEFORE using it
+    static bool mutex_initialized = false;
+    if (!mutex_initialized) {
+        if (pthread_mutex_init(&g_bdi_state.integration_mutex, NULL) != 0) {
+            return MMM_ERROR_SYSTEM_FAILURE;
+        }
+        mutex_initialized = true;
+    }
+    
     pthread_mutex_lock(&g_bdi_state.integration_mutex);
     
     if (g_bdi_state.initialized) {
@@ -59,11 +68,6 @@ int mmm_bdi_integration_init(mmm_bdi_config_t *config) {
     
     // Copy configuration
     memcpy(&g_bdi_state.config, config, sizeof(mmm_bdi_config_t));
-    
-    // Initialize mutex if not already done
-    if (pthread_mutex_init(&g_bdi_state.integration_mutex, NULL) != 0) {
-        return MMM_ERROR_SYSTEM_FAILURE;
-    }
     
     // Setup shared memory if required
     if (g_bdi_state.config.shared_memory_size > 0) {
@@ -417,11 +421,12 @@ int mmm_bdi_integration_cleanup(void) {
     // Disconnect from kernel interface
     disconnect_from_kernel_interface();
     
-    // Reset state
-    memset(&g_bdi_state, 0, sizeof(g_bdi_state));
-    
+    // CRITICAL FIX: Unlock and destroy mutex in correct order
     pthread_mutex_unlock(&g_bdi_state.integration_mutex);
     pthread_mutex_destroy(&g_bdi_state.integration_mutex);
+    
+    // Reset state AFTER mutex cleanup
+    memset(&g_bdi_state, 0, sizeof(g_bdi_state));
     
     return MMM_SUCCESS;
 }

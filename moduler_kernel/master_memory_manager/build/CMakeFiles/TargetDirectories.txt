@@ -1,8 +1,8 @@
-/home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/master_memory_manager.dir
-/home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/test_master_memory_manager.dir
+/home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/mmm_phase4.dir
 /home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/format.dir
-/home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/analyze.dir
-/home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/test.dir
+/home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/docs.dir
+/home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/package.dir
+/home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/package_source.dir
 /home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/edit_cache.dir
 /home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/rebuild_cache.dir
 /home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CMakeFiles/list_install_components.dir

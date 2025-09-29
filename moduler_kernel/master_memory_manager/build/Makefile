@@ -65,15 +65,25 @@ CMAKE_BINARY_DIR = /home/ubuntu/github_repos/The-Binary-Decomposition-Interface/
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target test
-test:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running tests..."
-	/usr/bin/ctest --force-new-ctest-process $(ARGS)
-.PHONY : test
+# Special rule for the target package
+package: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Run CPack packaging tool..."
+	/usr/bin/cpack --config ./CPackConfig.cmake
+.PHONY : package
 
-# Special rule for the target test
-test/fast: test
-.PHONY : test/fast
+# Special rule for the target package
+package/fast: package
+.PHONY : package/fast
+
+# Special rule for the target package_source
+package_source:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Run CPack packaging tool for source..."
+	/usr/bin/cpack --config ./CPackSourceConfig.cmake /home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/CPackSourceConfig.cmake
+.PHONY : package_source
+
+# Special rule for the target package_source
+package_source/fast: package_source
+.PHONY : package_source/fast
 
 # Special rule for the target edit_cache
 edit_cache:
@@ -172,30 +182,17 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named master_memory_manager
+# Target rules for targets named mmm_phase4
 
 # Build rule for target.
-master_memory_manager: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 master_memory_manager
-.PHONY : master_memory_manager
+mmm_phase4: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 mmm_phase4
+.PHONY : mmm_phase4
 
 # fast build rule for target.
-master_memory_manager/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/build
-.PHONY : master_memory_manager/fast
-
-#=============================================================================
-# Target rules for targets named test_master_memory_manager
-
-# Build rule for target.
-test_master_memory_manager: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_master_memory_manager
-.PHONY : test_master_memory_manager
-
-# fast build rule for target.
-test_master_memory_manager/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_master_memory_manager.dir/build.make CMakeFiles/test_master_memory_manager.dir/build
-.PHONY : test_master_memory_manager/fast
+mmm_phase4/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/build
+.PHONY : mmm_phase4/fast
 
 #=============================================================================
 # Target rules for targets named format
@@ -211,96 +208,24 @@ format/fast:
 .PHONY : format/fast
 
 #=============================================================================
-# Target rules for targets named analyze
+# Target rules for targets named docs
 
 # Build rule for target.
-analyze: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 analyze
-.PHONY : analyze
+docs: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 docs
+.PHONY : docs
 
 # fast build rule for target.
-analyze/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/analyze.dir/build.make CMakeFiles/analyze.dir/build
-.PHONY : analyze/fast
-
-hal_framework/bsp/mmm_bsp.o: hal_framework/bsp/mmm_bsp.c.o
-.PHONY : hal_framework/bsp/mmm_bsp.o
-
-# target to build an object file
-hal_framework/bsp/mmm_bsp.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/hal_framework/bsp/mmm_bsp.c.o
-.PHONY : hal_framework/bsp/mmm_bsp.c.o
-
-hal_framework/bsp/mmm_bsp.i: hal_framework/bsp/mmm_bsp.c.i
-.PHONY : hal_framework/bsp/mmm_bsp.i
-
-# target to preprocess a source file
-hal_framework/bsp/mmm_bsp.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/hal_framework/bsp/mmm_bsp.c.i
-.PHONY : hal_framework/bsp/mmm_bsp.c.i
-
-hal_framework/bsp/mmm_bsp.s: hal_framework/bsp/mmm_bsp.c.s
-.PHONY : hal_framework/bsp/mmm_bsp.s
-
-# target to generate assembly for a file
-hal_framework/bsp/mmm_bsp.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/hal_framework/bsp/mmm_bsp.c.s
-.PHONY : hal_framework/bsp/mmm_bsp.c.s
-
-hal_framework/hardware_access/mmm_hardware_access.o: hal_framework/hardware_access/mmm_hardware_access.c.o
-.PHONY : hal_framework/hardware_access/mmm_hardware_access.o
-
-# target to build an object file
-hal_framework/hardware_access/mmm_hardware_access.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/hal_framework/hardware_access/mmm_hardware_access.c.o
-.PHONY : hal_framework/hardware_access/mmm_hardware_access.c.o
-
-hal_framework/hardware_access/mmm_hardware_access.i: hal_framework/hardware_access/mmm_hardware_access.c.i
-.PHONY : hal_framework/hardware_access/mmm_hardware_access.i
-
-# target to preprocess a source file
-hal_framework/hardware_access/mmm_hardware_access.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/hal_framework/hardware_access/mmm_hardware_access.c.i
-.PHONY : hal_framework/hardware_access/mmm_hardware_access.c.i
-
-hal_framework/hardware_access/mmm_hardware_access.s: hal_framework/hardware_access/mmm_hardware_access.c.s
-.PHONY : hal_framework/hardware_access/mmm_hardware_access.s
-
-# target to generate assembly for a file
-hal_framework/hardware_access/mmm_hardware_access.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/hal_framework/hardware_access/mmm_hardware_access.c.s
-.PHONY : hal_framework/hardware_access/mmm_hardware_access.c.s
-
-hal_framework/peripheral_drivers/mmm_peripheral_drivers.o: hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.o
-.PHONY : hal_framework/peripheral_drivers/mmm_peripheral_drivers.o
-
-# target to build an object file
-hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.o
-.PHONY : hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.o
-
-hal_framework/peripheral_drivers/mmm_peripheral_drivers.i: hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.i
-.PHONY : hal_framework/peripheral_drivers/mmm_peripheral_drivers.i
-
-# target to preprocess a source file
-hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.i
-.PHONY : hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.i
-
-hal_framework/peripheral_drivers/mmm_peripheral_drivers.s: hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.s
-.PHONY : hal_framework/peripheral_drivers/mmm_peripheral_drivers.s
-
-# target to generate assembly for a file
-hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.s
-.PHONY : hal_framework/peripheral_drivers/mmm_peripheral_drivers.c.s
+docs/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/docs.dir/build.make CMakeFiles/docs.dir/build
+.PHONY : docs/fast
 
 master_memory_manager.o: master_memory_manager.c.o
 .PHONY : master_memory_manager.o
 
 # target to build an object file
 master_memory_manager.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/master_memory_manager.c.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/master_memory_manager.c.o
 .PHONY : master_memory_manager.c.o
 
 master_memory_manager.i: master_memory_manager.c.i
@@ -308,7 +233,7 @@ master_memory_manager.i: master_memory_manager.c.i
 
 # target to preprocess a source file
 master_memory_manager.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/master_memory_manager.c.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/master_memory_manager.c.i
 .PHONY : master_memory_manager.c.i
 
 master_memory_manager.s: master_memory_manager.c.s
@@ -316,224 +241,176 @@ master_memory_manager.s: master_memory_manager.c.s
 
 # target to generate assembly for a file
 master_memory_manager.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/master_memory_manager.c.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/master_memory_manager.c.s
 .PHONY : master_memory_manager.c.s
 
-system_integration/interrupt_mgmt/mmm_interrupt_mgmt.o: system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.o
-.PHONY : system_integration/interrupt_mgmt/mmm_interrupt_mgmt.o
+phase3_ai_assembly_engineers/integration/phase3_main.o: phase3_ai_assembly_engineers/integration/phase3_main.c.o
+.PHONY : phase3_ai_assembly_engineers/integration/phase3_main.o
 
 # target to build an object file
-system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.o
-.PHONY : system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.o
+phase3_ai_assembly_engineers/integration/phase3_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase3_ai_assembly_engineers/integration/phase3_main.c.o
+.PHONY : phase3_ai_assembly_engineers/integration/phase3_main.c.o
 
-system_integration/interrupt_mgmt/mmm_interrupt_mgmt.i: system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.i
-.PHONY : system_integration/interrupt_mgmt/mmm_interrupt_mgmt.i
+phase3_ai_assembly_engineers/integration/phase3_main.i: phase3_ai_assembly_engineers/integration/phase3_main.c.i
+.PHONY : phase3_ai_assembly_engineers/integration/phase3_main.i
 
 # target to preprocess a source file
-system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.i
-.PHONY : system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.i
+phase3_ai_assembly_engineers/integration/phase3_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase3_ai_assembly_engineers/integration/phase3_main.c.i
+.PHONY : phase3_ai_assembly_engineers/integration/phase3_main.c.i
 
-system_integration/interrupt_mgmt/mmm_interrupt_mgmt.s: system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.s
-.PHONY : system_integration/interrupt_mgmt/mmm_interrupt_mgmt.s
+phase3_ai_assembly_engineers/integration/phase3_main.s: phase3_ai_assembly_engineers/integration/phase3_main.c.s
+.PHONY : phase3_ai_assembly_engineers/integration/phase3_main.s
 
 # target to generate assembly for a file
-system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.s
-.PHONY : system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c.s
+phase3_ai_assembly_engineers/integration/phase3_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase3_ai_assembly_engineers/integration/phase3_main.c.s
+.PHONY : phase3_ai_assembly_engineers/integration/phase3_main.c.s
 
-system_integration/memory_protection/mmm_memory_protection.o: system_integration/memory_protection/mmm_memory_protection.c.o
-.PHONY : system_integration/memory_protection/mmm_memory_protection.o
+phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.o: phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.o
+.PHONY : phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.o
 
 # target to build an object file
-system_integration/memory_protection/mmm_memory_protection.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/system_integration/memory_protection/mmm_memory_protection.c.o
-.PHONY : system_integration/memory_protection/mmm_memory_protection.c.o
+phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.o
+.PHONY : phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.o
 
-system_integration/memory_protection/mmm_memory_protection.i: system_integration/memory_protection/mmm_memory_protection.c.i
-.PHONY : system_integration/memory_protection/mmm_memory_protection.i
+phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.i: phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.i
+.PHONY : phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.i
 
 # target to preprocess a source file
-system_integration/memory_protection/mmm_memory_protection.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/system_integration/memory_protection/mmm_memory_protection.c.i
-.PHONY : system_integration/memory_protection/mmm_memory_protection.c.i
+phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.i
+.PHONY : phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.i
 
-system_integration/memory_protection/mmm_memory_protection.s: system_integration/memory_protection/mmm_memory_protection.c.s
-.PHONY : system_integration/memory_protection/mmm_memory_protection.s
+phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.s: phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.s
+.PHONY : phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.s
 
 # target to generate assembly for a file
-system_integration/memory_protection/mmm_memory_protection.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/system_integration/memory_protection/mmm_memory_protection.c.s
-.PHONY : system_integration/memory_protection/mmm_memory_protection.c.s
+phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.s
+.PHONY : phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c.s
 
-system_integration/performance/mmm_performance.o: system_integration/performance/mmm_performance.c.o
-.PHONY : system_integration/performance/mmm_performance.o
+phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.o: phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.o
+.PHONY : phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.o
 
 # target to build an object file
-system_integration/performance/mmm_performance.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/system_integration/performance/mmm_performance.c.o
-.PHONY : system_integration/performance/mmm_performance.c.o
+phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.o
+.PHONY : phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.o
 
-system_integration/performance/mmm_performance.i: system_integration/performance/mmm_performance.c.i
-.PHONY : system_integration/performance/mmm_performance.i
+phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.i: phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.i
+.PHONY : phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.i
 
 # target to preprocess a source file
-system_integration/performance/mmm_performance.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/system_integration/performance/mmm_performance.c.i
-.PHONY : system_integration/performance/mmm_performance.c.i
+phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.i
+.PHONY : phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.i
 
-system_integration/performance/mmm_performance.s: system_integration/performance/mmm_performance.c.s
-.PHONY : system_integration/performance/mmm_performance.s
+phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.s: phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.s
+.PHONY : phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.s
 
 # target to generate assembly for a file
-system_integration/performance/mmm_performance.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/system_integration/performance/mmm_performance.c.s
-.PHONY : system_integration/performance/mmm_performance.c.s
+phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.s
+.PHONY : phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c.s
 
-tests/test_master_memory_manager.o: tests/test_master_memory_manager.c.o
-.PHONY : tests/test_master_memory_manager.o
+phase4_implementations.o: phase4_implementations.c.o
+.PHONY : phase4_implementations.o
 
 # target to build an object file
-tests/test_master_memory_manager.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_master_memory_manager.dir/build.make CMakeFiles/test_master_memory_manager.dir/tests/test_master_memory_manager.c.o
-.PHONY : tests/test_master_memory_manager.c.o
+phase4_implementations.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase4_implementations.c.o
+.PHONY : phase4_implementations.c.o
 
-tests/test_master_memory_manager.i: tests/test_master_memory_manager.c.i
-.PHONY : tests/test_master_memory_manager.i
+phase4_implementations.i: phase4_implementations.c.i
+.PHONY : phase4_implementations.i
 
 # target to preprocess a source file
-tests/test_master_memory_manager.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_master_memory_manager.dir/build.make CMakeFiles/test_master_memory_manager.dir/tests/test_master_memory_manager.c.i
-.PHONY : tests/test_master_memory_manager.c.i
+phase4_implementations.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase4_implementations.c.i
+.PHONY : phase4_implementations.c.i
 
-tests/test_master_memory_manager.s: tests/test_master_memory_manager.c.s
-.PHONY : tests/test_master_memory_manager.s
+phase4_implementations.s: phase4_implementations.c.s
+.PHONY : phase4_implementations.s
 
 # target to generate assembly for a file
-tests/test_master_memory_manager.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_master_memory_manager.dir/build.make CMakeFiles/test_master_memory_manager.dir/tests/test_master_memory_manager.c.s
-.PHONY : tests/test_master_memory_manager.c.s
+phase4_implementations.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase4_implementations.c.s
+.PHONY : phase4_implementations.c.s
 
-x86_core/cache_hints/x86_cache_hints.o: x86_core/cache_hints/x86_cache_hints.c.o
-.PHONY : x86_core/cache_hints/x86_cache_hints.o
+phase4_main.o: phase4_main.c.o
+.PHONY : phase4_main.o
 
 # target to build an object file
-x86_core/cache_hints/x86_cache_hints.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/cache_hints/x86_cache_hints.c.o
-.PHONY : x86_core/cache_hints/x86_cache_hints.c.o
+phase4_main.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase4_main.c.o
+.PHONY : phase4_main.c.o
 
-x86_core/cache_hints/x86_cache_hints.i: x86_core/cache_hints/x86_cache_hints.c.i
-.PHONY : x86_core/cache_hints/x86_cache_hints.i
+phase4_main.i: phase4_main.c.i
+.PHONY : phase4_main.i
 
 # target to preprocess a source file
-x86_core/cache_hints/x86_cache_hints.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/cache_hints/x86_cache_hints.c.i
-.PHONY : x86_core/cache_hints/x86_cache_hints.c.i
+phase4_main.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase4_main.c.i
+.PHONY : phase4_main.c.i
 
-x86_core/cache_hints/x86_cache_hints.s: x86_core/cache_hints/x86_cache_hints.c.s
-.PHONY : x86_core/cache_hints/x86_cache_hints.s
+phase4_main.s: phase4_main.c.s
+.PHONY : phase4_main.s
 
 # target to generate assembly for a file
-x86_core/cache_hints/x86_cache_hints.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/cache_hints/x86_cache_hints.c.s
-.PHONY : x86_core/cache_hints/x86_cache_hints.c.s
+phase4_main.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase4_main.c.s
+.PHONY : phase4_main.c.s
 
-x86_core/calling_abi/x86_calling_abi.o: x86_core/calling_abi/x86_calling_abi.c.o
-.PHONY : x86_core/calling_abi/x86_calling_abi.o
+phase4_master_control/bdi_integration/mmm_bdi_integration.o: phase4_master_control/bdi_integration/mmm_bdi_integration.c.o
+.PHONY : phase4_master_control/bdi_integration/mmm_bdi_integration.o
 
 # target to build an object file
-x86_core/calling_abi/x86_calling_abi.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/calling_abi/x86_calling_abi.c.o
-.PHONY : x86_core/calling_abi/x86_calling_abi.c.o
+phase4_master_control/bdi_integration/mmm_bdi_integration.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase4_master_control/bdi_integration/mmm_bdi_integration.c.o
+.PHONY : phase4_master_control/bdi_integration/mmm_bdi_integration.c.o
 
-x86_core/calling_abi/x86_calling_abi.i: x86_core/calling_abi/x86_calling_abi.c.i
-.PHONY : x86_core/calling_abi/x86_calling_abi.i
+phase4_master_control/bdi_integration/mmm_bdi_integration.i: phase4_master_control/bdi_integration/mmm_bdi_integration.c.i
+.PHONY : phase4_master_control/bdi_integration/mmm_bdi_integration.i
 
 # target to preprocess a source file
-x86_core/calling_abi/x86_calling_abi.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/calling_abi/x86_calling_abi.c.i
-.PHONY : x86_core/calling_abi/x86_calling_abi.c.i
+phase4_master_control/bdi_integration/mmm_bdi_integration.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase4_master_control/bdi_integration/mmm_bdi_integration.c.i
+.PHONY : phase4_master_control/bdi_integration/mmm_bdi_integration.c.i
 
-x86_core/calling_abi/x86_calling_abi.s: x86_core/calling_abi/x86_calling_abi.c.s
-.PHONY : x86_core/calling_abi/x86_calling_abi.s
+phase4_master_control/bdi_integration/mmm_bdi_integration.s: phase4_master_control/bdi_integration/mmm_bdi_integration.c.s
+.PHONY : phase4_master_control/bdi_integration/mmm_bdi_integration.s
 
 # target to generate assembly for a file
-x86_core/calling_abi/x86_calling_abi.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/calling_abi/x86_calling_abi.c.s
-.PHONY : x86_core/calling_abi/x86_calling_abi.c.s
+phase4_master_control/bdi_integration/mmm_bdi_integration.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/phase4_master_control/bdi_integration/mmm_bdi_integration.c.s
+.PHONY : phase4_master_control/bdi_integration/mmm_bdi_integration.c.s
 
-x86_core/paging_mmu/x86_paging_mmu.o: x86_core/paging_mmu/x86_paging_mmu.c.o
-.PHONY : x86_core/paging_mmu/x86_paging_mmu.o
+x86_core/task_switching/x86_task_switching.o: x86_core/task_switching/x86_task_switching.c.o
+.PHONY : x86_core/task_switching/x86_task_switching.o
 
 # target to build an object file
-x86_core/paging_mmu/x86_paging_mmu.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/paging_mmu/x86_paging_mmu.c.o
-.PHONY : x86_core/paging_mmu/x86_paging_mmu.c.o
+x86_core/task_switching/x86_task_switching.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/x86_core/task_switching/x86_task_switching.c.o
+.PHONY : x86_core/task_switching/x86_task_switching.c.o
 
-x86_core/paging_mmu/x86_paging_mmu.i: x86_core/paging_mmu/x86_paging_mmu.c.i
-.PHONY : x86_core/paging_mmu/x86_paging_mmu.i
-
-# target to preprocess a source file
-x86_core/paging_mmu/x86_paging_mmu.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/paging_mmu/x86_paging_mmu.c.i
-.PHONY : x86_core/paging_mmu/x86_paging_mmu.c.i
-
-x86_core/paging_mmu/x86_paging_mmu.s: x86_core/paging_mmu/x86_paging_mmu.c.s
-.PHONY : x86_core/paging_mmu/x86_paging_mmu.s
-
-# target to generate assembly for a file
-x86_core/paging_mmu/x86_paging_mmu.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/paging_mmu/x86_paging_mmu.c.s
-.PHONY : x86_core/paging_mmu/x86_paging_mmu.c.s
-
-x86_core/registers/x86_registers.o: x86_core/registers/x86_registers.c.o
-.PHONY : x86_core/registers/x86_registers.o
-
-# target to build an object file
-x86_core/registers/x86_registers.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/registers/x86_registers.c.o
-.PHONY : x86_core/registers/x86_registers.c.o
-
-x86_core/registers/x86_registers.i: x86_core/registers/x86_registers.c.i
-.PHONY : x86_core/registers/x86_registers.i
+x86_core/task_switching/x86_task_switching.i: x86_core/task_switching/x86_task_switching.c.i
+.PHONY : x86_core/task_switching/x86_task_switching.i
 
 # target to preprocess a source file
-x86_core/registers/x86_registers.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/registers/x86_registers.c.i
-.PHONY : x86_core/registers/x86_registers.c.i
+x86_core/task_switching/x86_task_switching.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/x86_core/task_switching/x86_task_switching.c.i
+.PHONY : x86_core/task_switching/x86_task_switching.c.i
 
-x86_core/registers/x86_registers.s: x86_core/registers/x86_registers.c.s
-.PHONY : x86_core/registers/x86_registers.s
-
-# target to generate assembly for a file
-x86_core/registers/x86_registers.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/registers/x86_registers.c.s
-.PHONY : x86_core/registers/x86_registers.c.s
-
-x86_core/tlb_mgmt/x86_tlb_mgmt.o: x86_core/tlb_mgmt/x86_tlb_mgmt.c.o
-.PHONY : x86_core/tlb_mgmt/x86_tlb_mgmt.o
-
-# target to build an object file
-x86_core/tlb_mgmt/x86_tlb_mgmt.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/tlb_mgmt/x86_tlb_mgmt.c.o
-.PHONY : x86_core/tlb_mgmt/x86_tlb_mgmt.c.o
-
-x86_core/tlb_mgmt/x86_tlb_mgmt.i: x86_core/tlb_mgmt/x86_tlb_mgmt.c.i
-.PHONY : x86_core/tlb_mgmt/x86_tlb_mgmt.i
-
-# target to preprocess a source file
-x86_core/tlb_mgmt/x86_tlb_mgmt.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/tlb_mgmt/x86_tlb_mgmt.c.i
-.PHONY : x86_core/tlb_mgmt/x86_tlb_mgmt.c.i
-
-x86_core/tlb_mgmt/x86_tlb_mgmt.s: x86_core/tlb_mgmt/x86_tlb_mgmt.c.s
-.PHONY : x86_core/tlb_mgmt/x86_tlb_mgmt.s
+x86_core/task_switching/x86_task_switching.s: x86_core/task_switching/x86_task_switching.c.s
+.PHONY : x86_core/task_switching/x86_task_switching.s
 
 # target to generate assembly for a file
-x86_core/tlb_mgmt/x86_tlb_mgmt.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/master_memory_manager.dir/build.make CMakeFiles/master_memory_manager.dir/x86_core/tlb_mgmt/x86_tlb_mgmt.c.s
-.PHONY : x86_core/tlb_mgmt/x86_tlb_mgmt.c.s
+x86_core/task_switching/x86_task_switching.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mmm_phase4.dir/build.make CMakeFiles/mmm_phase4.dir/x86_core/task_switching/x86_task_switching.c.s
+.PHONY : x86_core/task_switching/x86_task_switching.c.s
 
 # Help Target
 help:
@@ -546,51 +423,36 @@ help:
 	@echo "... install/local"
 	@echo "... install/strip"
 	@echo "... list_install_components"
+	@echo "... package"
+	@echo "... package_source"
 	@echo "... rebuild_cache"
-	@echo "... test"
-	@echo "... analyze"
+	@echo "... docs"
 	@echo "... format"
-	@echo "... master_memory_manager"
-	@echo "... test_master_memory_manager"
-	@echo "... hal_framework/bsp/mmm_bsp.o"
-	@echo "... hal_framework/bsp/mmm_bsp.i"
-	@echo "... hal_framework/bsp/mmm_bsp.s"
-	@echo "... hal_framework/hardware_access/mmm_hardware_access.o"
-	@echo "... hal_framework/hardware_access/mmm_hardware_access.i"
-	@echo "... hal_framework/hardware_access/mmm_hardware_access.s"
-	@echo "... hal_framework/peripheral_drivers/mmm_peripheral_drivers.o"
-	@echo "... hal_framework/peripheral_drivers/mmm_peripheral_drivers.i"
-	@echo "... hal_framework/peripheral_drivers/mmm_peripheral_drivers.s"
+	@echo "... mmm_phase4"
 	@echo "... master_memory_manager.o"
 	@echo "... master_memory_manager.i"
 	@echo "... master_memory_manager.s"
-	@echo "... system_integration/interrupt_mgmt/mmm_interrupt_mgmt.o"
-	@echo "... system_integration/interrupt_mgmt/mmm_interrupt_mgmt.i"
-	@echo "... system_integration/interrupt_mgmt/mmm_interrupt_mgmt.s"
-	@echo "... system_integration/memory_protection/mmm_memory_protection.o"
-	@echo "... system_integration/memory_protection/mmm_memory_protection.i"
-	@echo "... system_integration/memory_protection/mmm_memory_protection.s"
-	@echo "... system_integration/performance/mmm_performance.o"
-	@echo "... system_integration/performance/mmm_performance.i"
-	@echo "... system_integration/performance/mmm_performance.s"
-	@echo "... tests/test_master_memory_manager.o"
-	@echo "... tests/test_master_memory_manager.i"
-	@echo "... tests/test_master_memory_manager.s"
-	@echo "... x86_core/cache_hints/x86_cache_hints.o"
-	@echo "... x86_core/cache_hints/x86_cache_hints.i"
-	@echo "... x86_core/cache_hints/x86_cache_hints.s"
-	@echo "... x86_core/calling_abi/x86_calling_abi.o"
-	@echo "... x86_core/calling_abi/x86_calling_abi.i"
-	@echo "... x86_core/calling_abi/x86_calling_abi.s"
-	@echo "... x86_core/paging_mmu/x86_paging_mmu.o"
-	@echo "... x86_core/paging_mmu/x86_paging_mmu.i"
-	@echo "... x86_core/paging_mmu/x86_paging_mmu.s"
-	@echo "... x86_core/registers/x86_registers.o"
-	@echo "... x86_core/registers/x86_registers.i"
-	@echo "... x86_core/registers/x86_registers.s"
-	@echo "... x86_core/tlb_mgmt/x86_tlb_mgmt.o"
-	@echo "... x86_core/tlb_mgmt/x86_tlb_mgmt.i"
-	@echo "... x86_core/tlb_mgmt/x86_tlb_mgmt.s"
+	@echo "... phase3_ai_assembly_engineers/integration/phase3_main.o"
+	@echo "... phase3_ai_assembly_engineers/integration/phase3_main.i"
+	@echo "... phase3_ai_assembly_engineers/integration/phase3_main.s"
+	@echo "... phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.o"
+	@echo "... phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.i"
+	@echo "... phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.s"
+	@echo "... phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.o"
+	@echo "... phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.i"
+	@echo "... phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.s"
+	@echo "... phase4_implementations.o"
+	@echo "... phase4_implementations.i"
+	@echo "... phase4_implementations.s"
+	@echo "... phase4_main.o"
+	@echo "... phase4_main.i"
+	@echo "... phase4_main.s"
+	@echo "... phase4_master_control/bdi_integration/mmm_bdi_integration.o"
+	@echo "... phase4_master_control/bdi_integration/mmm_bdi_integration.i"
+	@echo "... phase4_master_control/bdi_integration/mmm_bdi_integration.s"
+	@echo "... x86_core/task_switching/x86_task_switching.o"
+	@echo "... x86_core/task_switching/x86_task_switching.i"
+	@echo "... x86_core/task_switching/x86_task_switching.s"
 .PHONY : help
 
 

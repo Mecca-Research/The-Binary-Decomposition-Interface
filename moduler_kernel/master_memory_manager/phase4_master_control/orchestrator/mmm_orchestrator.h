@@ -38,13 +38,8 @@ typedef enum {
     MMM_COMPONENT_MAX
 } mmm_component_type_t;
 
-// Priority levels
-typedef enum {
-    MMM_PRIORITY_LOW = 1,
-    MMM_PRIORITY_NORMAL,
-    MMM_PRIORITY_HIGH,
-    MMM_PRIORITY_CRITICAL
-} mmm_priority_t;
+// CRITICAL FIX: Use common priority definitions to avoid conflicts
+#include "../../mmm_common.h"
 
 // Component status
 typedef enum {

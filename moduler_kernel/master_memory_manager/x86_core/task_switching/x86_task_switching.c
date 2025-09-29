@@ -314,26 +314,43 @@ int x86_context_switch(task_control_block_t* from_task, task_control_block_t* to
 
 /**
  * @brief Save task context
+ * CRITICAL FIX: Now saves complete register set instead of just 4 registers
  */
 int x86_save_context(task_control_block_t* task) {
     if (!task) {
         return -1;
     }
     
-    // Save general purpose registers (simplified for compilation)
-    // NOTE: In a real implementation, this would use proper assembly or setjmp/longjmp
-    // For now, we'll use a placeholder that demonstrates the concept
+    // Save ALL general purpose registers (CRITICAL FIX)
     __asm__ volatile(
         "mov %%rax, %0\n"
         "mov %%rbx, %1\n"
         "mov %%rcx, %2\n"
         "mov %%rdx, %3\n"
+        "mov %%rsi, %4\n"
+        "mov %%rdi, %5\n"
+        "mov %%rbp, %6\n"
+        "mov %%rsp, %7\n"
+        "mov %%r8, %8\n"
+        "mov %%r9, %9\n"
+        "mov %%r10, %10\n"
+        "mov %%r11, %11\n"
+        "mov %%r12, %12\n"
+        "mov %%r13, %13\n"
+        "mov %%r14, %14\n"
+        "mov %%r15, %15\n"
         : "=m"(task->cpu_context.rax), "=m"(task->cpu_context.rbx),
-          "=m"(task->cpu_context.rcx), "=m"(task->cpu_context.rdx)
+          "=m"(task->cpu_context.rcx), "=m"(task->cpu_context.rdx),
+          "=m"(task->cpu_context.rsi), "=m"(task->cpu_context.rdi),
+          "=m"(task->cpu_context.rbp), "=m"(task->cpu_context.rsp),
+          "=m"(task->cpu_context.r8),  "=m"(task->cpu_context.r9),
+          "=m"(task->cpu_context.r10), "=m"(task->cpu_context.r11),
+          "=m"(task->cpu_context.r12), "=m"(task->cpu_context.r13),
+          "=m"(task->cpu_context.r14), "=m"(task->cpu_context.r15)
     );
     
-    // Additional registers would be saved here in a complete implementation
-    // This is a simplified version for demonstration of the interrupt context fix
+    // Save instruction pointer (current location)
+    __asm__ volatile("lea (%%rip), %0" : "=m"(task->cpu_context.rip));
     
     // Save flags
     __asm__ volatile("pushfq; popq %0" : "=m"(task->cpu_context.rflags));
@@ -354,16 +371,22 @@ int x86_save_context(task_control_block_t* task) {
     // Save CR3 (page directory)
     __asm__ volatile("mov %%cr3, %0" : "=r"(task->cpu_context.cr3));
     
+    printf("[TaskSwitch] Complete context saved for task %s (16 registers + segments + flags)\n", 
+           task->name);
+    
     return 0;
 }
 
 /**
  * @brief Restore task context
+ * CRITICAL FIX: Now restores complete register set instead of just 4 registers
  */
 int x86_restore_context(task_control_block_t* task) {
     if (!task) {
         return -1;
     }
+    
+    printf("[TaskSwitch] Restoring complete context for task %s\n", task->name);
     
     // Restore CR3 (page directory)
     if (task->cpu_context.cr3) {
@@ -382,21 +405,40 @@ int x86_restore_context(task_control_block_t* task) {
             "m"(task->cpu_context.gs), "m"(task->cpu_context.ss)
     );
     
-    // Restore general purpose registers (simplified for compilation)
-    // NOTE: In a real implementation, this would use proper assembly or setjmp/longjmp
+    // Restore flags
+    __asm__ volatile("pushq %0; popfq" : : "m"(task->cpu_context.rflags));
+    
+    // Restore ALL general purpose registers (CRITICAL FIX)
+    // Note: We restore RSP and RIP last as they affect execution flow
     __asm__ volatile(
         "mov %0, %%rax\n"
         "mov %1, %%rbx\n"
         "mov %2, %%rcx\n"
         "mov %3, %%rdx\n"
+        "mov %4, %%rsi\n"
+        "mov %5, %%rdi\n"
+        "mov %6, %%rbp\n"
+        "mov %8, %%r8\n"
+        "mov %9, %%r9\n"
+        "mov %10, %%r10\n"
+        "mov %11, %%r11\n"
+        "mov %12, %%r12\n"
+        "mov %13, %%r13\n"
+        "mov %14, %%r14\n"
+        "mov %15, %%r15\n"
+        "mov %7, %%rsp\n"
         : : "m"(task->cpu_context.rax), "m"(task->cpu_context.rbx),
-            "m"(task->cpu_context.rcx), "m"(task->cpu_context.rdx)
+            "m"(task->cpu_context.rcx), "m"(task->cpu_context.rdx),
+            "m"(task->cpu_context.rsi), "m"(task->cpu_context.rdi),
+            "m"(task->cpu_context.rbp), "m"(task->cpu_context.rsp),
+            "m"(task->cpu_context.r8),  "m"(task->cpu_context.r9),
+            "m"(task->cpu_context.r10), "m"(task->cpu_context.r11),
+            "m"(task->cpu_context.r12), "m"(task->cpu_context.r13),
+            "m"(task->cpu_context.r14), "m"(task->cpu_context.r15)
     );
     
-    // Additional registers would be restored here in a complete implementation
-    
-    // Restore flags
-    __asm__ volatile("pushq %0; popfq" : : "m"(task->cpu_context.rflags));
+    // Note: RIP restoration would typically be handled by a jump or return instruction
+    // In a real implementation, this would be part of the context switch assembly code
     
     return 0;
 }

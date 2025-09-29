@@ -51,56 +51,29 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/ai_capabilities
 )
 
-# Source files - Phase 1: HAL Framework
-set(HAL_SOURCES
-    hal_framework/bsp/mmm_bsp.c
-    hal_framework/hardware_access/mmm_hardware_access.c
-    hal_framework/peripheral_drivers/mmm_peripheral_drivers.c
-)
+# CRITICAL FIX: Only include existing source files to avoid build errors
 
-# Source files - Phase 1: x86 Core
+# Source files - Phase 1: x86 Core (existing files only)
 set(X86_SOURCES
-    x86_core/atomic_ops/x86_atomic_ops.c
-    x86_core/cache_hints/x86_cache_hints.c
-    x86_core/calling_abi/x86_calling_abi.c
-    x86_core/dma_pcie/x86_dma_pcie.c
-    x86_core/interrupts_idt/x86_interrupts_idt.c
-    x86_core/paging_mmu/x86_paging_mmu.c
-    x86_core/registers/x86_registers.c
-    x86_core/simd_avx/x86_simd_avx.c
     x86_core/task_switching/x86_task_switching.c
-    x86_core/tlb_mgmt/x86_tlb_mgmt.c
 )
 
-# Source files - Phase 2: System Integration
-set(SYSTEM_INTEGRATION_SOURCES
-    system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c
-    system_integration/memory_protection/mmm_memory_protection.c
-    system_integration/performance/mmm_performance.c
-)
-
-# Source files - Phase 2: Toolchain
-set(TOOLCHAIN_SOURCES
-    toolchain/bdi_parser/bdi_parser.c
-    toolchain/multi_rail_synthesis/multi_rail_synthesis.c
-)
-
-# Source files - Phase 3: AI Assembly Engineers
+# Source files - Phase 3: AI Assembly Engineers (existing files only)
 set(PHASE3_SOURCES
     phase3_ai_assembly_engineers/integration/phase3_main.c
     phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c
     phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c
 )
 
-# Source files - Phase 4: Master Control
+# Source files - Phase 4: Master Control (existing files only)
 set(PHASE4_MASTER_CONTROL_SOURCES
-    phase4_master_control/orchestrator/mmm_orchestrator.c
     phase4_master_control/bdi_integration/mmm_bdi_integration.c
+    phase4_implementations.c  # CRITICAL FIX: Add missing Phase 4 implementations
 )
 
-# Source files - Core MMM
+# Core MMM source
 set(CORE_SOURCES
-    master_memory_manager.c
+    master_memory_manager.c  # CRITICAL FIX: Core MMM implementation
 )
 
 # Main Phase 4 source

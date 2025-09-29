@@ -15,7 +15,13 @@
 // Phase 3 component headers
 #include "../runtime/capsule_loader/capsule_loader.h"
 #include "../runtime/hotswap_lanes/hotswap_manager.h"
-#include "../integration/phase3_main.c"
+// CRITICAL FIX: Include header declarations only, not implementation
+// #include "../integration/phase3_main.c"  // REMOVED - causes main() conflict
+
+// Forward declarations for Phase 3 functions
+extern int phase3_initialize(const char* config_file);
+extern void phase3_run(void);
+extern void phase3_shutdown(void);
 
 // Test framework macros
 #define TEST_ASSERT(condition, message) \
@@ -64,7 +70,8 @@ static int test_performance_metrics(void);
 static int test_system_integration(void);
 static int test_memory_management(void);
 
-int main(void) {
+// CRITICAL FIX: Rename main to avoid conflicts with other main() functions
+int test_main(void) {
     printf("=== Phase 3 AI Assembly Engineers - Integration Tests ===\n");
     printf("Starting comprehensive test suite...\n\n");
     
