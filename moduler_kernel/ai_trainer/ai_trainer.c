@@ -1,7 +1,7 @@
-
 // ===================================================================
-// BDI AI Trainer System Implementation - C23 Enhanced
+// BDI AI Trainer System Implementation - C23 Compatible
 // Advanced AI training system leveraging C23 features
+// Fixed for C23 compilation compatibility
 // ===================================================================
 
 #include "ai_trainer.h"
@@ -11,29 +11,43 @@
 #include <time.h>
 #include <threads.h>
 #include <assert.h>
+#include <stdatomic.h>  // Added missing include for atomic operations
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 // ===================================================================
-// C23 Thread-Local Storage
+// C23 Thread-Local Storage (moved from struct members to globals)
 // ===================================================================
 
-thread_local bdi_ai_trainer_error_t bdi_ai_trainer_last_error = BDI_AI_TRAINER_SUCCESS;
-thread_local char bdi_ai_trainer_error_message[256] = {0};
-thread_local bool thread_initialized = false;
+_Thread_local bdi_ai_trainer_error_t bdi_ai_trainer_last_error = BDI_AI_TRAINER_SUCCESS;
+_Thread_local char bdi_ai_trainer_error_message[256] = {0};
+_Thread_local bool thread_initialized = false;
+
+// Thread-local batch statistics
+_Thread_local double bdi_thread_batch_loss = 0.0;
+_Thread_local double bdi_thread_batch_accuracy = 0.0;
+_Thread_local size_t bdi_thread_processed_samples = 0;
+
+// Thread-local performance statistics
+_Thread_local uint64_t bdi_thread_samples_processed = 0;
+_Thread_local uint64_t bdi_thread_training_time_us = 0;
 
 // ===================================================================
 // Internal Helper Functions with C23 Features
 // ===================================================================
 
-// C23 constexpr helper for validation
-constexpr bool bdi_is_valid_learning_rate(bdi_learning_rate_t rate) {
-    return rate > 0.0dd && rate < 1.0dd;
+// C23 static inline helper for validation
+static inline bool bdi_is_valid_learning_rate(bdi_learning_rate_t rate) {
+    return rate > 0.0 && rate < 1.0;
 }
 
-// C23 typeof for generic initialization
+// Simple array initialization without typeof
 #define BDI_INIT_ARRAY(arr, size, init_val) \
     do { \
         for (size_t i = 0; i < (size); ++i) { \
-            (arr)[i] = (typeof((arr)[0]))(init_val); \
+            (arr)[i] = (init_val); \
         } \
     } while(0)
 
@@ -55,7 +69,8 @@ static bdi_neural_layer_t* bdi_create_neural_layer(size_t input_size,
                                                    const char* activation_fn) {
     bdi_init_thread_local_storage();
     
-    auto layer = (bdi_neural_layer_t*)aligned_alloc(64, sizeof(bdi_neural_layer_t));
+    // Fixed: Replace C++ auto with explicit type declaration
+    bdi_neural_layer_t* layer = (bdi_neural_layer_t*)aligned_alloc(64, sizeof(bdi_neural_layer_t));
     if (!layer) {
         bdi_ai_trainer_set_error(BDI_AI_TRAINER_ERROR_MEMORY_ALLOCATION, 
                                 "Failed to allocate neural layer");
@@ -95,7 +110,7 @@ static bdi_neural_layer_t* bdi_create_neural_layer(size_t input_size,
     strncpy(layer->activation_function, activation_fn, sizeof(layer->activation_function) - 1);
     layer->learning_rate = BDI_DEFAULT_LEARNING_RATE;
     
-    // Thread-local storage allocation
+    // Allocate per-thread storage (not thread_local struct members)
     layer->activations = (float*)aligned_alloc(64, output_size * sizeof(float));
     layer->deltas = (float*)aligned_alloc(64, output_size * sizeof(float));
     
@@ -131,7 +146,7 @@ void bdi_neural_forward_pass(bdi_neural_layer_t* layer,
             sum += layer->weights[i * layer->input_size + j] * input[j];
         }
         
-        // Apply activation function using C23 constexpr
+        // Apply activation function using C23 static inline
         if (strcmp(layer->activation_function, "relu") == 0) {
             output[i] = bdi_activation_relu(sum);
         } else if (strcmp(layer->activation_function, "sigmoid") == 0) {
@@ -142,7 +157,7 @@ void bdi_neural_forward_pass(bdi_neural_layer_t* layer,
             output[i] = sum; // Linear activation
         }
         
-        // Store in thread-local cache
+        // Store in per-thread cache
         layer->activations[i] = output[i];
     }
 }
@@ -151,12 +166,14 @@ void bdi_neural_forward_pass(bdi_neural_layer_t* layer,
 // Training Sample Management with C23 Features
 // ===================================================================
 
-auto bdi_create_training_sample(const float* features, size_t feature_count, 
-                               bdi_label_t label) -> bdi_training_sample_t* {
+// Fixed: Replace C++ auto return type with explicit function declaration
+bdi_training_sample_t* bdi_create_training_sample(const float* features, size_t feature_count, 
+                                                  bdi_label_t label) {
     bdi_init_thread_local_storage();
     
     size_t sample_size = sizeof(bdi_training_sample_t) + feature_count * sizeof(float);
-    auto sample = (bdi_training_sample_t*)aligned_alloc(64, sample_size);
+    // Fixed: Replace auto with explicit type
+    bdi_training_sample_t* sample = (bdi_training_sample_t*)aligned_alloc(64, sample_size);
     
     if (!sample) {
         bdi_ai_trainer_set_error(BDI_AI_TRAINER_ERROR_MEMORY_ALLOCATION,
@@ -164,7 +181,7 @@ auto bdi_create_training_sample(const float* features, size_t feature_count,
         return NULL;
     }
     
-    // Generate unique sample ID using C23 _BitInt
+    // Generate unique sample ID using C23 atomic operations
     static _Atomic bdi_sample_id_t next_sample_id = 1;
     sample->sample_id = atomic_fetch_add(&next_sample_id, 1);
     
@@ -202,14 +219,15 @@ bdi_ai_trainer_t* bdi_ai_trainer_create(const bdi_ai_trainer_config_t* config) {
         return NULL;
     }
     
-    // Validate configuration using C23 constexpr
+    // Validate configuration using C23 static inline
     if (!bdi_is_valid_learning_rate(config->base_learning_rate)) {
         bdi_ai_trainer_set_error(BDI_AI_TRAINER_ERROR_INVALID_CONFIG,
                                 "Invalid learning rate");
         return NULL;
     }
     
-    auto trainer = (bdi_ai_trainer_t*)aligned_alloc(64, sizeof(bdi_ai_trainer_t));
+    // Fixed: Replace auto with explicit type
+    bdi_ai_trainer_t* trainer = (bdi_ai_trainer_t*)aligned_alloc(64, sizeof(bdi_ai_trainer_t));
     if (!trainer) {
         bdi_ai_trainer_set_error(BDI_AI_TRAINER_ERROR_MEMORY_ALLOCATION,
                                 "Failed to allocate trainer");
@@ -236,8 +254,9 @@ bdi_ai_trainer_t* bdi_ai_trainer_create(const bdi_ai_trainer_config_t* config) {
         size_t input_size = (i == 0) ? BDI_MAX_FEATURES : config->layer_sizes[i-1];
         size_t output_size = config->layer_sizes[i];
         
-        auto layer = bdi_create_neural_layer(input_size, output_size, 
-                                           (i == config->num_layers - 1) ? "sigmoid" : "relu");
+        // Fixed: Replace auto with explicit type
+        bdi_neural_layer_t* layer = bdi_create_neural_layer(input_size, output_size, 
+                                                           (i == config->num_layers - 1) ? "sigmoid" : "relu");
         if (!layer) {
             // Cleanup on failure
             for (size_t j = 0; j < i; ++j) {
@@ -262,11 +281,11 @@ bdi_ai_trainer_t* bdi_ai_trainer_create(const bdi_ai_trainer_config_t* config) {
     trainer->current_batch = 0;
     trainer->current_learning_rate = config->base_learning_rate;
     
-    // Initialize performance metrics with C23 _Decimal precision
-    trainer->training_loss = 0.0dd;
-    trainer->validation_loss = 0.0dd;
-    trainer->training_accuracy = 0.0dd;
-    trainer->validation_accuracy = 0.0dd;
+    // Initialize performance metrics with standard floating point precision
+    trainer->training_loss = 0.0;
+    trainer->validation_loss = 0.0;
+    trainer->training_accuracy = 0.0;
+    trainer->validation_accuracy = 0.0;
     
     // Initialize thread synchronization
     if (mtx_init(&trainer->training_mutex, mtx_plain) != thrd_success) {
@@ -321,9 +340,9 @@ bool bdi_ai_trainer_add_sample(bdi_ai_trainer_t* trainer,
         return false;
     }
     
-    // Create training sample using C23 auto
-    auto sample = bdi_create_training_sample((const float*)features, 
-                                           feature_count, label);
+    // Create training sample using explicit type (fixed from auto)
+    bdi_training_sample_t* sample = bdi_create_training_sample((const float*)features, 
+                                                              feature_count, label);
     if (!sample) {
         return false; // Error already set
     }
@@ -359,12 +378,13 @@ bool bdi_ai_trainer_train_epoch(bdi_ai_trainer_t* trainer) {
     // Shuffle samples for this epoch
     for (size_t i = trainer->num_samples - 1; i > 0; --i) {
         size_t j = rand() % (i + 1);
-        auto temp = trainer->samples[i];
+        // Fixed: Replace auto with explicit type
+        bdi_training_sample_t* temp = trainer->samples[i];
         trainer->samples[i] = trainer->samples[j];
         trainer->samples[j] = temp;
     }
     
-    _Decimal64 epoch_loss = 0.0dd;
+    double epoch_loss = 0.0;
     size_t correct_predictions = 0;
     
     // Process samples in batches
@@ -374,11 +394,12 @@ bool bdi_ai_trainer_train_epoch(bdi_ai_trainer_t* trainer) {
         size_t batch_end = (batch_start + trainer->config.batch_size < trainer->num_samples) ?
                           batch_start + trainer->config.batch_size : trainer->num_samples;
         
-        _Decimal64 batch_loss = 0.0dd;
+        double batch_loss = 0.0;
         
         // Forward pass for batch
         for (size_t i = batch_start; i < batch_end; ++i) {
-            auto sample = trainer->samples[i];
+            // Fixed: Replace auto with explicit type
+            bdi_training_sample_t* sample = trainer->samples[i];
             
             // Forward propagation through all layers
             const float* layer_input = sample->features;
@@ -395,12 +416,13 @@ bool bdi_ai_trainer_train_epoch(bdi_ai_trainer_t* trainer) {
             float target = (sample->label > 0) ? 1.0f : 0.0f;
             
             // Prevent log(0) with small epsilon
-            constexpr float epsilon = 1e-7f;
+            static const float epsilon = 1e-7f;  // Fixed: replaced constexpr with static const
             prediction = fmaxf(epsilon, fminf(1.0f - epsilon, prediction));
             
-            _Decimal64 sample_loss = -(((_Decimal64)target * log(prediction)) + 
-                                     ((1.0dd - (_Decimal64)target) * log(1.0dd - (_Decimal64)prediction)));
-            batch_loss += sample_loss;
+            // Use regular float for loss calculation to avoid decimal mixing issues
+            float sample_loss = -((target * logf(prediction)) + 
+                                ((1.0f - target) * logf(1.0f - prediction)));
+            batch_loss += (double)sample_loss;
             
             // Count correct predictions
             if ((prediction > 0.5f && sample->label > 0) || 
@@ -422,8 +444,8 @@ bool bdi_ai_trainer_train_epoch(bdi_ai_trainer_t* trainer) {
     }
     
     // Update trainer state
-    trainer->training_loss = epoch_loss / (_Decimal64)trainer->num_samples;
-    trainer->training_accuracy = (_Decimal64)correct_predictions / (_Decimal64)trainer->num_samples;
+    trainer->training_loss = epoch_loss / (double)trainer->num_samples;
+    trainer->training_accuracy = (double)correct_predictions / (double)trainer->num_samples;
     trainer->current_epoch++;
     
     // Apply learning rate decay
@@ -449,7 +471,7 @@ bdi_confidence_t bdi_ai_trainer_predict(bdi_ai_trainer_t* trainer,
     if (!trainer || !features || feature_count == 0) {
         bdi_ai_trainer_set_error(BDI_AI_TRAINER_ERROR_INVALID_SAMPLE,
                                 "Invalid prediction parameters");
-        return 0.0df;
+        return 0.0f;
     }
     
     struct timespec start_time, end_time;
@@ -611,4 +633,3 @@ void bdi_ai_trainer_destroy(bdi_ai_trainer_t* trainer) {
     
     free(trainer);
 }
-
