@@ -1,142 +1,216 @@
 
-# Master Memory Manager - Phase 1 CMake Configuration
-# AI Assembly Engineers for BDI
+# Master Memory Manager - Phase 4 LEGENDARY BDI BUILD
+# Complete CMake configuration for all phases
 
-cmake_minimum_required(VERSION 3.20)
-project(MasterMemoryManager VERSION 1.0.0 LANGUAGES C)
+cmake_minimum_required(VERSION 3.16)
+project(MasterMemoryManager VERSION 4.0.0 LANGUAGES C)
 
-# Set C23 standard
-set(CMAKE_C_STANDARD 23)
+# Set C standard
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
 
-# Compiler flags for optimization and debugging
-set(CMAKE_C_FLAGS_DEBUG "-g -O0 -DDEBUG -Wall -Wextra -Wpedantic")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -Wall -Wextra")
+# Build configuration
+set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 
-# Default to Release build
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+# Compiler flags
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -O0 -DDEBUG")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNDEBUG -march=native")
+
+# Feature flags
+option(MMM_ENABLE_AI "Enable AI capabilities" ON)
+option(MMM_ENABLE_SECURITY "Enable security features" ON)
+option(MMM_ENABLE_TELEMETRY "Enable telemetry" ON)
+option(MMM_ENABLE_TESTING "Enable testing" OFF)
+option(MMM_ENABLE_PROFILING "Enable profiling" OFF)
+option(MMM_PRODUCTION_BUILD "Production build optimizations" OFF)
+
+# Find required packages
+find_package(Threads REQUIRED)
+find_package(PkgConfig REQUIRED)
+
+# Optional packages
+if(MMM_ENABLE_AI)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(BLAS blas)
+    pkg_check_modules(LAPACK lapack)
 endif()
-
-# Add Phase 3: AI Assembly Engineers for BDI
-add_subdirectory(phase3_ai_assembly_engineers)
 
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/x86_core/registers
-    ${CMAKE_CURRENT_SOURCE_DIR}/x86_core/calling_abi
-    ${CMAKE_CURRENT_SOURCE_DIR}/x86_core/paging_mmu
-    ${CMAKE_CURRENT_SOURCE_DIR}/x86_core/tlb_mgmt
-    ${CMAKE_CURRENT_SOURCE_DIR}/x86_core/cache_hints
-    ${CMAKE_CURRENT_SOURCE_DIR}/hal_framework/bsp
-    ${CMAKE_CURRENT_SOURCE_DIR}/hal_framework/peripheral_drivers
-    ${CMAKE_CURRENT_SOURCE_DIR}/hal_framework/hardware_access
-    ${CMAKE_CURRENT_SOURCE_DIR}/system_integration/interrupt_mgmt
-    ${CMAKE_CURRENT_SOURCE_DIR}/system_integration/memory_protection
-    ${CMAKE_CURRENT_SOURCE_DIR}/system_integration/performance
+    ${CMAKE_CURRENT_SOURCE_DIR}/hal_framework
+    ${CMAKE_CURRENT_SOURCE_DIR}/x86_core
+    ${CMAKE_CURRENT_SOURCE_DIR}/system_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/toolchain
+    ${CMAKE_CURRENT_SOURCE_DIR}/phase3_ai_assembly_engineers
+    ${CMAKE_CURRENT_SOURCE_DIR}/phase4_master_control
+    ${CMAKE_CURRENT_SOURCE_DIR}/production_features
+    ${CMAKE_CURRENT_SOURCE_DIR}/enterprise_features
+    ${CMAKE_CURRENT_SOURCE_DIR}/ai_capabilities
 )
 
-# Source files
-set(MMM_SOURCES
-    # Core Master Memory Manager
-    master_memory_manager.c
-    
-    # x86 Core Competencies
-    x86_core/registers/x86_registers.c
-    x86_core/calling_abi/x86_calling_abi.c
-    x86_core/paging_mmu/x86_paging_mmu.c
-    x86_core/tlb_mgmt/x86_tlb_mgmt.c
-    x86_core/cache_hints/x86_cache_hints.c
-    
-    # HAL Framework
+# Source files - Phase 1: HAL Framework
+set(HAL_SOURCES
     hal_framework/bsp/mmm_bsp.c
-    hal_framework/peripheral_drivers/mmm_peripheral_drivers.c
     hal_framework/hardware_access/mmm_hardware_access.c
-    
-    # System Integration
+    hal_framework/peripheral_drivers/mmm_peripheral_drivers.c
+)
+
+# Source files - Phase 1: x86 Core
+set(X86_SOURCES
+    x86_core/atomic_ops/x86_atomic_ops.c
+    x86_core/cache_hints/x86_cache_hints.c
+    x86_core/calling_abi/x86_calling_abi.c
+    x86_core/dma_pcie/x86_dma_pcie.c
+    x86_core/interrupts_idt/x86_interrupts_idt.c
+    x86_core/paging_mmu/x86_paging_mmu.c
+    x86_core/registers/x86_registers.c
+    x86_core/simd_avx/x86_simd_avx.c
+    x86_core/task_switching/x86_task_switching.c
+    x86_core/tlb_mgmt/x86_tlb_mgmt.c
+)
+
+# Source files - Phase 2: System Integration
+set(SYSTEM_INTEGRATION_SOURCES
     system_integration/interrupt_mgmt/mmm_interrupt_mgmt.c
     system_integration/memory_protection/mmm_memory_protection.c
     system_integration/performance/mmm_performance.c
 )
 
-# Header files
-set(MMM_HEADERS
-    # Core Master Memory Manager
-    master_memory_manager.h
-    
-    # x86 Core Competencies
-    x86_core/registers/x86_registers.h
-    x86_core/calling_abi/x86_calling_abi.h
-    x86_core/paging_mmu/x86_paging_mmu.h
-    x86_core/tlb_mgmt/x86_tlb_mgmt.h
-    x86_core/cache_hints/x86_cache_hints.h
-    
-    # HAL Framework
-    hal_framework/bsp/mmm_bsp.h
-    hal_framework/peripheral_drivers/mmm_peripheral_drivers.h
-    hal_framework/hardware_access/mmm_hardware_access.h
-    
-    # System Integration
-    system_integration/interrupt_mgmt/mmm_interrupt_mgmt.h
-    system_integration/memory_protection/mmm_memory_protection.h
-    system_integration/performance/mmm_performance.h
+# Source files - Phase 2: Toolchain
+set(TOOLCHAIN_SOURCES
+    toolchain/bdi_parser/bdi_parser.c
+    toolchain/multi_rail_synthesis/multi_rail_synthesis.c
 )
 
-# Create Master Memory Manager library
-add_library(master_memory_manager STATIC ${MMM_SOURCES} ${MMM_HEADERS})
-
-# Set library properties
-set_target_properties(master_memory_manager PROPERTIES
-    VERSION ${PROJECT_VERSION}
-    SOVERSION 1
-    PUBLIC_HEADER "${MMM_HEADERS}"
+# Source files - Phase 3: AI Assembly Engineers
+set(PHASE3_SOURCES
+    phase3_ai_assembly_engineers/integration/phase3_main.c
+    phase3_ai_assembly_engineers/runtime/capsule_loader/capsule_loader.c
+    phase3_ai_assembly_engineers/runtime/hotswap_lanes/hotswap_manager.c
 )
 
-# Compiler-specific optimizations
-if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(master_memory_manager PRIVATE
-        -march=native
-        -mtune=native
-        -ffast-math
-        -funroll-loops
-        -finline-functions
-        -fomit-frame-pointer
-    )
-elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(master_memory_manager PRIVATE
-        -march=native
-        -mtune=native
-        -ffast-math
-        -funroll-loops
-        -finline-functions
-        -fomit-frame-pointer
+# Source files - Phase 4: Master Control
+set(PHASE4_MASTER_CONTROL_SOURCES
+    phase4_master_control/orchestrator/mmm_orchestrator.c
+    phase4_master_control/bdi_integration/mmm_bdi_integration.c
+)
+
+# Source files - Core MMM
+set(CORE_SOURCES
+    master_memory_manager.c
+)
+
+# Main Phase 4 source
+set(PHASE4_MAIN_SOURCE
+    phase4_main.c
+)
+
+# All sources
+set(ALL_SOURCES
+    ${CORE_SOURCES}
+    ${HAL_SOURCES}
+    ${X86_SOURCES}
+    ${SYSTEM_INTEGRATION_SOURCES}
+    ${TOOLCHAIN_SOURCES}
+    ${PHASE3_SOURCES}
+    ${PHASE4_MASTER_CONTROL_SOURCES}
+)
+
+# Create main executable
+add_executable(mmm_phase4 ${PHASE4_MAIN_SOURCE} ${ALL_SOURCES})
+
+# Link libraries
+target_link_libraries(mmm_phase4 
+    Threads::Threads
+    m  # Math library
+    rt # Real-time library
+)
+
+# Conditional linking
+if(MMM_ENABLE_AI AND BLAS_FOUND AND LAPACK_FOUND)
+    target_link_libraries(mmm_phase4 ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+    target_compile_definitions(mmm_phase4 PRIVATE MMM_AI_ENABLED)
+endif()
+
+# Feature definitions
+if(MMM_ENABLE_SECURITY)
+    target_compile_definitions(mmm_phase4 PRIVATE MMM_SECURITY_ENABLED)
+endif()
+
+if(MMM_ENABLE_TELEMETRY)
+    target_compile_definitions(mmm_phase4 PRIVATE MMM_TELEMETRY_ENABLED)
+endif()
+
+if(MMM_PRODUCTION_BUILD)
+    target_compile_definitions(mmm_phase4 PRIVATE MMM_PRODUCTION_BUILD)
+    set_target_properties(mmm_phase4 PROPERTIES
+        INTERPROCEDURAL_OPTIMIZATION TRUE
     )
 endif()
 
-# Link libraries
-target_link_libraries(master_memory_manager PRIVATE m)
+# Testing
+if(MMM_ENABLE_TESTING)
+    enable_testing()
+    
+    # Phase 4 tests
+    add_executable(test_master_control 
+        tests/test_master_memory_manager.c
+        ${ALL_SOURCES}
+    )
+    target_link_libraries(test_master_control Threads::Threads m rt)
+    add_test(NAME MasterControlTest COMMAND test_master_control)
+    
+    # Add more test executables as needed
+    file(GLOB TEST_SOURCES "tests/phase4/*.c")
+    foreach(TEST_SOURCE ${TEST_SOURCES})
+        get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
+        add_executable(${TEST_NAME} ${TEST_SOURCE} ${ALL_SOURCES})
+        target_link_libraries(${TEST_NAME} Threads::Threads m rt)
+        add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    endforeach()
+endif()
 
-# Test executable
-add_executable(test_master_memory_manager
-    tests/test_master_memory_manager.c
-)
-
-target_link_libraries(test_master_memory_manager PRIVATE master_memory_manager)
-
-# Enable testing
-enable_testing()
-add_test(NAME MasterMemoryManagerTests COMMAND test_master_memory_manager)
+# Profiling
+if(MMM_ENABLE_PROFILING)
+    target_compile_options(mmm_phase4 PRIVATE -pg)
+    target_link_options(mmm_phase4 PRIVATE -pg)
+endif()
 
 # Installation
-install(TARGETS master_memory_manager
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    PUBLIC_HEADER DESTINATION include/master_memory_manager
+install(TARGETS mmm_phase4 
+    RUNTIME DESTINATION bin
 )
 
-install(FILES README.md DESTINATION share/doc/master_memory_manager)
+# Install headers for development
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
+    DESTINATION include/mmm
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# Install documentation
+install(FILES 
+    README.md
+    DESTINATION share/doc/mmm
+)
+
+# CPack configuration for packaging
+set(CPACK_PACKAGE_NAME "MasterMemoryManager")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Master Memory Manager - LEGENDARY BDI BUILD")
+set(CPACK_PACKAGE_VENDOR "Mecca Research")
+set(CPACK_PACKAGE_CONTACT "research@mecca.ai")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+
+# Package generators
+set(CPACK_GENERATOR "TGZ;DEB;RPM")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6, libpthread-stubs0-dev")
+set(CPACK_RPM_PACKAGE_REQUIRES "glibc, glibc-devel")
+
+include(CPack)
 
 # Custom targets
 add_custom_target(format
@@ -144,15 +218,19 @@ add_custom_target(format
     COMMENT "Formatting source code"
 )
 
-add_custom_target(analyze
-    COMMAND cppcheck --enable=all --std=c23 ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Running static analysis"
+add_custom_target(docs
+    COMMAND doxygen ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating documentation"
 )
 
 # Print configuration summary
-message(STATUS "Master Memory Manager Configuration:")
-message(STATUS "  Version: ${PROJECT_VERSION}")
-message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "  C Standard: C${CMAKE_C_STANDARD}")
-message(STATUS "  Compiler: ${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
-message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "=== Master Memory Manager Phase 4 Configuration ===")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "AI capabilities: ${MMM_ENABLE_AI}")
+message(STATUS "Security features: ${MMM_ENABLE_SECURITY}")
+message(STATUS "Telemetry: ${MMM_ENABLE_TELEMETRY}")
+message(STATUS "Testing: ${MMM_ENABLE_TESTING}")
+message(STATUS "Profiling: ${MMM_ENABLE_PROFILING}")
+message(STATUS "Production build: ${MMM_PRODUCTION_BUILD}")
+message(STATUS "=== LEGENDARY BDI BUILD Ready ===")
