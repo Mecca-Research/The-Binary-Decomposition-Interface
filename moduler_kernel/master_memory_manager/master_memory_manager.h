@@ -1,18 +1,19 @@
 
 /**
  * @file master_memory_manager.h
- * @brief Master Memory Manager - Phase 1 Core Interface
+ * @brief Master Memory Manager - Phase 2 Complete Implementation
  * 
  * Master Memory Manager: AI Assembly Engineers for BDI
- * Implements core x86 competencies and HAL framework for the Binary Decomposition Interface
+ * Complete Phase 2 implementation with advanced x86 systems and full toolchain
  * 
- * Phase 1 Components:
- * - Core x86 competencies (calling/ABI, registers, paging, MMU, TLB, cache hints)
- * - Basic HAL framework with BSP/Peripheral interfaces
+ * Phase 2 Components:
+ * - Advanced x86 systems (complete x86 ISA, interrupts & IDT/APIC, task switching, SIMD/AVX, atomics, DMA & PCIe)
+ * - Complete toolchain (spec → synthesize → prove → bench workflow, multi-rail synthesis, hard validation, auto-rewrite loop)
+ * - All bug fixes incorporated (proper status code mapping, 64-bit address handling, correct type usage)
  * 
  * @author BDI Development Team
  * @date September 29, 2025
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 #ifndef MASTER_MEMORY_MANAGER_H
@@ -124,12 +125,23 @@ const char *mmm_status_to_string(mmm_status_t status);
 // COMPONENT INCLUDES
 // =============================================================================
 
-// x86 Core Competencies
+// x86 Core Competencies - Phase 1
 #include "x86_core/registers/x86_registers.h"
 #include "x86_core/calling_abi/x86_calling_abi.h"
 #include "x86_core/paging_mmu/x86_paging_mmu.h"
 #include "x86_core/tlb_mgmt/x86_tlb_mgmt.h"
 #include "x86_core/cache_hints/x86_cache_hints.h"
+
+// x86 Advanced Systems - Phase 2
+#include "x86_core/interrupts_idt/x86_interrupts_idt.h"
+#include "x86_core/task_switching/x86_task_switching.h"
+#include "x86_core/simd_avx/x86_simd_avx.h"
+#include "x86_core/atomic_ops/x86_atomic_ops.h"
+#include "x86_core/dma_pcie/x86_dma_pcie.h"
+
+// Complete Toolchain - Phase 2
+#include "toolchain/bdi_parser/bdi_parser.h"
+#include "toolchain/multi_rail_synthesis/multi_rail_synthesis.h"
 
 // HAL Framework
 #include "hal_framework/bsp/mmm_bsp.h"
