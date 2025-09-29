@@ -1,0 +1,83 @@
+Start testing: Sep 29 14:53 UTC
+----------------------------------------------------------
+1/1 Testing: MasterMemoryManagerTests
+1/1 Test: MasterMemoryManagerTests
+Command: "/home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build/test_master_memory_manager"
+Directory: /home/ubuntu/github_repos/The-Binary-Decomposition-Interface/moduler_kernel/master_memory_manager/build
+"MasterMemoryManagerTests" start time: Sep 29 14:53 UTC
+Output:
+----------------------------------------------------------
+Master Memory Manager Phase 1 Test Suite
+=========================================
+
+=== Testing Master Memory Manager Initialization ===
+PASS: MMM initialization should succeed
+PASS: MMM context should be available
+PASS: MMM should be marked as initialized
+PASS: MMM version should be available
+PASS: MMM version should match expected
+PASS: MMM shutdown should succeed
+
+=== Testing x86 Register Management ===
+PASS: Register allocation should succeed
+PASS: Register status should be available
+PASS: Register should be marked as allocated
+PASS: Register deallocation should succeed
+PASS: Register name should be available
+PASS: EAX should be volatile
+
+=== Testing x86 Calling Convention and ABI ===
+PASS: Function signature creation should succeed
+PASS: Calling convention should be set correctly
+PASS: Parameter count should be correct
+PASS: Function signature should be valid
+PASS: Calling convention name should be available
+PASS: x64 MS calling convention should use shadow space
+
+=== Testing x86 Paging and MMU ===
+PASS: Page directory creation should succeed
+FAIL: Page mapping should succeed
+FAIL: Mapped page should be present
+FAIL: Address translation should succeed
+FAIL: Page unmapping should succeed
+PASS: Unmapped page should not be present
+
+=== Testing HAL Framework ===
+PASS: Board info should be available
+PASS: Board name should be set
+PASS: GPIO configuration should succeed
+PASS: GPIO state setting should succeed
+PASS: Oscillator initialization should succeed
+PASS: Oscillator frequency setting should succeed
+PASS: Oscillator frequency should be correct
+
+=== Testing Cache Hints and Optimization ===
+PASS: Cache configuration should be available
+Warning: Address 0x7fff7e6d50f0 is not cache-line aligned
+PASS: Cache hint addition should succeed
+PASS: Cache prefetching should succeed
+PASS: Cache statistics should be available
+PASS: Cache hint removal should succeed
+
+=== Testing Error Handling ===
+PASS: Invalid configuration should be rejected
+PASS: Context should not be available without initialization
+PASS: Status string should be available
+PASS: Status string should not be empty
+
+=== Test Results ===
+Tests run: 40
+Tests passed: 36
+Tests failed: 4
+Success rate: 90.0%
+
+Some tests FAILED! ✗
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Failed.
+"MasterMemoryManagerTests" end time: Sep 29 14:53 UTC
+"MasterMemoryManagerTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Sep 29 14:53 UTC
