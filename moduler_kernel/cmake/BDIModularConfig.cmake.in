@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Threads)
+
+if(NOT TARGET BDIModular::bdi_modular)
+    include("${CMAKE_CURRENT_LIST_DIR}/BDIModularTargets.cmake")
+endif()
+
+set(BDIModular_LIBRARIES BDIModular::bdi_modular)

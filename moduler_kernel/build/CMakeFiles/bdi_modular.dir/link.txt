@@ -1,0 +1,2 @@
+/usr/bin/ar qc libbdi_modular_balanced_x86_64.a CMakeFiles/bdi_modular.dir/uabi/uops.c.o CMakeFiles/bdi_modular.dir/capgraph/capability.c.o CMakeFiles/bdi_modular.dir/orchestrator/orchestrator.c.o CMakeFiles/bdi_modular.dir/attention_mm/attention_mm.c.o CMakeFiles/bdi_modular.dir/master_memory_manager/master_memory_manager.c.o CMakeFiles/bdi_modular.dir/master_memory_manager/toolchain.c.o CMakeFiles/bdi_modular.dir/arch/x86/uops_x86.c.o
+/usr/bin/ranlib libbdi_modular_balanced_x86_64.a

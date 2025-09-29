@@ -130,6 +130,8 @@ set(BDI_CORE_SOURCES
     capgraph/capability.c
     orchestrator/orchestrator.c
     attention_mm/attention_mm.c
+    master_memory_manager/master_memory_manager.c
+    master_memory_manager/toolchain.c
 )
 
 # Architecture-specific sources
@@ -249,6 +251,8 @@ install(DIRECTORY orchestrator/ DESTINATION include/bdi/orchestrator
     FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY attention_mm/ DESTINATION include/bdi/attention_mm
     FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY master_memory_manager/ DESTINATION include/bdi/master_memory_manager
+    FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY bricks/ DESTINATION include/bdi/bricks
     FILES_MATCHING PATTERN "*.h")
 
@@ -288,6 +292,13 @@ install(FILES
 )
 
 # ===================================================================
+# Subdirectories
+# ===================================================================
+
+# Add Master Memory Manager subdirectory
+add_subdirectory(master_memory_manager)
+
+# ===================================================================
 # Summary
 # ===================================================================
 
@@ -297,6 +308,10 @@ if(BDI_BUILD_TESTS)
     message(STATUS "           bdi_modular_test (tests)")
 endif()
 message(STATUS "           bdi_modular_demo (integration demo)")
+message(STATUS "           master_memory_manager (Phase 2 library)")
+if(BDI_BUILD_TESTS)
+    message(STATUS "           test_master_memory_manager (Phase 2 tests)")
+endif()
 message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "  Compiler flags: ${CMAKE_C_FLAGS}")
 if(BDI_ENABLE_LTO)

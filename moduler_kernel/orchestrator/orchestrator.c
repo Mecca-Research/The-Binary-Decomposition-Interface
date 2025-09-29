@@ -17,7 +17,7 @@
 // ===================================================================
 
 const bdi_optimization_profile_t bdi_profile_latency = {
-    .type = BDI_PROFILE_LATENCY,
+    .type = BDI_PROFILE_TYPE_LATENCY,
     .name = "latency",
     .weight_latency = 1.0f,
     .weight_throughput = 0.2f,
@@ -50,7 +50,7 @@ const bdi_optimization_profile_t bdi_profile_latency = {
 };
 
 const bdi_optimization_profile_t bdi_profile_throughput = {
-    .type = BDI_PROFILE_THROUGHPUT,
+    .type = BDI_PROFILE_TYPE_THROUGHPUT,
     .name = "throughput",
     .weight_latency = 0.2f,
     .weight_throughput = 1.0f,
@@ -83,7 +83,7 @@ const bdi_optimization_profile_t bdi_profile_throughput = {
 };
 
 const bdi_optimization_profile_t bdi_profile_ai_train = {
-    .type = BDI_PROFILE_AI_TRAIN,
+    .type = BDI_PROFILE_TYPE_AI_TRAIN,
     .name = "ai-train",
     .weight_latency = 0.1f,
     .weight_throughput = 0.8f,

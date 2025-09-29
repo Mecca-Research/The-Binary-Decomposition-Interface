@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmaster_memory_manager_balanced_x86_64.a CMakeFiles/master_memory_manager.dir/master_memory_manager.c.o CMakeFiles/master_memory_manager.dir/toolchain.c.o
+/usr/bin/ranlib libmaster_memory_manager_balanced_x86_64.a

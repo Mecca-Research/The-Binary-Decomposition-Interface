@@ -34,13 +34,13 @@ typedef enum {
 // ===================================================================
 
 typedef enum {
-    BDI_PROFILE_LATENCY = 0,    // Optimize for low latency
-    BDI_PROFILE_THROUGHPUT,     // Optimize for high throughput
-    BDI_PROFILE_ENERGY,         // Optimize for energy efficiency
-    BDI_PROFILE_AI_TRAIN,       // AI training workloads
-    BDI_PROFILE_AI_INFERENCE,   // AI inference workloads
-    BDI_PROFILE_BALANCED,       // Balanced performance
-    BDI_PROFILE_CUSTOM          // Custom profile from file
+    BDI_PROFILE_TYPE_LATENCY = 0,    // Optimize for low latency
+    BDI_PROFILE_TYPE_THROUGHPUT,     // Optimize for high throughput
+    BDI_PROFILE_TYPE_ENERGY,         // Optimize for energy efficiency
+    BDI_PROFILE_TYPE_AI_TRAIN,       // AI training workloads
+    BDI_PROFILE_TYPE_AI_INFERENCE,   // AI inference workloads
+    BDI_PROFILE_TYPE_BALANCED,       // Balanced performance
+    BDI_PROFILE_TYPE_CUSTOM          // Custom profile from file
 } bdi_profile_type_t;
 
 typedef struct {

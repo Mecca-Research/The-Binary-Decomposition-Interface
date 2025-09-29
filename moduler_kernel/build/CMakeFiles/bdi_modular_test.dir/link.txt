@@ -1,0 +1,1 @@
+/usr/bin/cc  -Wall -Wextra -Wpedantic -march=native -mtune=native -mavx2 -mfma -O3 -DNDEBUG -O2 CMakeFiles/bdi_modular_test.dir/tests/test_modular.c.o -o bdi_modular_test  libbdi_modular_balanced_x86_64.a -lm 

@@ -1,0 +1,1 @@
+/usr/bin/cc  -Wall -Wextra -Wpedantic -march=native -mtune=native -mavx2 -mfma -O3 -DNDEBUG -O2 CMakeFiles/test_master_memory_manager.dir/tests/test_master_memory_manager.c.o -o test_master_memory_manager  libmaster_memory_manager_balanced_x86_64.a ../libbdi_modular_balanced_x86_64.a -lm 
