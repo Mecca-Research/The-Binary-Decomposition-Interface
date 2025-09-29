@@ -19,6 +19,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Add Phase 3: AI Assembly Engineers for BDI
+add_subdirectory(phase3_ai_assembly_engineers)
+
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}

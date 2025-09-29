@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -127,6 +128,7 @@ typedef struct {
     uint32_t next_task_id;
     uint32_t total_tasks;
     uint32_t context_switches;
+    uint32_t deferred_preemptions; // Count of preemptions deferred due to interrupt context
     
     // Scheduling parameters
     uint32_t default_time_slice;
@@ -166,8 +168,6 @@ void x86_tss_load(uint16_t tss_selector);
 
 // Software Context Switching
 int x86_context_switch(task_control_block_t* from_task, task_control_block_t* to_task);
-void x86_context_switch_asm(context_switch_frame_t* from_context, 
-                           context_switch_frame_t* to_context);
 int x86_save_context(task_control_block_t* task);
 int x86_restore_context(task_control_block_t* task);
 
@@ -180,6 +180,11 @@ void x86_scheduler_add_task(task_control_block_t* task);
 void x86_scheduler_remove_task(task_control_block_t* task);
 void x86_scheduler_yield(void);
 void x86_scheduler_preempt(void);
+
+// Interrupt Context Management (CRITICAL for preventing task state corruption)
+void x86_scheduler_enter_interrupt(void);
+void x86_scheduler_exit_interrupt(void);
+bool x86_scheduler_in_interrupt_context(void);
 
 // Task State Management
 int x86_task_set_state(task_control_block_t* task, task_state_t new_state);
@@ -251,7 +256,6 @@ int x86_task_receive_message(task_message_t* message, uint32_t timeout_ms);
 int x86_task_peek_message(task_message_t* message);
 
 // Assembly functions (implemented in assembly)
-extern void x86_context_switch_asm(void** from_stack, void** to_stack);
 extern void x86_task_entry_point(void);
 extern uint64_t x86_get_timestamp(void);
 extern void x86_switch_to_user_mode(uintptr_t entry_point, uintptr_t stack_pointer);
