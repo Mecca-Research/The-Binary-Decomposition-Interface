@@ -1,0 +1,477 @@
+
+# ===================================================================
+# BDI Modular Kernel CMake Build System - C23 Enhanced
+# Enhanced build system with C23 features and AI trainer support
+# ===================================================================
+
+cmake_minimum_required(VERSION 3.20)
+project(BDI_Modular_Kernel_C23 VERSION 0.2.0 LANGUAGES C CXX)
+
+# ===================================================================
+# C23 Build Configuration
+# ===================================================================
+
+# Set C23 as the standard
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)  # Enable GNU extensions for better C23 support
+
+# Set default build type
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
+
+# Enhanced build options
+option(BDI_BUILD_TESTS "Build test suite" ON)
+option(BDI_BUILD_BENCHMARKS "Build benchmarks" ON)
+option(BDI_BUILD_AI_TRAINER "Build AI trainer system" ON)
+option(BDI_ENABLE_C23_FEATURES "Enable C23 language features" ON)
+option(BDI_ENABLE_LTO "Enable Link Time Optimization" ON)
+option(BDI_ENABLE_NATIVE "Enable native CPU optimizations" ON)
+option(BDI_ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(BDI_ENABLE_DECIMAL "Enable C23 _Decimal support" ON)
+option(BDI_ENABLE_BITINT "Enable C23 _BitInt support" ON)
+
+# Profile selection with AI training support
+set(BDI_PROFILE "ai-train" CACHE STRING "Optimization profile")
+set_property(CACHE BDI_PROFILE PROPERTY STRINGS "latency" "throughput" "ai-train" "energy" "balanced")
+
+# Architecture detection with enhanced features
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    set(BDI_ARCH "x86_64")
+    set(BDI_ARCH_X86_64 ON)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    set(BDI_ARCH "arm64")
+    set(BDI_ARCH_ARM64 ON)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
+    set(BDI_ARCH "riscv64")
+    set(BDI_ARCH_RISCV64 ON)
+else()
+    set(BDI_ARCH "unknown")
+    message(WARNING "Unknown architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
+message(STATUS "BDI Modular Kernel C23 Configuration:")
+message(STATUS "  Profile: ${BDI_PROFILE}")
+message(STATUS "  Architecture: ${BDI_ARCH}")
+message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  C23 Features: ${BDI_ENABLE_C23_FEATURES}")
+message(STATUS "  AI Trainer: ${BDI_BUILD_AI_TRAINER}")
+
+# ===================================================================
+# C23 Compiler Configuration
+# ===================================================================
+
+# Check for C23 compiler support
+include(CheckCSourceCompiles)
+
+# Test basic C23 features
+if(BDI_ENABLE_C23_FEATURES)
+    check_c_source_compiles("
+        #include <stdint.h>
+        int main() {
+            typeof(int) x = 42;
+            auto y = x;
+            constexpr int z = 10;
+            thread_local int tl = 0;
+            return 0;
+        }
+    " HAVE_C23_BASIC_FEATURES)
+    
+    if(HAVE_C23_BASIC_FEATURES)
+        message(STATUS "C23 basic features: Available")
+        add_definitions(-DHAVE_C23_BASIC_FEATURES)
+    else()
+        message(WARNING "C23 basic features not available, falling back to C11")
+        set(CMAKE_C_STANDARD 11)
+    endif()
+    
+    # Test C23 _BitInt support
+    if(BDI_ENABLE_BITINT)
+        check_c_source_compiles("
+            int main() {
+                _BitInt(128) x = 42;
+                _BitInt(64) y = x;
+                return 0;
+            }
+        " HAVE_C23_BITINT)
+        
+        if(HAVE_C23_BITINT)
+            message(STATUS "C23 _BitInt: Available")
+            add_definitions(-DHAVE_C23_BITINT)
+        else()
+            message(STATUS "C23 _BitInt: Not available")
+        endif()
+    endif()
+    
+    # Test C23 _Decimal support
+    if(BDI_ENABLE_DECIMAL)
+        check_c_source_compiles("
+            int main() {
+                _Decimal64 x = 1.23dd;
+                _Decimal128 y = 4.56dl;
+                return 0;
+            }
+        " HAVE_C23_DECIMAL)
+        
+        if(HAVE_C23_DECIMAL)
+            message(STATUS "C23 _Decimal: Available")
+            add_definitions(-DHAVE_C23_DECIMAL)
+        else()
+            message(STATUS "C23 _Decimal: Not available")
+        endif()
+    endif()
+endif()
+
+# Common compiler flags with C23 enhancements
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+
+# Enable C23-specific warnings and optimizations
+if(HAVE_C23_BASIC_FEATURES)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wc23-extensions")
+    
+    # Enable specific C23 optimizations
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fanalyzer")
+        endif()
+    endif()
+endif()
+
+# Architecture-specific optimizations with C23 enhancements
+if(BDI_ENABLE_NATIVE AND BDI_ARCH_X86_64)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -mtune=native")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
+    
+    # Check for advanced x86 features
+    check_c_source_compiles("
+        #include <immintrin.h>
+        int main() { 
+            __m512i v = _mm512_setzero_si512(); 
+            return 0; 
+        }
+    " HAVE_AVX512)
+    
+    check_c_source_compiles("
+        #include <immintrin.h>
+        int main() { 
+            _tile_zero(0);
+            return 0; 
+        }
+    " HAVE_AMX)
+    
+    if(HAVE_AVX512)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx512f -mavx512cd")
+        add_definitions(-DHAVE_AVX512)
+        message(STATUS "AVX-512: Available")
+    endif()
+    
+    if(HAVE_AMX)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mamx-tile -mamx-int8 -mamx-bf16")
+        add_definitions(-DHAVE_AMX)
+        message(STATUS "AMX: Available")
+    endif()
+endif()
+
+# Profile-specific optimizations with C23 enhancements
+if(BDI_PROFILE STREQUAL "latency")
+    add_definitions(-DBDI_PROFILE_LATENCY)
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -fno-omit-frame-pointer")
+elseif(BDI_PROFILE STREQUAL "throughput")
+    add_definitions(-DBDI_PROFILE_THROUGHPUT)
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
+    set(BDI_ENABLE_LTO ON)
+elseif(BDI_PROFILE STREQUAL "ai-train")
+    add_definitions(-DBDI_PROFILE_AI_TRAIN)
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -ffast-math")
+    set(BDI_ENABLE_LTO ON)
+    # Enable AI-specific optimizations
+    if(HAVE_AVX512)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ftree-vectorize -fopt-info-vec")
+    endif()
+elseif(BDI_PROFILE STREQUAL "energy")
+    add_definitions(-DBDI_PROFILE_ENERGY)
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Os")
+else() # balanced
+    add_definitions(-DBDI_PROFILE_BALANCED)
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2")
+endif()
+
+# Link Time Optimization
+if(BDI_ENABLE_LTO)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+    message(STATUS "LTO: Enabled")
+endif()
+
+# AddressSanitizer
+if(BDI_ENABLE_ASAN)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+    message(STATUS "AddressSanitizer: Enabled")
+endif()
+
+# ===================================================================
+# Dependencies
+# ===================================================================
+
+find_package(Threads REQUIRED)
+
+# Math library
+find_library(MATH_LIBRARY m)
+if(MATH_LIBRARY)
+    set(MATH_LIBRARIES ${MATH_LIBRARY})
+endif()
+
+# Check for decimal floating-point library
+if(HAVE_C23_DECIMAL)
+    find_library(DFP_LIBRARY dfp)
+    if(DFP_LIBRARY)
+        set(DFP_LIBRARIES ${DFP_LIBRARY})
+        message(STATUS "Decimal floating-point library: Found")
+    endif()
+endif()
+
+# ===================================================================
+# Source Files with C23 Enhancements
+# ===================================================================
+
+# Core modular kernel sources
+set(BDI_CORE_SOURCES
+    uabi/uops.c
+    capgraph/capability.c
+    orchestrator/orchestrator.c
+    orchestrator/orchestrator_c23.c
+    attention_mm/attention_mm.c
+)
+
+# AI trainer sources
+if(BDI_BUILD_AI_TRAINER)
+    list(APPEND BDI_CORE_SOURCES
+        ai_trainer/ai_trainer.c
+    )
+endif()
+
+# Architecture-specific sources
+if(BDI_ARCH_X86_64)
+    list(APPEND BDI_CORE_SOURCES arch/x86/uops_x86.c)
+elseif(BDI_ARCH_ARM64)
+    list(APPEND BDI_CORE_SOURCES arch/arm/uops_arm.c)
+elseif(BDI_ARCH_RISCV64)
+    list(APPEND BDI_CORE_SOURCES arch/riscv/uops_riscv.c)
+endif()
+
+# Test sources with C23 enhancements
+set(BDI_TEST_SOURCES
+    tests/test_modular.c
+)
+
+if(BDI_BUILD_AI_TRAINER)
+    list(APPEND BDI_TEST_SOURCES
+        tests/test_ai_trainer.c
+    )
+endif()
+
+# Integration sources
+set(BDI_INTEGRATION_SOURCES
+    integration/bdi_modular_main.c
+)
+
+# ===================================================================
+# Libraries with C23 Features
+# ===================================================================
+
+# Core modular kernel library with C23 enhancements
+add_library(bdi_modular_c23 STATIC ${BDI_CORE_SOURCES})
+target_include_directories(bdi_modular_c23 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(bdi_modular_c23 ${MATH_LIBRARIES} Threads::Threads)
+
+# Link decimal floating-point library if available
+if(DFP_LIBRARIES)
+    target_link_libraries(bdi_modular_c23 ${DFP_LIBRARIES})
+endif()
+
+# Set library properties with C23 suffix
+set_target_properties(bdi_modular_c23 PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    OUTPUT_NAME "bdi_modular_c23_${BDI_PROFILE}_${BDI_ARCH}"
+)
+
+# Add C23-specific compile definitions
+target_compile_definitions(bdi_modular_c23 PRIVATE
+    BDI_C23_ENHANCED=1
+    BDI_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    BDI_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+)
+
+# ===================================================================
+# Executables with C23 Features
+# ===================================================================
+
+# Test executable with C23 enhancements
+if(BDI_BUILD_TESTS)
+    add_executable(bdi_modular_c23_test ${BDI_TEST_SOURCES})
+    target_link_libraries(bdi_modular_c23_test bdi_modular_c23)
+    
+    # Add test target
+    enable_testing()
+    add_test(NAME modular_c23_tests COMMAND bdi_modular_c23_test)
+    
+    # Add AI trainer tests if enabled
+    if(BDI_BUILD_AI_TRAINER)
+        add_test(NAME ai_trainer_tests COMMAND bdi_modular_c23_test --ai-trainer)
+    endif()
+endif()
+
+# Integration demo executable with C23 features
+add_executable(bdi_modular_c23_demo ${BDI_INTEGRATION_SOURCES})
+target_link_libraries(bdi_modular_c23_demo bdi_modular_c23)
+
+# Try to link with existing BDI kernel if available
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../bdi_kernel")
+    target_include_directories(bdi_modular_c23_demo PRIVATE ../bdi_kernel)
+endif()
+
+# ===================================================================
+# Custom Targets with C23 Features
+# ===================================================================
+
+# Profile-specific build targets with C23 enhancements
+add_custom_target(c23-latency
+    COMMAND ${CMAKE_COMMAND} -DBDI_PROFILE=latency -DBDI_ENABLE_C23_FEATURES=ON ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
+    COMMENT "Building with C23 latency profile"
+)
+
+add_custom_target(c23-throughput
+    COMMAND ${CMAKE_COMMAND} -DBDI_PROFILE=throughput -DBDI_ENABLE_C23_FEATURES=ON ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
+    COMMENT "Building with C23 throughput profile"
+)
+
+add_custom_target(c23-ai-train
+    COMMAND ${CMAKE_COMMAND} -DBDI_PROFILE=ai-train -DBDI_ENABLE_C23_FEATURES=ON -DBDI_BUILD_AI_TRAINER=ON ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}
+    COMMENT "Building with C23 AI training profile"
+)
+
+# C23 feature validation target
+add_custom_target(validate-c23
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/cmake/ValidateC23.cmake
+    COMMENT "Validating C23 feature support"
+)
+
+# Benchmark target with C23 optimizations
+if(BDI_BUILD_BENCHMARKS AND BDI_BUILD_TESTS)
+    add_custom_target(benchmark-c23
+        COMMAND bdi_modular_c23_test --benchmark --c23-features
+        DEPENDS bdi_modular_c23_test
+        COMMENT "Running C23-enhanced performance benchmarks"
+    )
+    
+    if(BDI_BUILD_AI_TRAINER)
+        add_custom_target(benchmark-ai-trainer
+            COMMAND bdi_modular_c23_test --benchmark --ai-trainer
+            DEPENDS bdi_modular_c23_test
+            COMMENT "Running AI trainer benchmarks"
+        )
+    endif()
+endif()
+
+# ===================================================================
+# Installation with C23 Features
+# ===================================================================
+
+# Install library
+install(TARGETS bdi_modular_c23
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+# Install headers with C23 enhancements
+install(DIRECTORY uabi/ DESTINATION include/bdi/uabi
+    FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY capgraph/ DESTINATION include/bdi/capgraph
+    FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY orchestrator/ DESTINATION include/bdi/orchestrator
+    FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY attention_mm/ DESTINATION include/bdi/attention_mm
+    FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY bricks/ DESTINATION include/bdi/bricks
+    FILES_MATCHING PATTERN "*.h")
+
+# Install AI trainer headers if enabled
+if(BDI_BUILD_AI_TRAINER)
+    install(DIRECTORY ai_trainer/ DESTINATION include/bdi/ai_trainer
+        FILES_MATCHING PATTERN "*.h")
+endif()
+
+# Install executables
+install(TARGETS bdi_modular_c23_demo DESTINATION bin)
+if(BDI_BUILD_TESTS)
+    install(TARGETS bdi_modular_c23_test DESTINATION bin)
+endif()
+
+# Install profiles
+install(DIRECTORY profiles/ DESTINATION share/bdi/profiles
+    FILES_MATCHING PATTERN "*.yaml")
+
+# ===================================================================
+# Package Configuration with C23 Features
+# ===================================================================
+
+# Generate package config files
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/BDIModularC23Config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/BDIModularC23Config.cmake"
+    INSTALL_DESTINATION lib/cmake/BDIModularC23
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/BDIModularC23ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/BDIModularC23Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/BDIModularC23ConfigVersion.cmake"
+    DESTINATION lib/cmake/BDIModularC23
+)
+
+# ===================================================================
+# Summary with C23 Features
+# ===================================================================
+
+message(STATUS "BDI Modular Kernel C23 build configured:")
+message(STATUS "  Targets: bdi_modular_c23 (library)")
+if(BDI_BUILD_TESTS)
+    message(STATUS "           bdi_modular_c23_test (tests)")
+endif()
+if(BDI_BUILD_AI_TRAINER)
+    message(STATUS "           AI trainer system (enabled)")
+endif()
+message(STATUS "           bdi_modular_c23_demo (integration demo)")
+message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "  Compiler flags: ${CMAKE_C_FLAGS}")
+if(HAVE_C23_BASIC_FEATURES)
+    message(STATUS "  C23 features: Enabled")
+endif()
+if(HAVE_C23_BITINT)
+    message(STATUS "  C23 _BitInt: Enabled")
+endif()
+if(HAVE_C23_DECIMAL)
+    message(STATUS "  C23 _Decimal: Enabled")
+endif()
+if(BDI_ENABLE_LTO)
+    message(STATUS "  LTO: Enabled")
+endif()
+if(BDI_ENABLE_ASAN)
+    message(STATUS "  AddressSanitizer: Enabled")
+endif()
+
