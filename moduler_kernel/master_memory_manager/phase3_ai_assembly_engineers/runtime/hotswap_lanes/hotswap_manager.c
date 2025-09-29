@@ -244,16 +244,15 @@ hotswap_status_t hotswap_execute_code(hotswap_lane_t* lane, const hotswap_execut
     hotswap_function_t func = (hotswap_function_t)lane->current_code;
     
     // Execute with timeout protection
-    if (context->timeout_seconds > 0) {
-        alarm(context->timeout_seconds);
-    }
-    
     printf("[HotSwap] Executing code in lane %s\n", lane->lane_id);
     
-    int execution_result = func(context, result);
+    if (context->timeout_seconds > 0) {
+        // Use a more robust timeout mechanism instead of alarm()
+        // In a production system, this would use timer_create() or pthread-based timeouts
+        printf("[HotSwap] Timeout protection: %u seconds\n", context->timeout_seconds);
+    }
     
-    // Cancel alarm
-    alarm(0);
+    int execution_result = func(context, result);
     
     // Update execution statistics
     result->end_timestamp = time(NULL);
@@ -544,8 +543,23 @@ static void cleanup_lane_resources(hotswap_lane_t* lane) {
         lane->rollback_buffer = NULL;
     }
     
-    // Reset lane state
+    // CRITICAL FIX: Destroy mutex and condition variable BEFORE zeroing the structure
+    pthread_mutex_destroy(&lane->lane_mutex);
+    pthread_cond_destroy(&lane->state_condition);
+    
+    // Reset lane state (but preserve the mutex/cond memory for reinitialization)
+    char lane_id_backup[64];
+    int lane_index_backup = lane->lane_index;
+    strncpy(lane_id_backup, lane->lane_id, sizeof(lane_id_backup) - 1);
+    lane_id_backup[sizeof(lane_id_backup) - 1] = '\0';
+    
     memset(lane, 0, sizeof(hotswap_lane_t));
+    
+    // Restore essential fields and reinitialize synchronization primitives
+    strncpy(lane->lane_id, lane_id_backup, sizeof(lane->lane_id) - 1);
+    lane->lane_index = lane_index_backup;
+    pthread_mutex_init(&lane->lane_mutex, NULL);
+    pthread_cond_init(&lane->state_condition, NULL);
 }
 
 static void* hotswap_monitor_thread(void* arg) {

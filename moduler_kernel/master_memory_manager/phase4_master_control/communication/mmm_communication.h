@@ -24,13 +24,8 @@ typedef enum {
     MMM_MSG_CUSTOM
 } mmm_message_type_t;
 
-// Message priorities
-typedef enum {
-    MMM_PRIORITY_LOW = 1,
-    MMM_PRIORITY_NORMAL,
-    MMM_PRIORITY_HIGH,
-    MMM_PRIORITY_CRITICAL
-} mmm_priority_t;
+// CRITICAL FIX: Use common priority definitions to avoid conflicts
+#include "../../mmm_common.h"
 
 // Communication reliability levels
 typedef enum {
