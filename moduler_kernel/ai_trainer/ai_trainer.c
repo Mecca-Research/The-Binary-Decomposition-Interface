@@ -4,6 +4,9 @@
 // Fixed for C23 compilation compatibility
 // ===================================================================
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+
 #include "ai_trainer.h"
 #include <stdlib.h>
 #include <string.h>
@@ -12,9 +15,6 @@
 #include <threads.h>
 #include <assert.h>
 #include <stdatomic.h>  // Added missing include for atomic operations
-
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
 #endif
 
 // ===================================================================
