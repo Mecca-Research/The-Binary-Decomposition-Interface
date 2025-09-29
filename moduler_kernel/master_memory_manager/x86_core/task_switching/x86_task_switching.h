@@ -166,8 +166,6 @@ void x86_tss_load(uint16_t tss_selector);
 
 // Software Context Switching
 int x86_context_switch(task_control_block_t* from_task, task_control_block_t* to_task);
-void x86_context_switch_asm(context_switch_frame_t* from_context, 
-                           context_switch_frame_t* to_context);
 int x86_save_context(task_control_block_t* task);
 int x86_restore_context(task_control_block_t* task);
 
@@ -251,7 +249,6 @@ int x86_task_receive_message(task_message_t* message, uint32_t timeout_ms);
 int x86_task_peek_message(task_message_t* message);
 
 // Assembly functions (implemented in assembly)
-extern void x86_context_switch_asm(void** from_stack, void** to_stack);
 extern void x86_task_entry_point(void);
 extern uint64_t x86_get_timestamp(void);
 extern void x86_switch_to_user_mode(uintptr_t entry_point, uintptr_t stack_pointer);

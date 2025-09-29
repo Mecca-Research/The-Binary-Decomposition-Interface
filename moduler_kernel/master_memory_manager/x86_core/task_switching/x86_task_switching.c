@@ -627,6 +627,497 @@ void x86_task_dump_info(task_control_block_t* task) {
 }
 
 /**
+ * @brief Start the scheduler
+ */
+void x86_scheduler_start(void) {
+    if (!task_system_initialized) {
+        return;
+    }
+    
+    scheduler.preemptive_scheduling = true;
+    
+    // Get the first task to run
+    task_control_block_t* first_task = x86_scheduler_get_next_task();
+    if (first_task) {
+        first_task->state = TASK_STATE_RUNNING;
+        scheduler.current_task = first_task;
+        scheduler.last_schedule_time = x86_get_timestamp();
+        
+        // Switch to first task
+        x86_restore_context(first_task);
+    }
+}
+
+/**
+ * @brief Stop the scheduler
+ */
+void x86_scheduler_stop(void) {
+    scheduler.preemptive_scheduling = false;
+    
+    // Save current task context if running
+    if (scheduler.current_task && scheduler.current_task->state == TASK_STATE_RUNNING) {
+        x86_save_context(scheduler.current_task);
+        scheduler.current_task->state = TASK_STATE_READY;
+        x86_scheduler_add_task(scheduler.current_task);
+    }
+    
+    scheduler.current_task = NULL;
+}
+
+/**
+ * @brief Preempt current task (called by timer interrupt)
+ */
+void x86_scheduler_preempt(void) {
+    if (!scheduler.preemptive_scheduling || !scheduler.current_task) {
+        return;
+    }
+    
+    task_control_block_t* current = scheduler.current_task;
+    
+    // Decrease time remaining
+    if (current->time_remaining > 0) {
+        current->time_remaining--;
+    }
+    
+    // Check if time slice expired or higher priority task is ready
+    bool should_preempt = (current->time_remaining == 0);
+    
+    // Check for higher priority tasks
+    if (!should_preempt) {
+        for (int priority = TASK_PRIORITY_CRITICAL; priority > current->priority; priority--) {
+            if (scheduler.ready_queue[priority] != NULL) {
+                should_preempt = true;
+                break;
+            }
+        }
+    }
+    
+    if (should_preempt) {
+        // Reset time slice
+        current->time_remaining = current->time_slice;
+        
+        // Yield to next task
+        x86_scheduler_yield();
+    }
+}
+
+/**
+ * @brief Get current task name
+ */
+const char* x86_task_get_current_name(void) {
+    if (scheduler.current_task) {
+        return scheduler.current_task->name;
+    }
+    return "No Task";
+}
+
+/**
+ * @brief Get task state
+ */
+task_state_t x86_task_get_state(task_control_block_t* task) {
+    if (!task || !x86_task_is_valid(task)) {
+        return TASK_STATE_TERMINATED;
+    }
+    return task->state;
+}
+
+/**
+ * @brief Set task priority
+ */
+int x86_task_set_priority(task_control_block_t* task, task_priority_t priority) {
+    if (!task || !x86_task_is_valid(task)) {
+        return -1;
+    }
+    
+    if (priority < TASK_PRIORITY_IDLE || priority > TASK_PRIORITY_CRITICAL) {
+        return -1;
+    }
+    
+    // Remove from current priority queue if ready
+    if (task->state == TASK_STATE_READY) {
+        x86_scheduler_remove_task(task);
+    }
+    
+    // Update priority
+    task->priority = priority;
+    
+    // Re-add to appropriate queue if ready
+    if (task->state == TASK_STATE_READY) {
+        x86_scheduler_add_task(task);
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Get task priority
+ */
+task_priority_t x86_task_get_priority(task_control_block_t* task) {
+    if (!task || !x86_task_is_valid(task)) {
+        return TASK_PRIORITY_IDLE;
+    }
+    return task->priority;
+}
+
+/**
+ * @brief Dump all tasks
+ */
+void x86_task_dump_all_tasks(void) {
+    printf("All Tasks:\n");
+    printf("Current Task: %s\n", scheduler.current_task ? scheduler.current_task->name : "None");
+    
+    for (int priority = TASK_PRIORITY_CRITICAL; priority >= TASK_PRIORITY_IDLE; priority--) {
+        task_control_block_t* task = scheduler.ready_queue[priority];
+        if (task) {
+            printf("\n%s Priority Queue:\n", x86_task_priority_to_string(priority));
+            while (task) {
+                printf("  Task %u: %s [%s]\n", 
+                       task->task_id, task->name, x86_task_state_to_string(task->state));
+                task = task->next;
+            }
+        }
+    }
+}
+
+/**
+ * @brief Get task run time
+ */
+uint64_t x86_task_get_run_time(task_control_block_t* task) {
+    if (!task || !x86_task_is_valid(task)) {
+        return 0;
+    }
+    return task->total_run_time;
+}
+
+/**
+ * @brief Get context switch count
+ */
+uint32_t x86_scheduler_get_context_switch_count(void) {
+    return scheduler.context_switches;
+}
+
+/**
+ * @brief Timer handler for preemptive scheduling
+ */
+void x86_task_timer_handler(void) {
+    if (scheduler.preemptive_scheduling) {
+        x86_scheduler_preempt();
+    }
+}
+
+/**
+ * @brief Set task time slice
+ */
+int x86_task_set_time_slice(task_control_block_t* task, uint32_t time_slice) {
+    if (!task || !x86_task_is_valid(task) || time_slice == 0) {
+        return -1;
+    }
+    
+    task->time_slice = time_slice;
+    task->time_remaining = time_slice;
+    return 0;
+}
+
+/**
+ * @brief Get task time slice
+ */
+uint32_t x86_task_get_time_slice(task_control_block_t* task) {
+    if (!task || !x86_task_is_valid(task)) {
+        return 0;
+    }
+    return task->time_slice;
+}
+
+/**
+ * @brief Set task page directory
+ */
+int x86_task_set_page_directory(task_control_block_t* task, uintptr_t page_dir) {
+    if (!task || !x86_task_is_valid(task)) {
+        return -1;
+    }
+    
+    task->page_directory = page_dir;
+    task->cpu_context.cr3 = page_dir;
+    return 0;
+}
+
+/**
+ * @brief Get task page directory
+ */
+uintptr_t x86_task_get_page_directory(task_control_block_t* task) {
+    if (!task || !x86_task_is_valid(task)) {
+        return 0;
+    }
+    return task->page_directory;
+}
+
+/**
+ * @brief Map memory for task
+ */
+int x86_task_map_memory(task_control_block_t* task, uintptr_t virtual_addr, 
+                       uintptr_t physical_addr, size_t size, uint32_t flags) {
+    if (!task || !x86_task_is_valid(task)) {
+        return -1;
+    }
+    
+    // This would integrate with the MMU system
+    // For now, just validate parameters
+    if (virtual_addr == 0 || physical_addr == 0 || size == 0) {
+        return -1;
+    }
+    
+    return 0; // Placeholder - would call x86_map_memory_region
+}
+
+/**
+ * @brief Set I/O permission for task
+ */
+int x86_task_set_io_permission(task_control_block_t* task, uint16_t port, bool allow) {
+    if (!task || !x86_task_is_valid(task) || !task->io_bitmap) {
+        return -1;
+    }
+    
+    uint16_t byte_offset = port / 8;
+    uint8_t bit_offset = port % 8;
+    
+    if (byte_offset >= task->io_bitmap_size) {
+        return -1;
+    }
+    
+    if (allow) {
+        task->io_bitmap[byte_offset] &= ~(1 << bit_offset); // Clear bit = allow
+    } else {
+        task->io_bitmap[byte_offset] |= (1 << bit_offset);  // Set bit = deny
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Check I/O permission for task
+ */
+bool x86_task_check_io_permission(task_control_block_t* task, uint16_t port) {
+    if (!task || !x86_task_is_valid(task) || !task->io_bitmap) {
+        return false;
+    }
+    
+    uint16_t byte_offset = port / 8;
+    uint8_t bit_offset = port % 8;
+    
+    if (byte_offset >= task->io_bitmap_size) {
+        return false;
+    }
+    
+    // Bit clear = allow, bit set = deny
+    return !(task->io_bitmap[byte_offset] & (1 << bit_offset));
+}
+
+/**
+ * @brief Copy I/O bitmap between tasks
+ */
+int x86_task_copy_io_bitmap(task_control_block_t* dest, task_control_block_t* src) {
+    if (!dest || !src || !x86_task_is_valid(dest) || !x86_task_is_valid(src)) {
+        return -1;
+    }
+    
+    if (!src->io_bitmap || !dest->io_bitmap) {
+        return -1;
+    }
+    
+    size_t copy_size = (dest->io_bitmap_size < src->io_bitmap_size) ? 
+                       dest->io_bitmap_size : src->io_bitmap_size;
+    
+    memcpy(dest->io_bitmap, src->io_bitmap, copy_size);
+    return 0;
+}
+
+/**
+ * @brief Send message to task
+ */
+int x86_task_send_message(task_control_block_t* dest_task, const void* data, size_t size) {
+    // Placeholder implementation - would need message queue system
+    if (!dest_task || !data || size == 0) {
+        return -1;
+    }
+    
+    return 0; // Not implemented - would need IPC system
+}
+
+/**
+ * @brief Receive message
+ */
+int x86_task_receive_message(task_message_t* message, uint32_t timeout_ms) {
+    // Placeholder implementation - would need message queue system
+    if (!message) {
+        return -1;
+    }
+    
+    return -1; // Not implemented - would need IPC system
+}
+
+/**
+ * @brief Peek at message
+ */
+int x86_task_peek_message(task_message_t* message) {
+    // Placeholder implementation - would need message queue system
+    if (!message) {
+        return -1;
+    }
+    
+    return -1; // Not implemented - would need IPC system
+}
+
+/**
+ * @brief Initialize mutex
+ */
+int x86_mutex_init(task_mutex_t* mutex) {
+    if (!mutex) {
+        return -1;
+    }
+    
+    mutex->locked = 0;
+    mutex->owner = NULL;
+    mutex->wait_queue = NULL;
+    return 0;
+}
+
+/**
+ * @brief Lock mutex
+ */
+int x86_mutex_lock(task_mutex_t* mutex) {
+    if (!mutex) {
+        return -1;
+    }
+    
+    // Simple spinlock implementation
+    while (__sync_lock_test_and_set(&mutex->locked, 1)) {
+        // Busy wait - in real implementation would block task
+    }
+    
+    mutex->owner = scheduler.current_task;
+    return 0;
+}
+
+/**
+ * @brief Unlock mutex
+ */
+int x86_mutex_unlock(task_mutex_t* mutex) {
+    if (!mutex || mutex->owner != scheduler.current_task) {
+        return -1;
+    }
+    
+    mutex->owner = NULL;
+    __sync_lock_release(&mutex->locked);
+    return 0;
+}
+
+/**
+ * @brief Try to lock mutex
+ */
+int x86_mutex_trylock(task_mutex_t* mutex) {
+    if (!mutex) {
+        return -1;
+    }
+    
+    if (__sync_lock_test_and_set(&mutex->locked, 1) == 0) {
+        mutex->owner = scheduler.current_task;
+        return 0;
+    }
+    
+    return -1; // Already locked
+}
+
+/**
+ * @brief Initialize semaphore
+ */
+int x86_semaphore_init(task_semaphore_t* sem, int initial_count, int max_count) {
+    if (!sem || initial_count < 0 || max_count <= 0 || initial_count > max_count) {
+        return -1;
+    }
+    
+    sem->count = initial_count;
+    sem->max_count = max_count;
+    sem->wait_queue = NULL;
+    return 0;
+}
+
+/**
+ * @brief Wait on semaphore
+ */
+int x86_semaphore_wait(task_semaphore_t* sem) {
+    if (!sem) {
+        return -1;
+    }
+    
+    // Simple implementation - would need proper blocking in real system
+    while (__sync_fetch_and_sub(&sem->count, 1) <= 0) {
+        __sync_fetch_and_add(&sem->count, 1); // Restore count
+        // Would block task here in real implementation
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Signal semaphore
+ */
+int x86_semaphore_signal(task_semaphore_t* sem) {
+    if (!sem) {
+        return -1;
+    }
+    
+    if (sem->count < sem->max_count) {
+        __sync_fetch_and_add(&sem->count, 1);
+        return 0;
+    }
+    
+    return -1; // Already at max count
+}
+
+/**
+ * @brief Try to wait on semaphore
+ */
+int x86_semaphore_trywait(task_semaphore_t* sem) {
+    if (!sem) {
+        return -1;
+    }
+    
+    if (__sync_fetch_and_sub(&sem->count, 1) > 0) {
+        return 0;
+    }
+    
+    __sync_fetch_and_add(&sem->count, 1); // Restore count
+    return -1; // Would block
+}
+
+/**
+ * @brief Get timestamp (placeholder)
+ */
+uint64_t x86_get_timestamp(void) {
+    // Placeholder - would use RDTSC or system timer
+    static uint64_t counter = 0;
+    return ++counter;
+}
+
+/**
+ * @brief Switch to user mode (placeholder)
+ */
+void x86_switch_to_user_mode(uintptr_t entry_point, uintptr_t stack_pointer) {
+    // Placeholder - would set up user mode context and jump
+    (void)entry_point;
+    (void)stack_pointer;
+}
+
+/**
+ * @brief Task entry point (placeholder)
+ */
+void x86_task_entry_point(void) {
+    // Placeholder - would be implemented in assembly
+}
+
+
+
+/**
  * @brief Dump scheduler statistics
  */
 void x86_scheduler_dump_stats(void) {
