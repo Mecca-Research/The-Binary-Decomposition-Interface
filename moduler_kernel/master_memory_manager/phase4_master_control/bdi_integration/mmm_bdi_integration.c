@@ -30,6 +30,9 @@ typedef struct {
 // Global integration state
 static mmm_bdi_integration_state_t g_bdi_state = {0};
 
+// Mutex initialization control - CRITICAL FIX for reinitialization bug
+static bool g_mutex_initialized = false;
+
 // Internal function declarations
 static int validate_bdi_config(mmm_bdi_config_t *config);
 static int setup_shared_memory(void);
@@ -51,12 +54,11 @@ int mmm_bdi_integration_init(mmm_bdi_config_t *config) {
     }
     
     // CRITICAL FIX: Initialize mutex BEFORE using it
-    static bool mutex_initialized = false;
-    if (!mutex_initialized) {
+    if (!g_mutex_initialized) {
         if (pthread_mutex_init(&g_bdi_state.integration_mutex, NULL) != 0) {
             return MMM_ERROR_SYSTEM_FAILURE;
         }
-        mutex_initialized = true;
+        g_mutex_initialized = true;
     }
     
     pthread_mutex_lock(&g_bdi_state.integration_mutex);
@@ -424,6 +426,9 @@ int mmm_bdi_integration_cleanup(void) {
     // CRITICAL FIX: Unlock and destroy mutex in correct order
     pthread_mutex_unlock(&g_bdi_state.integration_mutex);
     pthread_mutex_destroy(&g_bdi_state.integration_mutex);
+    
+    // CRITICAL FIX: Reset mutex initialization flag to allow proper reinitialization
+    g_mutex_initialized = false;
     
     // Reset state AFTER mutex cleanup
     memset(&g_bdi_state, 0, sizeof(g_bdi_state));
