@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -127,6 +128,7 @@ typedef struct {
     uint32_t next_task_id;
     uint32_t total_tasks;
     uint32_t context_switches;
+    uint32_t deferred_preemptions; // Count of preemptions deferred due to interrupt context
     
     // Scheduling parameters
     uint32_t default_time_slice;
@@ -178,6 +180,11 @@ void x86_scheduler_add_task(task_control_block_t* task);
 void x86_scheduler_remove_task(task_control_block_t* task);
 void x86_scheduler_yield(void);
 void x86_scheduler_preempt(void);
+
+// Interrupt Context Management (CRITICAL for preventing task state corruption)
+void x86_scheduler_enter_interrupt(void);
+void x86_scheduler_exit_interrupt(void);
+bool x86_scheduler_in_interrupt_context(void);
 
 // Task State Management
 int x86_task_set_state(task_control_block_t* task, task_state_t new_state);
