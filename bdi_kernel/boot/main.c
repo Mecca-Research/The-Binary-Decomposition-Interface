@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "kernel/c23_compat.h"  // C23 compatibility (nullptr, etc.)
 
 #include "bci_lexer.h"
 #include "bci_parser.h"

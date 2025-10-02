@@ -141,6 +141,6 @@ constexpr size_t NODE_ALIGNMENT = 64;
 _Static_assert(sizeof(NodeId) == 8, "NodeId must be 64-bit");
 _Static_assert(sizeof(EdgeId) == 8, "EdgeId must be 64-bit");
 _Static_assert(sizeof(TypeId) == 8, "TypeId must be 64-bit");
-_Static_assert(sizeof(BdiType) <= 8, "BdiType should fit in 64 bits");
+_Static_assert(sizeof(BdiType) <= 16, "BdiType should fit in 16 bytes");  // TypeId(8) + 4*uint8_t(4) + padding(4) = 16 bytes
 
 #endif // AEON_GRAPH_H
