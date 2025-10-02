@@ -10,13 +10,19 @@
 #include <stdatomic.h>
 
 // Global fiber ID counter
-static atomic_uint64_t g_next_fiber_id = 1;
+static _Atomic uint64_t g_next_fiber_id = 1;
 
 // Thread-local current fiber
 static __thread fiber_t* g_current_fiber = NULL;
 
+// Thread-local current scheduler (set by scheduler, used by fiber_entry_wrapper)
+static __thread void* g_current_scheduler = NULL;
+
 // Forward declaration of fiber entry wrapper
 static void fiber_entry_wrapper(void);
+
+// Forward declaration of scheduler yield (to avoid circular dependency)
+extern void fiber_scheduler_yield(void* scheduler);
 
 fiber_t* fiber_create(fiber_func_t entry, void* arg, size_t stack_size, uint32_t priority) {
     if (!entry || priority >= FIBER_NUM_PRIORITIES) {
@@ -122,7 +128,15 @@ static void fiber_entry_wrapper(void) {
         fiber->state = FIBER_STATE_DEAD;
     }
     
-    // Should never reach here - scheduler should handle dead fibers
+    // BUG FIX 1 (P0): Yield back to scheduler instead of spinning forever
+    // When a fiber completes, we must return control to the scheduler
+    // so it can schedule the next fiber or return to the caller.
+    // The old code had an infinite pause loop here which caused hangs.
+    if (g_current_scheduler) {
+        fiber_scheduler_yield(g_current_scheduler);
+    }
+    
+    // Should never reach here if scheduler is set properly
     // If we do, infinite loop to prevent undefined behavior
     while (1) {
         __asm__ __volatile__("pause");
@@ -151,4 +165,9 @@ void fiber_set_current(fiber_t* fiber) {
 // Internal function to get current fiber (used by scheduler)
 fiber_t* fiber_get_current(void) {
     return g_current_fiber;
+}
+
+// Internal function to set current scheduler (used by scheduler)
+void fiber_set_scheduler(void* scheduler) {
+    g_current_scheduler = scheduler;
 }

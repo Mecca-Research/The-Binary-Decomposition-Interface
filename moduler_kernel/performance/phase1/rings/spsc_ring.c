@@ -20,6 +20,12 @@ spsc_ring_t* spsc_ring_create(size_t capacity) {
     
     // Allocate ring structure + data array
     size_t total_size = sizeof(spsc_ring_t) + capacity * sizeof(void*);
+    
+    // BUG FIX 2 (P1): Round total_size up to multiple of CACHE_LINE_SIZE
+    // C17 §7.22.3.1 requires size to be an integer multiple of alignment
+    // Without this, aligned_alloc can fail or invoke undefined behavior
+    total_size = ((total_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
+    
     spsc_ring_t* ring = aligned_alloc(CACHE_LINE_SIZE, total_size);
     if (!ring) {
         return NULL;
