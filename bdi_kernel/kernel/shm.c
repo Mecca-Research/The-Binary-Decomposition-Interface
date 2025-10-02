@@ -281,12 +281,17 @@ int shm_open(struct shm_region **region, const char *name)
     /* Get region from handle */
     struct shm_region *r = (struct shm_region *)handle->data;
     if (!r) {
-        ipc_close(handle);
+        ipc_close(handle);  /* Close on error path */
         return IPC_ERROR_INVALID;
     }
     
     /* Increment reference count */
     shm_ref(r);
+    
+    /* BUGFIX (Phase 4): Close the handle now that we have the region pointer.
+     * Previous code leaked the ipc_handle reference acquired by ipc_open(),
+     * causing ref_count to stay elevated and shm_destroy() to deadlock. */
+    ipc_close(handle);
     
     *region = r;
     return IPC_SUCCESS;

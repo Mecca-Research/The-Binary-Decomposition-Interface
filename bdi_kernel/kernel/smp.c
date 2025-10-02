@@ -117,26 +117,39 @@ int runqueue_enqueue(struct cpu_runqueue *rq, struct task *task) {
 /**
  * @brief Dequeue task from run queue (lock-free)
  * 
- * BUGFIX: Use atomic fetch_add for head updates to prevent race condition
- * when multiple consumers (local scheduler + work stealing) access the queue.
+ * BUGFIX (Phase 3): Use CAS loop to only increment head if queue is non-empty.
+ * Previous fix used atomic_fetch_add which incremented head BEFORE checking
+ * if queue is empty, creating a window where head > tail even when empty,
+ * causing concurrent producers to think the queue is full and drop tasks.
  */
 struct task *runqueue_dequeue(struct cpu_runqueue *rq) {
     if (rq == NULL) {
         return NULL;
     }
     
-    /* Atomically fetch and increment head - THIS PREVENTS RACE CONDITION */
-    uint64_t head = atomic_fetch_add_explicit(&rq->head, 1, memory_order_acq_rel);
-    uint64_t tail = atomic_load_explicit(&rq->tail, memory_order_acquire);
-    
-    /* Check if queue is empty (head was >= tail before increment) */
-    if (head >= tail) {
-        /* Undo the increment since queue was empty */
-        atomic_fetch_sub_explicit(&rq->head, 1, memory_order_relaxed);
-        return NULL;  /* Queue empty */
+    /* Use CAS loop to atomically dequeue only if queue is non-empty */
+    uint64_t head;
+    while (1) {
+        head = atomic_load_explicit(&rq->head, memory_order_acquire);
+        uint64_t tail = atomic_load_explicit(&rq->tail, memory_order_acquire);
+        
+        /* Check if queue is empty */
+        if (head >= tail) {
+            return NULL;  /* Queue empty */
+        }
+        
+        /* Try to atomically increment head (CAS) - only if queue is non-empty */
+        if (atomic_compare_exchange_weak_explicit(&rq->head, &head, head + 1,
+                                                   memory_order_acq_rel,
+                                                   memory_order_acquire)) {
+            /* Success! We reserved this slot */
+            break;
+        }
+        /* CAS failed (another thread modified head), retry */
     }
     
-    /* Calculate index */
+    /* At this point, we've successfully reserved a slot and head contains the OLD value */
+    /* Calculate index using the OLD head value (before increment) */
     uint64_t index = head & RUNQUEUE_MASK;
     
     /* Load task pointer */
