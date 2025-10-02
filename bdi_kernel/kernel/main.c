@@ -61,7 +61,7 @@ uint64_t aeon_read(int fd, void* buf, size_t count) {
     printf("AEON_API: Intercepted aeon_read(fd=%d, count=%zu).\n", fd, count);
     // Conceptually, this traps to the kernel, which executes the FileSystem.bdi graph.
     // The FS graph would then call its internal fs_read function.
-    fs_read(NULL, (char*)buf, 0, count); // Simulate call to FS logic
+    fs_read(nullptr, (char*)buf, 0, count); // Simulate call to FS logic
     return count;
 }
 uint64_t aeon_fork() {
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
     // =================================================================
     // 1. Core System Initialization (M0-M3)
     // =================================================================
-    DeviceVTable* devices[] = {NULL, &CPU_DEVICE_IMPL, &GPU_DEVICE_IMPL, &BPU_DEVICE_IMPL, &FPGA_DEVICE_IMPL};
+    DeviceVTable* devices[] = {nullptr, &CPU_DEVICE_IMPL, &GPU_DEVICE_IMPL, &BPU_DEVICE_IMPL, &FPGA_DEVICE_IMPL};
     assert(gpu_init() == 0);
     assert(fpga_init() == 0);
 
@@ -100,10 +100,10 @@ int main(int argc, char* argv[]) {
     fs_init();
 
     BdiGraph* g = aeon_graph_create();
-    assert(g != NULL);
+    assert(g != nullptr);
 
     Scheduler* sched = aeon_scheduler_create(g, devices, 4);
-    assert(sched != NULL);
+    assert(sched != nullptr);
 
     printf("-> Core kernel services (M0-M3) initialized.\n");
 
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
     // =================================================================
     bool run_tests = false;
     bool run_shell = false;
-    const char* test_type = NULL;
+    const char* test_type = nullptr;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--test-storage") == 0) {

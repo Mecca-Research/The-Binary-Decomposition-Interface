@@ -67,39 +67,39 @@ typedef struct {
 // --- Integration Functions ---
 
 // System initialization
-int bdi_system_init(bdi_system_t* system);
-int bdi_system_shutdown(bdi_system_t* system);
+NODISCARD int bdi_system_init(bdi_system_t* system);
+NODISCARD int bdi_system_shutdown(bdi_system_t* system);
 
 // M4: Storage integration
-int bdi_init_storage_subsystem(bdi_system_t* system);
-int bdi_detect_storage_devices(bdi_system_t* system);
-int bdi_mount_filesystems(bdi_system_t* system);
-int bdi_storage_test(bdi_system_t* system);
+NODISCARD int bdi_init_storage_subsystem(bdi_system_t* system);
+NODISCARD int bdi_detect_storage_devices(bdi_system_t* system);
+NODISCARD int bdi_mount_filesystems(bdi_system_t* system);
+NODISCARD int bdi_storage_test(bdi_system_t* system);
 
 // M5: USB/HID integration
-int bdi_init_usb_subsystem(bdi_system_t* system);
-int bdi_detect_usb_devices(bdi_system_t* system);
-int bdi_setup_input_devices(bdi_system_t* system);
-int bdi_usb_test(bdi_system_t* system);
+NODISCARD int bdi_init_usb_subsystem(bdi_system_t* system);
+NODISCARD int bdi_detect_usb_devices(bdi_system_t* system);
+NODISCARD int bdi_setup_input_devices(bdi_system_t* system);
+NODISCARD int bdi_usb_test(bdi_system_t* system);
 
 // M6: Enhanced scheduler integration
-int bdi_init_enhanced_scheduler(bdi_system_t* system);
-int bdi_configure_fairness_policies(bdi_system_t* system);
-int bdi_scheduler_test(bdi_system_t* system);
+NODISCARD int bdi_init_enhanced_scheduler(bdi_system_t* system);
+NODISCARD int bdi_configure_fairness_policies(bdi_system_t* system);
+NODISCARD int bdi_scheduler_test(bdi_system_t* system);
 
 // M6: Math library integration
-int bdi_init_math_subsystem(bdi_system_t* system);
-int bdi_math_test(bdi_system_t* system);
+NODISCARD int bdi_init_math_subsystem(bdi_system_t* system);
+NODISCARD int bdi_math_test(bdi_system_t* system);
 
 // M6: Shell integration
-int bdi_init_shell(bdi_system_t* system);
-int bdi_run_shell(bdi_system_t* system);
-int bdi_shell_test(bdi_system_t* system);
+NODISCARD int bdi_init_shell(bdi_system_t* system);
+NODISCARD int bdi_run_shell(bdi_system_t* system);
+NODISCARD int bdi_shell_test(bdi_system_t* system);
 
 // Comprehensive testing
-int bdi_run_integration_tests(bdi_system_t* system);
-int bdi_run_performance_tests(bdi_system_t* system);
-int bdi_run_stress_tests(bdi_system_t* system);
+NODISCARD int bdi_run_integration_tests(bdi_system_t* system);
+NODISCARD int bdi_run_performance_tests(bdi_system_t* system);
+NODISCARD int bdi_run_stress_tests(bdi_system_t* system);
 
 // System monitoring
 void bdi_print_system_status(bdi_system_t* system);

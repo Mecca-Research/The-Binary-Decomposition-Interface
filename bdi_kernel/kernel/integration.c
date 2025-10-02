@@ -9,7 +9,7 @@
 #include <string.h>
 
 // Global system instance
-bdi_system_t* global_bdi_system = NULL;
+bdi_system_t* global_bdi_system = nullptr;
 
 // --- System Initialization ---
 
@@ -116,7 +116,7 @@ int bdi_system_shutdown(bdi_system_t* system) {
         }
     }
     
-    global_bdi_system = NULL;
+    global_bdi_system = nullptr;
     printf("BDI System: Shutdown complete\n");
     return 0;
 }
@@ -308,7 +308,7 @@ int bdi_init_enhanced_scheduler(bdi_system_t* system) {
     
     if (fair_scheduler_init(system->fair_scheduler, system->base_scheduler) != 0) {
         free(system->fair_scheduler);
-        system->fair_scheduler = NULL;
+        system->fair_scheduler = nullptr;
         return -1;
     }
     
@@ -419,7 +419,7 @@ int bdi_init_shell(bdi_system_t* system) {
     
     if (bdi_shell_init(system->shell, system->devices, system->device_count) != 0) {
         free(system->shell);
-        system->shell = NULL;
+        system->shell = nullptr;
         return -1;
     }
     

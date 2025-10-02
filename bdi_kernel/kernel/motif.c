@@ -19,7 +19,7 @@ static uint64_t hash_data(const void* data, size_t size) {
 
 void motif_dict_init(MotifDictionary* dict) {
     if (!dict) return;
-    dict->motifs = NULL;
+    dict->motifs = nullptr;
     dict->count = 0;
     dict->capacity = 0;
 }
@@ -34,7 +34,7 @@ void motif_dict_free(MotifDictionary* dict) {
 }
 
 Motif* motif_dict_intern(MotifDictionary* dict, void* data, size_t size) {
-    if (!dict || !data || size == 0) return NULL;
+    if (!dict || !data || size == 0) return nullptr;
     
     uint64_t hash = hash_data(data, size);
 
@@ -53,13 +53,13 @@ Motif* motif_dict_intern(MotifDictionary* dict, void* data, size_t size) {
     if (dict->count >= dict->capacity) {
         size_t new_capacity = dict->capacity < 8 ? 8 : dict->capacity * 2;
         Motif* new_motifs = (Motif*)realloc(dict->motifs, new_capacity * sizeof(Motif));
-        if (!new_motifs) return NULL;
+        if (!new_motifs) return nullptr;
         dict->motifs = new_motifs;
         dict->capacity = new_capacity;
     }
 
     void* motif_data = malloc(size);
-    if (!motif_data) return NULL;
+    if (!motif_data) return nullptr;
     memcpy(motif_data, data, size);
 
     dict->motifs[dict->count] = (Motif){

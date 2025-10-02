@@ -5,6 +5,8 @@
 #ifndef AEON_HAM_H
 #define AEON_HAM_H
 
+#include "c23_compat.h"
+
 #include "graph.h" // For RegionId
 #include "motif.h" 
 
@@ -31,7 +33,7 @@ typedef struct {
     char path[256];
     // --- NEW in M2: Intelligent Memory Fields ---
     HamStats stats;
-    Motif* interned_motif; // If not NULL, this region is compressed.
+    Motif* interned_motif; // If not nullptr, this region is compressed.
 } HamRegion;
 
 // --- HAM Virtual Table (Interface) ---
@@ -55,6 +57,24 @@ typedef struct {
 
 // --- Test helpers to inspect region state ---
 HamTier ham_get_region_tier(RegionId id);
-void* ham_get_region_base(RegionId id);
+NODISCARD void* ham_get_region_base(RegionId id);
+
+
+// ===================================================================
+// C23 ENHANCEMENTS - Phase 1
+// ===================================================================
+
+// HAM tier constants
+constexpr size_t HAM_MIN_REGION_SIZE = 4096;  // 4KB minimum
+constexpr size_t HAM_MAX_REGION_SIZE = 1073741824;  // 1GB maximum
+constexpr size_t HAM_DEFAULT_REGION_SIZE = 1048576;  // 1MB default
+
+// HAM statistics constants
+constexpr float HAM_ENTROPY_THRESHOLD = 0.7f;
+constexpr uint64_t HAM_ACCESS_THRESHOLD = 1000;
+
+// C23 static assertions
+_Static_assert(sizeof(HamStats) <= 32, "HamStats should be compact");
+_Static_assert(sizeof(HamTier) <= 4, "HamTier should be 32-bit enum");
 
 #endif // AEON_HAM_H
