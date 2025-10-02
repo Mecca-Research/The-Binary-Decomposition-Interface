@@ -196,6 +196,15 @@ int nvme_process_completions(nvme_qpair_t* qpair, uint32_t max_completions,
         // Clear command context
         qpair->cmd_ctx[cid] = NULL;
         
+        // Update submission queue head from completion entry
+        // Per NVMe spec: The completion entry contains the SQ head pointer (SQHD)
+        // which indicates which submission queue entries have been consumed by the
+        // controller. The host must update its local sq_head tracking with this
+        // value to know which SQ slots are now free for reuse.
+        // This is critical - without this update, the queue will appear full after
+        // ~sq_size-1 submissions even though completions have been processed.
+        qpair->sq_head = cpl->sq_head;
+        
         // Update statistics
         qpair->completions++;
         qpair->num_outstanding--;
