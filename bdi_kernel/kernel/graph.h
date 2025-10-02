@@ -6,6 +6,8 @@
 #ifndef AEON_GRAPH_H
 #define AEON_GRAPH_H
 
+#include "c23_compat.h"
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -106,12 +108,39 @@ typedef struct {
 } UpdateSpec;
 
 // --- Graph API ---
-BdiGraph* aeon_graph_create();
+NODISCARD BdiGraph* aeon_graph_create();
 void aeon_graph_free(BdiGraph* g);
 NodeId aeon_graph_add_node(BdiGraph* g, GraphNode node);
 // Binds an update rule to the graph
-int aeon_bind_update(BdiGraph* g, const UpdateSpec* spec);
+NODISCARD int aeon_bind_update(BdiGraph* g, const UpdateSpec* spec);
 // Attaches metadata to a node and stores it in the meta_arena.
-int aeon_attach_meta(BdiGraph* g, NodeId node_id, const NodeMeta* meta);
+NODISCARD int aeon_attach_meta(BdiGraph* g, NodeId node_id, const NodeMeta* meta);
+
+
+// ===================================================================
+// C23 ENHANCEMENTS - Phase 1
+// ===================================================================
+
+// C23 compile-time constants
+constexpr NodeId INVALID_NODE_ID = 0;
+constexpr EdgeId INVALID_EDGE_ID = 0;
+constexpr TypeId INVALID_TYPE_ID = 0;
+constexpr RegionId INVALID_REGION_ID = 0;
+constexpr DeviceId INVALID_DEVICE_ID = 0;
+
+// Graph capacity constants
+constexpr size_t MAX_GRAPH_NODES = 1048576;  // 1M nodes
+constexpr size_t MAX_GRAPH_EDGES = 4194304;  // 4M edges
+constexpr size_t DEFAULT_GRAPH_CAPACITY = 1024;
+
+// Alignment and sizing constants
+constexpr size_t CACHE_LINE_SIZE = 64;
+constexpr size_t NODE_ALIGNMENT = 64;
+
+// C23 static assertions for structure layout
+_Static_assert(sizeof(NodeId) == 8, "NodeId must be 64-bit");
+_Static_assert(sizeof(EdgeId) == 8, "EdgeId must be 64-bit");
+_Static_assert(sizeof(TypeId) == 8, "TypeId must be 64-bit");
+_Static_assert(sizeof(BdiType) <= 8, "BdiType should fit in 64 bits");
 
 #endif // AEON_GRAPH_H

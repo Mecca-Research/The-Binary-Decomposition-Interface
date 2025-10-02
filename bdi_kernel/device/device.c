@@ -130,7 +130,7 @@ static int gpu_enqueue(const void* kernel, const HamRegion** regions, size_t num
     // 6. Freeing GPU memory (gpu_free).
     
     // For our M3 test, we will just simulate the launch.
-    return gpu_launch_kernel(gpu_kernel, NULL);
+    return gpu_launch_kernel(gpu_kernel, nullptr);
 }
 
 static int gpu_sync_device() {
@@ -153,7 +153,7 @@ static int fpga_enqueue(const void* kernel, const HamRegion** regions, size_t nu
 
     // A real implementation would traverse the graph from this start node
     // to find the end of the subgraph. For M5, we'll assume it's just this one node.
-    FpgaBitstream* bitstream = fpga_synthesize_subgraph(NULL, subgraph_start_node->id, subgraph_start_node->id);
+    FpgaBitstream* bitstream = fpga_synthesize_subgraph(nullptr, subgraph_start_node->id, subgraph_start_node->id);
     if (!bitstream) {
         fprintf(stderr, "FPGA_DEVICE Error: Synthesis failed.\n");
         return -1;

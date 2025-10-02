@@ -13,7 +13,7 @@ static size_t region_count = 0;
 // alloc function 
 static int ham_alloc_internal(RegionId* out_id, HamTier tier, size_t size_bytes, void** out_ptr) {
     if (region_count >= MAX_REGIONS) return -1;
-    void* ptr = NULL;
+    void* ptr = nullptr;
     if (tier == HAM_CRITICAL || tier == HAM_ACTIVE) {
         ptr = malloc(size_bytes);
         if (!ptr) return -1;
@@ -24,7 +24,7 @@ static int ham_alloc_internal(RegionId* out_id, HamTier tier, size_t size_bytes,
         .id = id,
         .tier = tier,
         .capacity_bytes = size_bytes,
-        .base = ptr // NULL for ARCHIVE tier initially
+        .base = ptr // nullptr for ARCHIVE tier initially
     };
     snprintf(ham_regions[region_count].path, 256, "archive_region_%llu.bin", (unsigned long long)id);
     
@@ -56,7 +56,7 @@ static int ham_free_internal(RegionId id) {
 // --- Persistence function implementations ---
 static int ham_persist_internal(RegionId id) {
     if (id == 0 || id > region_count) return -1;
-    HamRegion* region = NULL;
+    HamRegion* region = nullptr;
     for (size_t i = 0; i < region_count; ++i) {
         if (ham_regions[i].id == id) {
             region = &ham_regions[i];
@@ -78,7 +78,7 @@ static int ham_persist_internal(RegionId id) {
 
 static int ham_load_internal(RegionId id) {
     if (id == 0 || id > region_count) return -1;
-    HamRegion* region = NULL;
+    HamRegion* region = nullptr;
      for (size_t i = 0; i < region_count; ++i) {
         if (ham_regions[i].id == id) {
             region = &ham_regions[i];
@@ -201,7 +201,7 @@ void* ham_get_region_base(RegionId id) {
             return ham_regions[i].base;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 // --- Public HAM API ---
