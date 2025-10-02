@@ -24,7 +24,8 @@ else
 endif
 
 # Source Files
-KERNEL_SRCS := kernel/graph.c kernel/ham.c kernel/motif.c kernel/integration.c kernel/main.c kernel/hash.c
+KERNEL_SRCS := kernel/graph.c kernel/ham.c kernel/motif.c kernel/integration.c kernel/main.c kernel/hash.c \
+               kernel/memory.c kernel/pmm.c kernel/vmm.c
 DEVICE_SRCS := device/device.c
 BACKEND_SRCS := backend/gpu_backend.c backend/fpga_backend.c backend/bpu_device.c
 BOOT_SRCS := boot/main.c
@@ -57,45 +58,45 @@ TARGET := bdi_kernel
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	@echo "Linking $@..."
-	$(CC) $(CFLAGS) -o $@ $^
-	@echo "Build complete: $@"
+        @echo "Linking $@..."
+        $(CC) $(CFLAGS) -o $@ $^
+        @echo "Build complete: $@"
 
 %.o: %.c
-	@echo "Compiling $<..."
-	$(CC) $(CFLAGS) -c $< -o $@
+        @echo "Compiling $<..."
+        $(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	@echo "Cleaning build artifacts..."
-	rm -f $(OBJS) $(TARGET)
-	rm -f **/*.o
-	@echo "Clean complete"
+        @echo "Cleaning build artifacts..."
+        rm -f $(OBJS) $(TARGET)
+        rm -f **/*.o
+        @echo "Clean complete"
 
 test: $(TARGET)
-	@echo "Running tests..."
-	./$(TARGET) --test
+        @echo "Running tests..."
+        ./$(TARGET) --test
 
 info:
-	@echo "BDI Kernel Build Configuration"
-	@echo "=============================="
-	@echo "Compiler: $(CC)"
-	@echo "C Standard: C23"
-	@echo "Flags: $(CFLAGS)"
-	@echo "Source Files: $(words $(ALL_SRCS))"
-	@echo "Target: $(TARGET)"
-	@echo ""
-	@echo "C23 Features Enabled:"
-	@echo "  - nullptr (NULL replacement)"
-	@echo "  - [[nodiscard]] attributes"
-	@echo "  - constexpr constants"
-	@echo "  - _Static_assert"
-	@echo ""
-	@echo "Note: Full C23 support requires GCC 14+ or Clang 18+"
-	@echo "Current compiler: $(shell $(CC) --version | head -1)"
+        @echo "BDI Kernel Build Configuration"
+        @echo "=============================="
+        @echo "Compiler: $(CC)"
+        @echo "C Standard: C23"
+        @echo "Flags: $(CFLAGS)"
+        @echo "Source Files: $(words $(ALL_SRCS))"
+        @echo "Target: $(TARGET)"
+        @echo ""
+        @echo "C23 Features Enabled:"
+        @echo "  - nullptr (NULL replacement)"
+        @echo "  - [[nodiscard]] attributes"
+        @echo "  - constexpr constants"
+        @echo "  - _Static_assert"
+        @echo ""
+        @echo "Note: Full C23 support requires GCC 14+ or Clang 18+"
+        @echo "Current compiler: $(shell $(CC) --version | head -1)"
 
 # Dependency tracking
 -include $(OBJS:.o=.d)
 
 %.d: %.c
-	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< > $@
+        @$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< > $@
 
