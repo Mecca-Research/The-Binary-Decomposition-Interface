@@ -36,9 +36,12 @@ NODISCARD int vmm_init(void) {
     
     printf("VMM: Initializing virtual memory manager\n");
     
-    // Allocate page table
-    page_table_size = VMM_ADDRESS_SPACE_SIZE / VMM_PAGE_SIZE;
-    size_t table_bytes = page_table_size * sizeof(PageTableEntry);
+    // Allocate page table for initial address space (256 MB)
+    page_table_size = VMM_INITIAL_ADDRESS_SPACE / VMM_PAGE_SIZE;  // 65,536 entries
+    size_t table_bytes = page_table_size * sizeof(PageTableEntry);  // 1 MB
+    
+    printf("VMM: Allocating page table (%zu entries, %zu bytes)\n", 
+           page_table_size, table_bytes);
     
     page_table = (PageTableEntry*)numa_alloc_local(table_bytes);
     if (page_table == NULL) {
@@ -46,7 +49,12 @@ NODISCARD int vmm_init(void) {
         return -1;
     }
     
+    // Initialize page table entries
     memset(page_table, 0, table_bytes);
+    
+    printf("VMM: Page table allocated successfully\n");
+    printf("VMM: Managing %zu MB address space\n", 
+           VMM_INITIAL_ADDRESS_SPACE / (1ULL << 20));
     
     // Initialize regions
     memset(regions, 0, sizeof(regions));

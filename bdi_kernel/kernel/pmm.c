@@ -58,8 +58,8 @@ NODISCARD int pmm_init(void) {
         numa_info[i].total_pages = PMM_MAX_PAGES;
         numa_info[i].free_pages = PMM_MAX_PAGES;
         numa_info[i].used_pages = 0;
-        numa_info[i].base_addr = (uint64_t)i * (1ULL << 30);  // 1GB per node
-        numa_info[i].end_addr = numa_info[i].base_addr + (1ULL << 30);
+        numa_info[i].base_addr = (uint64_t)i * (1ULL << 32);  // 4GB per node
+        numa_info[i].end_addr = numa_info[i].base_addr + (1ULL << 32);
         
         printf("PMM: NUMA node %d initialized (%zu pages)\n", i, PMM_MAX_PAGES);
     }
@@ -163,24 +163,41 @@ NODISCARD void* pmm_alloc_pages(size_t count, int numa_node) {
         return pmm_alloc_page(numa_node);
     }
     
-    // For multiple pages, allocate contiguous block
-    // In a real implementation, this would use a buddy allocator
-    // For now, allocate individual pages
-    void* first_page = pmm_alloc_page(numa_node);
-    if (first_page == NULL) {
-        return NULL;
-    }
+    // For multiple pages, allocate individual pages and track them
+    // Use stack array for small counts, heap for large
+    #define MAX_STACK_PAGES 64
+    void* stack_pages[MAX_STACK_PAGES];
+    void** pages;
     
-    // Allocate remaining pages
-    for (size_t i = 1; i < count; i++) {
-        void* page = pmm_alloc_page(numa_node);
-        if (page == NULL) {
-            // Allocation failed, free previously allocated pages
-            pmm_free_pages(first_page, i);
+    if (count <= MAX_STACK_PAGES) {
+        pages = stack_pages;
+    } else {
+        pages = (void**)malloc(count * sizeof(void*));
+        if (pages == NULL) {
             return NULL;
         }
     }
     
+    // Allocate all pages
+    for (size_t i = 0; i < count; i++) {
+        pages[i] = pmm_alloc_page(numa_node);
+        if (pages[i] == NULL) {
+            // Allocation failed, free previously allocated pages one by one
+            for (size_t j = 0; j < i; j++) {
+                pmm_free_page(pages[j]);
+            }
+            if (count > MAX_STACK_PAGES) {
+                free(pages);
+            }
+            return NULL;
+        }
+    }
+    
+    // All pages allocated successfully
+    void* first_page = pages[0];
+    if (count > MAX_STACK_PAGES) {
+        free(pages);
+    }
     return first_page;
 }
 
