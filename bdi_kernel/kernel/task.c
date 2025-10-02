@@ -1,4 +1,5 @@
 
+
 /**
  * @file task.c
  * @brief Task management and run-to-completion fibers implementation
@@ -259,6 +260,9 @@ void task_block(struct task *task) {
 
 /**
  * @brief Unblock task (event occurred)
+ * 
+ * BUGFIX: Check runqueue_enqueue return value to prevent task loss
+ * and inconsistent statistics when queue is full.
  */
 void task_unblock(struct task *task) {
     if (task == NULL) {
@@ -269,11 +273,17 @@ void task_unblock(struct task *task) {
     if (task_set_state(task, TASK_BLOCKED, TASK_READY)) {
         /* Add back to run queue */
         struct cpu_runqueue *rq = get_current_runqueue();
-        runqueue_enqueue(rq, task);
+        int result = runqueue_enqueue(rq, task);
         
-        /* Update running task count */
-        atomic_fetch_add_explicit(&g_scheduler.num_running_tasks, 1,
-                                  memory_order_relaxed);
+        /* Only update counter if enqueue succeeded - THIS PREVENTS TASK LOSS */
+        if (result == 0) {
+            atomic_fetch_add_explicit(&g_scheduler.num_running_tasks, 1,
+                                      memory_order_relaxed);
+        } else {
+            /* Enqueue failed, revert state back to BLOCKED */
+            task_set_state(task, TASK_READY, TASK_BLOCKED);
+            /* TODO: Could log error or retry on different CPU */
+        }
     }
 }
 
