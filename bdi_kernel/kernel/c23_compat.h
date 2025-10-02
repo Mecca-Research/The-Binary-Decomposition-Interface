@@ -42,7 +42,7 @@
 #endif
 
 #if __has_c_attribute(nodiscard)
-    #define NODISCARD NODISCARD
+    #define NODISCARD [[nodiscard]]
 #elif defined(__GNUC__) || defined(__clang__)
     #define NODISCARD __attribute__((warn_unused_result))
 #else

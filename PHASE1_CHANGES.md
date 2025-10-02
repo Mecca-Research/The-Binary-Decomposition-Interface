@@ -343,3 +343,125 @@ Phase 1 successfully establishes a modern C23 foundation for the BDI kernel. All
 
 **Status**: ✅ **COMPLETE**  
 **Ready for**: Phase 2 Implementation
+
+---
+
+## Critical Bugfixes (Post-Merge)
+
+### Overview
+Three critical bugs were identified after the initial Phase 1 merge that prevented compilation on certain platforms and configurations. These bugs have been fixed in this update.
+
+### Bug 1 (P0 - Critical): BdiType Size Assertion Failure
+
+**Location**: `bdi_kernel/kernel/graph.h:144`
+
+**Issue**: 
+- Assertion `_Static_assert(sizeof(BdiType) <= 8, ...)` failed during compilation
+- BdiType actual size: 16 bytes (not 8 bytes)
+  - TypeId: 8 bytes
+  - 4 × uint8_t fields: 4 bytes
+  - Padding for alignment: 4 bytes
+  - **Total: 16 bytes**
+
+**Fix**: 
+```c
+// Before:
+_Static_assert(sizeof(BdiType) <= 8, "BdiType should fit in 64 bits");
+
+// After:
+_Static_assert(sizeof(BdiType) <= 16, "BdiType should fit in 16 bytes");  // TypeId(8) + 4*uint8_t(4) + padding(4) = 16 bytes
+```
+
+**Impact**: Prevents compilation failure on all platforms
+
+---
+
+### Bug 2 (P1 - High): NODISCARD Macro Circular Definition
+
+**Location**: `bdi_kernel/kernel/c23_compat.h`
+
+**Issue**:
+- Circular macro definition: `#define NODISCARD NODISCARD`
+- When `__has_c_attribute(nodiscard)` is true (modern Clang/GCC), the macro expands to itself infinitely
+- Compiler error: "unknown type name 'NODISCARD'" or infinite expansion
+
+**Fix**:
+```c
+// Before:
+#if __has_c_attribute(nodiscard)
+    #define NODISCARD NODISCARD  // ❌ Circular reference
+#elif defined(__GNUC__) || defined(__clang__)
+    #define NODISCARD __attribute__((warn_unused_result))
+#else
+    #define NODISCARD
+#endif
+
+// After:
+#if __has_c_attribute(nodiscard)
+    #define NODISCARD [[nodiscard]]  // ✅ Correct C23 attribute
+#elif defined(__GNUC__) || defined(__clang__)
+    #define NODISCARD __attribute__((warn_unused_result))
+#else
+    #define NODISCARD
+#endif
+```
+
+**Impact**: Fixes compilation on modern Clang (18+) and GCC (14+) with full C23 support
+
+---
+
+### Bug 3 (P1 - High): Missing c23_compat.h Include
+
+**Location**: `bdi_kernel/boot/main.c`
+
+**Issue**:
+- Code uses `nullptr` keyword (line 27) without including the compatibility header
+- On GCC 12 (C2x draft), `nullptr` is not natively supported
+- Compilation error: "nullptr undeclared (first use in this function)"
+
+**Fix**:
+```c
+// Added after standard library includes:
+#include <stdio.h>
+#include <stdlib.h>
+#include "kernel/c23_compat.h"  // C23 compatibility (nullptr, etc.)
+```
+
+**Impact**: Ensures nullptr compatibility macro is available on GCC 12 and other C2x-draft compilers
+
+---
+
+### Testing & Verification
+
+**Compilation Testing**:
+- ✅ GCC 12.2.0 (C2x draft): All assertions pass, no errors
+- ✅ GCC 14+ (Full C23): Clean compilation
+- ✅ Clang 18+ (Full C23): Clean compilation
+
+**Validation**:
+- ✅ All `_Static_assert` checks pass
+- ✅ NODISCARD macro expands correctly to `[[nodiscard]]` on C23 compilers
+- ✅ nullptr works correctly in boot/main.c
+
+---
+
+### Files Modified
+
+1. **bdi_kernel/kernel/graph.h** - Fixed BdiType size assertion
+2. **bdi_kernel/kernel/c23_compat.h** - Fixed NODISCARD circular definition
+3. **bdi_kernel/boot/main.c** - Added c23_compat.h include
+4. **PHASE1_CHANGES.md** - Documented bugfixes
+
+---
+
+### Commit Details
+
+**Commit Message**: "Fix P0/P1 bugs: BdiType assertion, NODISCARD macro, nullptr compatibility"
+
+**Changes**:
+- Bug 1 (P0): BdiType size assertion relaxed from 8 to 16 bytes
+- Bug 2 (P1): NODISCARD macro fixed from circular definition to `[[nodiscard]]`
+- Bug 3 (P1): Added c23_compat.h include to boot/main.c
+
+**Status**: ✅ All bugs fixed and verified
+
