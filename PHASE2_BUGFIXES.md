@@ -381,3 +381,49 @@ The memory management subsystem now compiles successfully and is ready for integ
 - **Repository**: The-Binary-Decomposition-Interface (Mecca-Research)
 - **Branch**: phase2-bugfixes
 - **Date**: October 2, 2025
+
+## Bug 5: VMM Page Table Index Out of Range (P0)
+
+### Problem
+- Page table reduced to 256 MB (65,536 entries) in Bug 4 fix
+- But virtual addresses start at 0x100000000 (4 GB)
+- Index calculation: virt / VMM_PAGE_SIZE
+- For 0x100000000: index = 1,048,576
+- But page_table_size = 65,536
+- Check fails: 1,048,576 < 65,536 → FALSE
+- All mappings fail → VMM unusable
+
+### Root Cause
+- Page table covers 0 to 256 MB
+- But mappings start at 4 GB
+- Index out of range for all mappings
+
+### Impact
+- **CRITICAL (P0)**: VMM completely unusable
+- All mappings fail
+- vmm_virt_to_phys() fails
+- vmm_free() fails
+
+### Fix
+- Increase VMM_INITIAL_ADDRESS_SPACE from 256 MB to 4 GB
+- Page table now has 1,048,576 entries (16 MB)
+- Covers addresses 0 to 4 GB - 1
+- Mappings at 4 GB boundary should work
+
+### Calculation
+- Address space: 4 GB = 4,294,967,296 bytes
+- Page size: 4 KB = 4,096 bytes
+- Entries: 4 GB / 4 KB = 1,048,576 entries
+- Entry size: 16 bytes
+- Table size: 1,048,576 × 16 = 16,777,216 bytes = 16 MB
+
+### Files Modified
+- bdi_kernel/kernel/vmm.h: Increase constant to 4 GB
+- bdi_kernel/kernel/vmm.c: Update comments and printf
+
+### Status
+✅ Fixed
+
+### Note
+If mappings at exactly 0x100000000 still fail (boundary case), 
+increase to 8 GB (32 MB page table) to safely cover the range.

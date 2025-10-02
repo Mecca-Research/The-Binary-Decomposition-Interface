@@ -18,7 +18,7 @@
 #define VMM_PAGE_SIZE 4096
 #define VMM_HUGE_PAGE_SIZE (2 * 1024 * 1024)
 #define VMM_ADDRESS_SPACE_SIZE (1ULL << 48)  // 256TB
-#define VMM_INITIAL_ADDRESS_SPACE (256ULL << 20)  // 256MB initial address space
+#define VMM_INITIAL_ADDRESS_SPACE (4ULL << 30)  // 4 GB initial address space
 #define VMM_MAX_REGIONS 1024
 
 // Virtual memory flags
