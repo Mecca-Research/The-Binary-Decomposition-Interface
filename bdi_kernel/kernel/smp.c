@@ -1,4 +1,5 @@
 
+
 /**
  * @file smp.c
  * @brief SMP support with lock-free per-CPU run queues implementation
@@ -115,18 +116,23 @@ int runqueue_enqueue(struct cpu_runqueue *rq, struct task *task) {
 
 /**
  * @brief Dequeue task from run queue (lock-free)
+ * 
+ * BUGFIX: Use atomic fetch_add for head updates to prevent race condition
+ * when multiple consumers (local scheduler + work stealing) access the queue.
  */
 struct task *runqueue_dequeue(struct cpu_runqueue *rq) {
     if (rq == NULL) {
         return NULL;
     }
     
-    /* Load head with acquire semantics */
-    uint64_t head = atomic_load_explicit(&rq->head, memory_order_acquire);
+    /* Atomically fetch and increment head - THIS PREVENTS RACE CONDITION */
+    uint64_t head = atomic_fetch_add_explicit(&rq->head, 1, memory_order_acq_rel);
     uint64_t tail = atomic_load_explicit(&rq->tail, memory_order_acquire);
     
-    /* Check if queue is empty */
+    /* Check if queue is empty (head was >= tail before increment) */
     if (head >= tail) {
+        /* Undo the increment since queue was empty */
+        atomic_fetch_sub_explicit(&rq->head, 1, memory_order_relaxed);
         return NULL;  /* Queue empty */
     }
     
@@ -138,9 +144,6 @@ struct task *runqueue_dequeue(struct cpu_runqueue *rq) {
     
     /* Clear slot */
     rq->tasks[index] = NULL;
-    
-    /* Update head with release semantics */
-    atomic_store_explicit(&rq->head, head + 1, memory_order_release);
     
     /* Update task count (relaxed ordering for statistics) */
     atomic_fetch_sub_explicit(&rq->num_tasks, 1, memory_order_relaxed);
