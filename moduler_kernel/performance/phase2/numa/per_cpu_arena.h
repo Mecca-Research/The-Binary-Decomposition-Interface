@@ -120,14 +120,39 @@ void* per_cpu_arena_alloc_cpu(uint32_t cpu_id, size_t size);
 /**
  * @brief Allocate aligned memory from current CPU's arena
  * 
+ * Allocates memory with specified alignment. The returned pointer is guaranteed
+ * to be aligned to the specified boundary. Must be freed with 
+ * per_cpu_arena_free_aligned(), NOT per_cpu_arena_free().
+ * 
+ * Implementation: Stores original pointer and size metadata before the aligned
+ * address to enable proper freeing without memory corruption.
+ * 
  * @param size Size in bytes
  * @param alignment Alignment (must be power of 2)
- * @return Pointer to allocated memory, or NULL on failure
+ * @return Pointer to aligned memory, or NULL on failure
  */
 void* per_cpu_arena_alloc_aligned(size_t size, size_t alignment);
 
 /**
+ * @brief Free aligned memory back to arena
+ * 
+ * Frees memory allocated with per_cpu_arena_alloc_aligned(). This function
+ * retrieves the original pointer and size stored during allocation and
+ * properly frees the underlying allocation.
+ * 
+ * WARNING: Only use this for pointers returned by per_cpu_arena_alloc_aligned().
+ * Using this with regular allocations or using per_cpu_arena_free() with
+ * aligned allocations will cause memory corruption.
+ * 
+ * @param ptr Pointer to free (must be from per_cpu_arena_alloc_aligned)
+ */
+void per_cpu_arena_free_aligned(void* ptr);
+
+/**
  * @brief Free memory back to arena
+ * 
+ * Frees memory allocated with per_cpu_arena_alloc() or per_cpu_arena_alloc_cpu().
+ * Do NOT use this for aligned allocations - use per_cpu_arena_free_aligned() instead.
  * 
  * @param ptr Pointer to free
  * @param size Size of allocation (must match original)

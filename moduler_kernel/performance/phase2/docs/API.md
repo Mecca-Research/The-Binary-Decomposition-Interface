@@ -47,11 +47,19 @@ per_cpu_arena_init();
 // Allocate from current CPU's arena
 void* ptr = per_cpu_arena_alloc(1024);
 
-// Allocate aligned memory
+// Allocate aligned memory (IMPORTANT: Must use per_cpu_arena_free_aligned!)
 void* aligned_ptr = per_cpu_arena_alloc_aligned(2048, 64);
+assert(((uintptr_t)aligned_ptr % 64) == 0);  // Verify alignment
 
-// Free memory
+// Free regular memory
 per_cpu_arena_free(ptr, 1024);
+
+// Free aligned memory (CRITICAL: Use the correct free function!)
+per_cpu_arena_free_aligned(aligned_ptr);
+
+// WARNING: Using per_cpu_arena_free() on aligned allocations will cause
+// memory corruption! Always use per_cpu_arena_free_aligned() for aligned
+// allocations returned by per_cpu_arena_alloc_aligned().
 
 // Get statistics
 per_cpu_arena_stats_t stats;
