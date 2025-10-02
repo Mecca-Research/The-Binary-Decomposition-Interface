@@ -270,18 +270,50 @@ void* per_cpu_arena_alloc(size_t size) {
 }
 
 void* per_cpu_arena_alloc_aligned(size_t size, size_t alignment) {
-    // For simplicity, allocate extra space and align
-    size_t alloc_size = size + alignment;
-    void* ptr = per_cpu_arena_alloc(alloc_size);
+    // BUG FIX: Store original pointer and size before aligned address to enable proper freeing
+    // Standard approach: allocate extra space for alignment + metadata storage
+    // Layout: [original_ptr][alloc_size][padding][aligned_data]
+    //                                             ^-- returned address
     
-    if (!ptr) {
+    // Need extra space for: alignment padding + original pointer + size storage
+    size_t alloc_size = size + alignment + sizeof(void*) + sizeof(size_t);
+    void* original = per_cpu_arena_alloc(alloc_size);
+    
+    if (!original) {
         return NULL;
     }
     
-    uintptr_t addr = (uintptr_t)ptr;
+    // Calculate aligned address after reserving space for metadata
+    uintptr_t addr = (uintptr_t)original + sizeof(void*) + sizeof(size_t);
     uintptr_t aligned = (addr + alignment - 1) & ~(alignment - 1);
     
+    // Store original pointer and allocated size just before the aligned address
+    // This allows per_cpu_arena_free_aligned() to retrieve them later
+    void** ptr_storage = (void**)(aligned - sizeof(void*) - sizeof(size_t));
+    size_t* size_storage = (size_t*)(aligned - sizeof(size_t));
+    
+    *ptr_storage = original;
+    *size_storage = alloc_size;
+    
     return (void*)aligned;
+}
+
+void per_cpu_arena_free_aligned(void* ptr) {
+    if (!ptr) {
+        return;
+    }
+    
+    // BUG FIX: Retrieve the original pointer and size stored before the aligned address
+    // The metadata was stored at (aligned_address - sizeof(void*) - sizeof(size_t))
+    void** ptr_storage = (void**)((uintptr_t)ptr - sizeof(void*) - sizeof(size_t));
+    size_t* size_storage = (size_t*)((uintptr_t)ptr - sizeof(size_t));
+    
+    void* original = *ptr_storage;
+    size_t alloc_size = *size_storage;
+    
+    // Free the original allocation using the stored size
+    // This ensures proper free-list management
+    per_cpu_arena_free(original, alloc_size);
 }
 
 void per_cpu_arena_free_cpu(uint32_t cpu_id, void* ptr, size_t size) {
