@@ -22,6 +22,10 @@ static _Atomic uint32_t g_socket_count = 0;
 
 /**
  * @brief Initialize MPSC ring buffer
+ * 
+ * BUGFIX (Phase 4): Initialize all ready flags to false.
+ * This ensures that slots are not considered "ready" until a producer
+ * has fully written the message data.
  */
 static int mpsc_ring_init(struct mpsc_ring *ring, size_t capacity)
 {
@@ -43,6 +47,12 @@ static int mpsc_ring_init(struct mpsc_ring *ring, size_t capacity)
     
     /* Initialize ring */
     memset(ring->messages, 0, capacity * sizeof(struct socket_message));
+    
+    /* BUGFIX: Initialize all ready flags to false */
+    for (size_t i = 0; i < capacity; i++) {
+        atomic_init(&ring->messages[i].ready, false);
+    }
+    
     atomic_store_explicit(&ring->head, 0, memory_order_relaxed);
     atomic_store_explicit(&ring->tail, 0, memory_order_relaxed);
     ring->capacity = capacity;
@@ -88,9 +98,19 @@ static inline size_t mpsc_ring_pending(const struct mpsc_ring *ring)
 /**
  * @brief Enqueue message to MPSC ring (producer, lock-free)
  * 
- * BUGFIX (Phase 4): Use CAS loop to reserve slot, write message data FIRST,
- * then publish. Previous code incremented head before writing message data,
- * allowing consumer to read uninitialized data and causing crashes.
+ * BUGFIX (Phase 4 - REVISED): Use per-slot ready flag for message visibility.
+ * 
+ * Previous Fix (PR #38) was STILL INCORRECT:
+ * - CAS incremented head BEFORE writing message data
+ * - Consumer could see incremented head and read uninitialized data
+ * - Memory barrier was too late (head already published)
+ * 
+ * Real Solution:
+ * 1. Reserve slot with CAS (increments head, but message NOT yet visible)
+ * 2. Write message data and size
+ * 3. Set ready flag to true with release semantics (ACTUAL publication)
+ * 
+ * Consumer will only see message after ready flag is set.
  */
 static int mpsc_ring_enqueue(struct mpsc_ring *ring,
                              const void *data,
@@ -114,6 +134,8 @@ static int mpsc_ring_enqueue(struct mpsc_ring *ring,
         }
         
         /* Try to atomically increment head (reserve slot) */
+        /* Note: This increments head, but message is NOT yet visible to consumer */
+        /* Consumer will check ready flag, which is still false */
         if (atomic_compare_exchange_weak_explicit(&ring->head, &head, head + 1,
                                                    memory_order_acq_rel,
                                                    memory_order_acquire)) {
@@ -136,7 +158,7 @@ static int mpsc_ring_enqueue(struct mpsc_ring *ring,
     /* Calculate slot index using OLD head value (before increment) */
     size_t index = head & ring->mask;
     
-    /* Write message into slot - this is now safe because we reserved it */
+    /* Write message into slot FIRST (before making it visible) */
     struct socket_message *msg = &ring->messages[index];
     msg->data = msg_data;
     msg->size = size;
@@ -144,14 +166,30 @@ static int mpsc_ring_enqueue(struct mpsc_ring *ring,
     msg->sender_tid = sender_tid;
     msg->timestamp = 0; /* TODO: Get timestamp */
     
-    /* Memory barrier to ensure writes are visible before consumer reads */
-    atomic_thread_fence(memory_order_release);
+    /* NOW publish the message by setting ready flag with release semantics */
+    /* This is the ACTUAL publication - consumer will only see message after this */
+    /* Release semantics ensure all writes to data/size/priority/etc are visible */
+    atomic_store_explicit(&msg->ready, true, memory_order_release);
     
     return IPC_SUCCESS;
 }
 
 /**
  * @brief Dequeue message from MPSC ring (consumer, wait-free)
+ * 
+ * BUGFIX (Phase 4 - REVISED): Check per-slot ready flag before reading.
+ * 
+ * Previous Fix (PR #38) was STILL INCORRECT:
+ * - Consumer checked head vs tail to determine if message was available
+ * - But producer incremented head BEFORE writing message data
+ * - Consumer could read uninitialized data
+ * 
+ * Real Solution:
+ * 1. Check ready flag with acquire semantics (ensures we see all writes)
+ * 2. If not ready, return empty (message still being written)
+ * 3. Read message data only if ready flag is set
+ * 4. Clear ready flag after reading (relaxed semantics)
+ * 5. Increment tail to make slot available for reuse
  */
 static int mpsc_ring_dequeue(struct mpsc_ring *ring,
                              struct socket_message *msg)
@@ -160,24 +198,36 @@ static int mpsc_ring_dequeue(struct mpsc_ring *ring,
         return IPC_ERROR_INVALID;
     }
     
-    /* Load head and tail */
-    size_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
+    /* Load tail (single consumer, no CAS needed) */
     size_t tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
+    size_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
     
     /* Check if ring is empty */
     if (tail >= head) {
         return IPC_ERROR_EMPTY;
     }
     
-    /* Get message */
-    struct socket_message *src = &ring->messages[tail & ring->mask];
+    /* Calculate slot index */
+    size_t index = tail & ring->mask;
+    struct socket_message *src = &ring->messages[index];
+    
+    /* BUGFIX: Check if message is ready (fully initialized) with acquire semantics */
+    /* This ensures we see all writes to data/size/priority/etc */
+    if (!atomic_load_explicit(&src->ready, memory_order_acquire)) {
+        return IPC_ERROR_EMPTY;  /* Message not ready yet (still being written) */
+    }
+    
+    /* Read message data (safe now because ready flag is set) */
     *msg = *src;
     
-    /* Clear slot */
+    /* Clear the slot */
     src->data = NULL;
     src->size = 0;
     
-    /* Update tail (release semantics for producers) */
+    /* Clear ready flag (relaxed ordering is fine - we're the only consumer) */
+    atomic_store_explicit(&src->ready, false, memory_order_relaxed);
+    
+    /* Increment tail (make slot available for reuse) */
     atomic_store_explicit(&ring->tail, tail + 1, memory_order_release);
     
     return IPC_SUCCESS;
