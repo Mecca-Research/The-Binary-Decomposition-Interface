@@ -50,6 +50,11 @@
  * @brief Message structure
  * 
  * Represents a message in the socket queue.
+ * 
+ * BUGFIX (Phase 4): Added per-slot ready flag to control message visibility.
+ * The ready flag ensures that consumers only see fully initialized messages.
+ * Producer sets ready flag AFTER writing data (actual publication).
+ * Consumer checks ready flag BEFORE reading data.
  */
 struct socket_message {
     /* Message data pointer */
@@ -69,6 +74,12 @@ struct socket_message {
     
     /* Timestamp */
     uint64_t timestamp;
+    
+    /* Per-slot ready flag - true when message is fully initialized */
+    _Atomic bool ready;
+    
+    /* Padding for alignment */
+    uint8_t _pad2[7];
 } __attribute__((aligned(32)));
 
 /**
