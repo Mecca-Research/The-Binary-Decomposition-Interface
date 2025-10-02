@@ -10,6 +10,7 @@
 
 // External functions from fiber.c
 extern void fiber_set_current(fiber_t* fiber);
+extern void fiber_set_scheduler(void* scheduler);
 extern fiber_t* fiber_get_current(void);
 
 // Idle fiber entry point
@@ -174,8 +175,11 @@ void fiber_scheduler_yield(fiber_scheduler_t* scheduler) {
     
     fiber_t* current = scheduler->current_fiber;
     
-    // Put current fiber back in ready queue
-    enqueue_fiber(scheduler, current);
+    // BUG FIX 1 (P0): Only re-enqueue if fiber is not DEAD
+    // Dead fibers should not be rescheduled
+    if (current->state != FIBER_STATE_DEAD) {
+        enqueue_fiber(scheduler, current);
+    }
     
     // Get next fiber to run
     fiber_t* next = get_next_fiber(scheduler);
@@ -184,6 +188,7 @@ void fiber_scheduler_yield(fiber_scheduler_t* scheduler) {
     scheduler->current_fiber = next;
     next->state = FIBER_STATE_RUNNING;
     fiber_set_current(next);
+    fiber_set_scheduler(scheduler);
     
     scheduler->total_switches++;
     scheduler->total_yields++;
@@ -207,6 +212,7 @@ void fiber_scheduler_block(fiber_scheduler_t* scheduler, void* yield_value) {
     scheduler->current_fiber = next;
     next->state = FIBER_STATE_RUNNING;
     fiber_set_current(next);
+    fiber_set_scheduler(scheduler);
     
     scheduler->total_switches++;
     
@@ -241,6 +247,7 @@ void fiber_scheduler_run(fiber_scheduler_t* scheduler) {
     scheduler->current_fiber = next;
     next->state = FIBER_STATE_RUNNING;
     fiber_set_current(next);
+    fiber_set_scheduler(scheduler);
     
     // Jump to fiber (this will start the scheduler loop)
     // When fibers yield, they'll call fiber_scheduler_yield which switches context

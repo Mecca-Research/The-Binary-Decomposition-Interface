@@ -23,13 +23,22 @@ mpsc_ring_t* mpsc_ring_create(size_t capacity) {
     
     // Allocate ring structure + data array
     size_t total_size = sizeof(mpsc_ring_t) + capacity * sizeof(void*);
+    
+    // BUG FIX 3 (P1): Round total_size up to multiple of CACHE_LINE_SIZE
+    // C17 §7.22.3.1 requires size to be an integer multiple of alignment
+    total_size = ((total_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
+    
     mpsc_ring_t* ring = aligned_alloc(CACHE_LINE_SIZE, total_size);
     if (!ring) {
         return NULL;
     }
     
     // Allocate sequence array
-    ring->sequences = aligned_alloc(CACHE_LINE_SIZE, capacity * sizeof(atomic_size_t));
+    // BUG FIX 3 (P1): Round sequence array size up to multiple of CACHE_LINE_SIZE
+    size_t seq_size = capacity * sizeof(atomic_size_t);
+    seq_size = ((seq_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
+    
+    ring->sequences = aligned_alloc(CACHE_LINE_SIZE, seq_size);
     if (!ring->sequences) {
         free(ring);
         return NULL;
