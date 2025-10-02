@@ -87,6 +87,10 @@ static inline size_t mpsc_ring_pending(const struct mpsc_ring *ring)
 
 /**
  * @brief Enqueue message to MPSC ring (producer, lock-free)
+ * 
+ * BUGFIX (Phase 4): Use CAS loop to reserve slot, write message data FIRST,
+ * then publish. Previous code incremented head before writing message data,
+ * allowing consumer to read uninitialized data and causing crashes.
  */
 static int mpsc_ring_enqueue(struct mpsc_ring *ring,
                              const void *data,
@@ -98,34 +102,50 @@ static int mpsc_ring_enqueue(struct mpsc_ring *ring,
         return IPC_ERROR_INVALID;
     }
     
-    /* Atomically reserve slot (lock-free for multiple producers) */
-    size_t head = atomic_fetch_add_explicit(&ring->head, 1,
-                                           memory_order_acq_rel);
-    size_t tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
-    
-    /* Check if ring is full */
-    if (head - tail >= ring->capacity) {
-        /* Undo reservation */
-        atomic_fetch_sub_explicit(&ring->head, 1, memory_order_release);
-        return IPC_ERROR_FULL;
+    /* Use CAS loop to reserve a slot atomically */
+    size_t head;
+    while (1) {
+        head = atomic_load_explicit(&ring->head, memory_order_acquire);
+        size_t tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
+        
+        /* Check if ring is full */
+        if (head - tail >= ring->capacity) {
+            return IPC_ERROR_FULL;  /* Ring full */
+        }
+        
+        /* Try to atomically increment head (reserve slot) */
+        if (atomic_compare_exchange_weak_explicit(&ring->head, &head, head + 1,
+                                                   memory_order_acq_rel,
+                                                   memory_order_acquire)) {
+            /* Success! We reserved this slot */
+            break;
+        }
+        /* CAS failed, retry */
     }
     
     /* Allocate message data (zero-copy: store pointer) */
     void *msg_data = alloc_memory(size, 64);
     if (!msg_data) {
+        /* Failed to allocate - need to undo reservation */
         atomic_fetch_sub_explicit(&ring->head, 1, memory_order_release);
         return IPC_ERROR_NOMEM;
     }
     
     memcpy(msg_data, data, size);
     
-    /* Store message */
-    struct socket_message *msg = &ring->messages[head & ring->mask];
+    /* Calculate slot index using OLD head value (before increment) */
+    size_t index = head & ring->mask;
+    
+    /* Write message into slot - this is now safe because we reserved it */
+    struct socket_message *msg = &ring->messages[index];
     msg->data = msg_data;
     msg->size = size;
     msg->priority = priority;
     msg->sender_tid = sender_tid;
     msg->timestamp = 0; /* TODO: Get timestamp */
+    
+    /* Memory barrier to ensure writes are visible before consumer reads */
+    atomic_thread_fence(memory_order_release);
     
     return IPC_SUCCESS;
 }
