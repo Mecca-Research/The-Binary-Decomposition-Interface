@@ -473,3 +473,148 @@ void backend_get_dispatch_stats(void) {
     }
     printf("===================================\n\n");
 }
+
+// ============================================================================
+// Phase 9 Scheduler Integration
+// ============================================================================
+
+// External scheduler functions (to be linked with Phase 9)
+// extern int scheduler_register_device(int device_id, int device_type);
+// extern int scheduler_assign_work(int device_id, void* work);
+// extern int scheduler_steal_work(int from_device, int to_device);
+
+/**
+ * Register device with scheduler (Phase 9 integration)
+ */
+[[nodiscard]] int backend_register_with_scheduler(int device_id) {
+    if (device_id < 0 || device_id >= MAX_BACKEND_DEVICES) {
+        return -1;
+    }
+    
+    BackendDevice* dev = &dispatch_state.devices[device_id];
+    if (dev->device_id == -1) {
+        return -1;
+    }
+    
+    printf("BACKEND_DISPATCH: Registering device %d with scheduler\n", device_id);
+    
+    // In real implementation, call scheduler_register_device
+    // return scheduler_register_device(device_id, dev->type);
+    
+    return 0;
+}
+
+/**
+ * Implement work stealing across devices (Phase 9 integration)
+ */
+[[nodiscard]] int backend_steal_work(int from_device, int to_device) {
+    if (from_device < 0 || from_device >= MAX_BACKEND_DEVICES ||
+        to_device < 0 || to_device >= MAX_BACKEND_DEVICES) {
+        return -1;
+    }
+    
+    BackendDevice* from = &dispatch_state.devices[from_device];
+    BackendDevice* to = &dispatch_state.devices[to_device];
+    
+    if (from->device_id == -1 || to->device_id == -1) {
+        return -1;
+    }
+    
+    int from_workload = atomic_load(&from->workload);
+    int to_workload = atomic_load(&to->workload);
+    
+    // Only steal if source has significantly more work
+    if (from_workload > to_workload + 20) {
+        printf("BACKEND_DISPATCH: Stealing work from device %d to %d\n",
+               from_device, to_device);
+        
+        // Transfer some workload
+        backend_update_workload(from_device, -10);
+        backend_update_workload(to_device, 10);
+        
+        // In real implementation, call scheduler_steal_work
+        // return scheduler_steal_work(from_device, to_device);
+        
+        return 0;
+    }
+    
+    return -1; // No work to steal
+}
+
+/**
+ * Set device affinity for work (Phase 9 integration)
+ */
+[[nodiscard]] int backend_set_device_affinity(uint64_t work_id, int device_id) {
+    if (device_id < 0 || device_id >= MAX_BACKEND_DEVICES) {
+        return -1;
+    }
+    
+    printf("BACKEND_DISPATCH: Setting affinity for work %llu to device %d\n",
+           (unsigned long long)work_id, device_id);
+    
+    // In real implementation, update work affinity in scheduler
+    return 0;
+}
+
+// ============================================================================
+// Phase 7 Math Operations Integration
+// ============================================================================
+
+// External math operation functions (to be linked with Phase 7)
+// extern int math_vector_add_gpu(void* a, void* b, void* result, size_t n);
+// extern int math_matrix_mul_fpga(void* a, void* b, void* result, int m, int n, int k);
+
+/**
+ * Link math operations to GPU backend
+ */
+[[nodiscard]] int backend_math_gpu_vector_add(void* a, void* b, void* result, size_t n) {
+    printf("BACKEND_DISPATCH: Dispatching vector_add to GPU (n=%zu)\n", n);
+    
+    // Select GPU device
+    int device = backend_select_device(BACKEND_TYPE_GPU, CAPABILITY_COMPUTE, n * sizeof(float) * 3);
+    if (device < 0) {
+        return -1;
+    }
+    
+    // In real implementation, call GPU vector add
+    // return math_vector_add_gpu(a, b, result, n);
+    
+    return 0;
+}
+
+/**
+ * Link math operations to FPGA backend
+ */
+[[nodiscard]] int backend_math_fpga_matrix_mul(void* a, void* b, void* result, 
+                                               int m, int n, int k) {
+    printf("BACKEND_DISPATCH: Dispatching matrix_mul to FPGA (%dx%d * %dx%d)\n", m, n, n, k);
+    
+    // Select FPGA device
+    int device = backend_select_device(BACKEND_TYPE_FPGA, CAPABILITY_FIXED_FUNCTION, 
+                                      (m * n + n * k + m * k) * sizeof(float));
+    if (device < 0) {
+        return -1;
+    }
+    
+    // In real implementation, call FPGA matrix multiply
+    // return math_matrix_mul_fpga(a, b, result, m, n, k);
+    
+    return 0;
+}
+
+/**
+ * Automatic backend selection for math operations
+ */
+[[nodiscard]] int backend_math_auto_select(const char* operation, size_t data_size) {
+    printf("BACKEND_DISPATCH: Auto-selecting backend for %s (size=%zu)\n", 
+           operation, data_size);
+    
+    // Simple heuristic: GPU for large parallel ops, FPGA for fixed-function, BPU for simple ops
+    if (data_size > 1024 * 1024) {
+        return backend_select_device(BACKEND_TYPE_GPU, CAPABILITY_COMPUTE | CAPABILITY_PARALLEL, data_size);
+    } else if (data_size > 4096) {
+        return backend_select_device(BACKEND_TYPE_FPGA, CAPABILITY_FIXED_FUNCTION, data_size);
+    } else {
+        return backend_select_device(BACKEND_TYPE_BPU, CAPABILITY_COMPUTE, data_size);
+    }
+}
