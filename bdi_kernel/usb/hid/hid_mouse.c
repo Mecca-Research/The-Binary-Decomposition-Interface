@@ -372,4 +372,167 @@ void hid_mouse_cleanup(void) {
     g_device_count = 0;
     g_global_callback = nullptr;
     g_mouse_initialized = 0;
+
+
+// ===================================================================
+// Mouse Acceleration (Phase 12 Day 3)
+// ===================================================================
+
+#define MOUSE_ACCEL_THRESHOLD_LOW    2     // Low speed threshold
+#define MOUSE_ACCEL_THRESHOLD_HIGH   10    // High speed threshold
+#define MOUSE_ACCEL_FACTOR_LOW       1.0f  // No acceleration at low speed
+#define MOUSE_ACCEL_FACTOR_MED       1.5f  // 1.5x at medium speed
+#define MOUSE_ACCEL_FACTOR_HIGH      2.5f  // 2.5x at high speed
+
+typedef struct {
+    _Atomic bool enabled;
+    float sensitivity;
+    float threshold_low;
+    float threshold_high;
+} mouse_accel_config_t;
+
+static mouse_accel_config_t g_accel_config = {
+    .enabled = true,
+    .sensitivity = 1.0f,
+    .threshold_low = MOUSE_ACCEL_THRESHOLD_LOW,
+    .threshold_high = MOUSE_ACCEL_THRESHOLD_HIGH
+};
+
+/**
+ * Apply mouse acceleration curve
+ */
+void hid_mouse_apply_acceleration(int16_t *delta_x, int16_t *delta_y) {
+    if (!atomic_load_explicit(&g_accel_config.enabled, memory_order_acquire)) {
+        return;
+    }
+    
+    // Calculate movement magnitude
+    float magnitude = sqrtf((float)(*delta_x * *delta_x) + (float)(*delta_y * *delta_y));
+    
+    if (magnitude < 0.1f) {
+        return;  // No movement
+    }
+    
+    // Apply acceleration curve
+    float accel_factor = MOUSE_ACCEL_FACTOR_LOW;
+    
+    if (magnitude < g_accel_config.threshold_low) {
+        accel_factor = MOUSE_ACCEL_FACTOR_LOW;
+    } else if (magnitude < g_accel_config.threshold_high) {
+        // Linear interpolation between low and medium
+        float t = (magnitude - g_accel_config.threshold_low) / 
+                  (g_accel_config.threshold_high - g_accel_config.threshold_low);
+        accel_factor = MOUSE_ACCEL_FACTOR_LOW + 
+                      (MOUSE_ACCEL_FACTOR_MED - MOUSE_ACCEL_FACTOR_LOW) * t;
+    } else {
+        // Linear interpolation between medium and high
+        float t = (magnitude - g_accel_config.threshold_high) / 
+                  (magnitude - g_accel_config.threshold_high + 5.0f);
+        accel_factor = MOUSE_ACCEL_FACTOR_MED + 
+                      (MOUSE_ACCEL_FACTOR_HIGH - MOUSE_ACCEL_FACTOR_MED) * t;
+    }
+    
+    // Apply acceleration and sensitivity
+    accel_factor *= g_accel_config.sensitivity;
+    
+    *delta_x = (int16_t)((float)*delta_x * accel_factor);
+    *delta_y = (int16_t)((float)*delta_y * accel_factor);
+}
+
+/**
+ * Configure mouse acceleration
+ */
+void hid_mouse_set_acceleration(bool enabled, float sensitivity) {
+    atomic_store_explicit(&g_accel_config.enabled, enabled, memory_order_release);
+    g_accel_config.sensitivity = sensitivity;
+}
+
+/**
+ * Set acceleration thresholds
+ */
+void hid_mouse_set_accel_thresholds(float low, float high) {
+    g_accel_config.threshold_low = low;
+    g_accel_config.threshold_high = high;
+}
+
+// ===================================================================
+// Lock-Free Event Buffering (Phase 12 Day 3)
+// ===================================================================
+
+#define MOUSE_EVENT_BUFFER_SIZE 256
+
+typedef struct {
+    hid_mouse_event_t events[MOUSE_EVENT_BUFFER_SIZE];
+    _Atomic uint32_t head;
+    _Atomic uint32_t tail;
+    _Atomic uint32_t count;
+} mouse_event_buffer_t;
+
+static mouse_event_buffer_t g_mouse_event_buffer = {0};
+
+/**
+ * Initialize mouse event buffer
+ */
+void hid_mouse_init_event_buffer(void) {
+    atomic_store_explicit(&g_mouse_event_buffer.head, 0, memory_order_relaxed);
+    atomic_store_explicit(&g_mouse_event_buffer.tail, 0, memory_order_relaxed);
+    atomic_store_explicit(&g_mouse_event_buffer.count, 0, memory_order_relaxed);
+}
+
+/**
+ * Add event to buffer (lock-free)
+ */
+bool hid_mouse_buffer_event(hid_mouse_event_t *event) {
+    if (!event) return false;
+    
+    uint32_t head = atomic_load_explicit(&g_mouse_event_buffer.head, memory_order_acquire);
+    uint32_t next_head = (head + 1) % MOUSE_EVENT_BUFFER_SIZE;
+    
+    // Check if buffer is full
+    if (next_head == atomic_load_explicit(&g_mouse_event_buffer.tail, memory_order_acquire)) {
+        return false;  // Buffer full
+    }
+    
+    // Copy event
+    g_mouse_event_buffer.events[head] = *event;
+    
+    // Update head pointer
+    atomic_store_explicit(&g_mouse_event_buffer.head, next_head, memory_order_release);
+    atomic_fetch_add_explicit(&g_mouse_event_buffer.count, 1, memory_order_release);
+    
+    return true;
+}
+
+/**
+ * Get event from buffer (lock-free)
+ */
+bool hid_mouse_get_buffered_event(hid_mouse_event_t *event) {
+    if (!event) return false;
+    
+    uint32_t tail = atomic_load_explicit(&g_mouse_event_buffer.tail, memory_order_acquire);
+    
+    // Check if buffer is empty
+    if (tail == atomic_load_explicit(&g_mouse_event_buffer.head, memory_order_acquire)) {
+        return false;  // Buffer empty
+    }
+    
+    // Copy event
+    *event = g_mouse_event_buffer.events[tail];
+    
+    // Update tail pointer
+    uint32_t next_tail = (tail + 1) % MOUSE_EVENT_BUFFER_SIZE;
+    atomic_store_explicit(&g_mouse_event_buffer.tail, next_tail, memory_order_release);
+    atomic_fetch_sub_explicit(&g_mouse_event_buffer.count, 1, memory_order_release);
+    
+    return true;
+}
+
+/**
+ * Get buffered event count
+ */
+uint32_t hid_mouse_get_event_count(void) {
+    return atomic_load_explicit(&g_mouse_event_buffer.count, memory_order_acquire);
+}
+
+
 }
