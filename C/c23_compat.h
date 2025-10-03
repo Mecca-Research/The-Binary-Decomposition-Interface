@@ -2,7 +2,6 @@
 // C23 Compatibility Header
 // Provides C23 features for compilers with partial support
 
-#include "c23_compat.h"
 #ifndef BDI_C23_COMPAT_H
 #define BDI_C23_COMPAT_H
 
