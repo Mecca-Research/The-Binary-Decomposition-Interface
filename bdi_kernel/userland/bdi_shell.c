@@ -9,6 +9,9 @@
 #include <signal.h>
 #include <time.h>
 
+// Helper macro for safe iteration bounds
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 ShellState shell_state = {0};
 
 // C23: Use nullptr instead of NULL
@@ -71,7 +74,8 @@ void shell_cleanup(void) {
     shell_state.running = false;
     
     // Kill all background jobs
-    for (uint32_t i = 0; i < atomic_load(&shell_state.job_count); i++) {
+    uint32_t job_count = atomic_load(&shell_state.job_count);
+    for (uint32_t i = 0; i < MIN(job_count, SHELL_MAX_JOBS); i++) {
         if (shell_state.jobs[i].is_running) {
             kill(shell_state.jobs[i].pid, SIGTERM);
         }
@@ -157,19 +161,22 @@ int shell_launch_job(char** args, bool background) {
     } else if (pid > 0) {
         // Parent process
         if (background) {
-            // Add to job list
-            uint32_t job_count = atomic_load(&shell_state.job_count);
-            if (job_count < SHELL_MAX_JOBS) {
-                atomic_fetch_add(&shell_state.job_count, 1);
-                shell_state.jobs[job_count].job_id = job_count + 1;
-                shell_state.jobs[job_count].pid = pid;
-                strncpy(shell_state.jobs[job_count].command, args[0], 
+            // Add to job list - atomically reserve a slot
+            uint32_t slot = atomic_fetch_add(&shell_state.job_count, 1);
+            if (slot < SHELL_MAX_JOBS) {
+                // Slot is within bounds, use it
+                shell_state.jobs[slot].job_id = slot + 1;
+                shell_state.jobs[slot].pid = pid;
+                strncpy(shell_state.jobs[slot].command, args[0], 
                         SHELL_MAX_COMMAND_LENGTH - 1);
-                shell_state.jobs[job_count].is_background = true;
-                shell_state.jobs[job_count].is_running = true;
-                shell_state.jobs[job_count].is_stopped = false;
+                shell_state.jobs[slot].is_background = true;
+                shell_state.jobs[slot].is_running = true;
+                shell_state.jobs[slot].is_stopped = false;
                 
-                printf("[%u] %d\n", shell_state.jobs[job_count].job_id, pid);
+                printf("[%u] %d\n", shell_state.jobs[slot].job_id, pid);
+            } else {
+                // Slot exceeds array bounds, job cannot be tracked
+                fprintf(stderr, "bdi: warning: job limit reached, job %d not tracked\n", pid);
             }
         } else {
             // Wait for foreground job
@@ -186,7 +193,8 @@ int shell_launch_job(char** args, bool background) {
 
 int shell_fg(uint32_t job_id) {
     // Find job
-    for (uint32_t i = 0; i < atomic_load(&shell_state.job_count); i++) {
+    uint32_t job_count = atomic_load(&shell_state.job_count);
+    for (uint32_t i = 0; i < MIN(job_count, SHELL_MAX_JOBS); i++) {
         if (shell_state.jobs[i].job_id == job_id) {
             if (shell_state.jobs[i].is_stopped) {
                 // Resume stopped job
@@ -208,7 +216,8 @@ int shell_fg(uint32_t job_id) {
 
 int shell_bg(uint32_t job_id) {
     // Find job
-    for (uint32_t i = 0; i < atomic_load(&shell_state.job_count); i++) {
+    uint32_t job_count = atomic_load(&shell_state.job_count);
+    for (uint32_t i = 0; i < MIN(job_count, SHELL_MAX_JOBS); i++) {
         if (shell_state.jobs[i].job_id == job_id) {
             if (shell_state.jobs[i].is_stopped) {
                 // Resume stopped job in background
@@ -227,13 +236,14 @@ int shell_bg(uint32_t job_id) {
 
 void shell_list_jobs(void) {
     uint32_t count = atomic_load(&shell_state.job_count);
+    uint32_t safe_count = MIN(count, SHELL_MAX_JOBS);
     
-    if (count == 0) {
+    if (safe_count == 0) {
         printf("No jobs\n");
         return;
     }
     
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i = 0; i < safe_count; i++) {
         if (shell_state.jobs[i].is_running || shell_state.jobs[i].is_stopped) {
             printf("[%u] %s %d %s\n",
                    shell_state.jobs[i].job_id,
