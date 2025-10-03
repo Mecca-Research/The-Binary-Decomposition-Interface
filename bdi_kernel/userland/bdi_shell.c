@@ -158,8 +158,9 @@ int shell_launch_job(char** args, bool background) {
         // Parent process
         if (background) {
             // Add to job list
-            uint32_t job_count = atomic_fetch_add(&shell_state.job_count, 1);
+            uint32_t job_count = atomic_load(&shell_state.job_count);
             if (job_count < SHELL_MAX_JOBS) {
+                atomic_fetch_add(&shell_state.job_count, 1);
                 shell_state.jobs[job_count].job_id = job_count + 1;
                 shell_state.jobs[job_count].pid = pid;
                 strncpy(shell_state.jobs[job_count].command, args[0], 
