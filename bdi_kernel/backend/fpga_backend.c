@@ -226,3 +226,57 @@ void fpga_free_bitstream(FpgaBitstream* bitstream) {
 [[nodiscard]] FpgaDeviceState* fpga_get_state(void) {
     return &fpga_state;
 }
+
+// ============================================================================
+// FPGA Memory Management Integration
+// ============================================================================
+
+// External memory management functions
+extern void* backend_alloc(int device_id, size_t size, uint32_t flags);
+extern void backend_free(int device_id, void* ptr, size_t size);
+extern int backend_transfer_h2d_zerocopy(int device_id, void* device_ptr,
+                                        const void* host_ptr, size_t size);
+
+// Memory flags from backend_memory.c
+#define MEM_FLAG_ZERO_COPY (1 << 0)
+#define MEM_FLAG_UNIFIED (1 << 1)
+
+/**
+ * Allocate FPGA memory using unified memory manager
+ */
+[[nodiscard]] void* fpga_alloc_managed(size_t size_bytes, uint32_t flags) {
+    if (!atomic_load(&fpga_state.initialized)) {
+        return nullptr;
+    }
+    
+    // Use device 1 for FPGA (in real implementation, select actual FPGA device)
+    void* ptr = backend_alloc(1, size_bytes, flags);
+    if (ptr != nullptr) {
+        printf("FPGA_BACKEND: Managed alloc %zu bytes (flags=0x%x)\n", size_bytes, flags);
+    }
+    return ptr;
+}
+
+/**
+ * Free FPGA memory using unified memory manager
+ */
+void fpga_free_managed(void* device_ptr, size_t size_bytes) {
+    if (device_ptr == nullptr) {
+        return;
+    }
+    
+    backend_free(1, device_ptr, size_bytes);
+    printf("FPGA_BACKEND: Managed free %zu bytes\n", size_bytes);
+}
+
+/**
+ * Zero-copy transfer to FPGA
+ */
+[[nodiscard]] int fpga_transfer_zerocopy(void* fpga_dst, const void* host_src, size_t size_bytes) {
+    if (fpga_dst == nullptr || host_src == nullptr) {
+        return -1;
+    }
+    
+    printf("FPGA_BACKEND: Zero-copy transfer %zu bytes\n", size_bytes);
+    return backend_transfer_h2d_zerocopy(1, fpga_dst, host_src, size_bytes);
+}

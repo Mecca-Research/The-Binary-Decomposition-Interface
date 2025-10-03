@@ -191,3 +191,74 @@ void gpu_stream_destroy(GpuStream* stream) {
 [[nodiscard]] GpuDeviceState* gpu_get_state(void) {
     return &gpu_state;
 }
+
+// ============================================================================
+// GPU Memory Management Integration
+// ============================================================================
+
+// External memory management functions
+extern void* backend_alloc(int device_id, size_t size, uint32_t flags);
+extern void backend_free(int device_id, void* ptr, size_t size);
+extern int backend_transfer_h2d_zerocopy(int device_id, void* device_ptr,
+                                        const void* host_ptr, size_t size);
+extern int backend_transfer_d2h_zerocopy(int device_id, void* host_ptr,
+                                        const void* device_ptr, size_t size);
+
+// Memory flags from backend_memory.c
+#define MEM_FLAG_ZERO_COPY (1 << 0)
+#define MEM_FLAG_UNIFIED (1 << 1)
+#define MEM_FLAG_PINNED (1 << 2)
+
+/**
+ * Allocate GPU memory using unified memory manager
+ */
+[[nodiscard]] void* gpu_alloc_managed(size_t size_bytes, uint32_t flags) {
+    if (!atomic_load(&gpu_state.initialized)) {
+        return nullptr;
+    }
+    
+    // Use device 0 for GPU (in real implementation, select actual GPU device)
+    void* ptr = backend_alloc(0, size_bytes, flags);
+    if (ptr != nullptr) {
+        atomic_fetch_add(&gpu_state.mem_allocated, size_bytes);
+        printf("GPU_BACKEND: Managed alloc %zu bytes (flags=0x%x)\n", size_bytes, flags);
+    }
+    return ptr;
+}
+
+/**
+ * Free GPU memory using unified memory manager
+ */
+void gpu_free_managed(void* device_ptr, size_t size_bytes) {
+    if (device_ptr == nullptr) {
+        return;
+    }
+    
+    backend_free(0, device_ptr, size_bytes);
+    atomic_fetch_sub(&gpu_state.mem_allocated, size_bytes);
+    printf("GPU_BACKEND: Managed free %zu bytes\n", size_bytes);
+}
+
+/**
+ * Zero-copy transfer host to device
+ */
+[[nodiscard]] int gpu_memcpy_h2d_zerocopy(void* device_dst, const void* host_src, size_t size_bytes) {
+    if (device_dst == nullptr || host_src == nullptr) {
+        return -1;
+    }
+    
+    printf("GPU_BACKEND: Zero-copy H2D %zu bytes\n", size_bytes);
+    return backend_transfer_h2d_zerocopy(0, device_dst, host_src, size_bytes);
+}
+
+/**
+ * Zero-copy transfer device to host
+ */
+[[nodiscard]] int gpu_memcpy_d2h_zerocopy(void* host_dst, const void* device_src, size_t size_bytes) {
+    if (host_dst == nullptr || device_src == nullptr) {
+        return -1;
+    }
+    
+    printf("GPU_BACKEND: Zero-copy D2H %zu bytes\n", size_bytes);
+    return backend_transfer_d2h_zerocopy(0, host_dst, device_src, size_bytes);
+}
