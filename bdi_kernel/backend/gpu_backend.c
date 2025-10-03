@@ -22,7 +22,7 @@ typedef struct {
 
 #define MAX_GPU_ALLOCATIONS 1024
 static GpuAllocation gpu_allocations[MAX_GPU_ALLOCATIONS];
-static _Atomic uint32_t gpu_allocation_count = 0;
+static _Atomic uint32_t gpu_active_allocations = 0;  // Track active (not total) allocations
 
 // ============================================================================
 // Kernel Compilation Cache
@@ -247,7 +247,7 @@ static GpuDeviceState gpu_state = {
     atomic_store(&gpu_state.active_kernels, 0);
     
     // Initialize allocation tracking
-    atomic_store(&gpu_allocation_count, 0);
+    atomic_store(&gpu_active_allocations, 0);
     for (int i = 0; i < MAX_GPU_ALLOCATIONS; i++) {
         gpu_allocations[i].ptr = nullptr;
         gpu_allocations[i].size = 0;
@@ -320,10 +320,21 @@ void gpu_shutdown(void) {
         atomic_fetch_add(&gpu_state.mem_allocated, size_bytes);
         
         // Track allocation for proper memory accounting
-        uint32_t idx = atomic_fetch_add(&gpu_allocation_count, 1);
-        if (idx < MAX_GPU_ALLOCATIONS) {
-            gpu_allocations[idx].ptr = ptr;
-            gpu_allocations[idx].size = size_bytes;
+        // Find first available slot (reuse cleared slots)
+        bool tracked = false;
+        for (uint32_t i = 0; i < MAX_GPU_ALLOCATIONS; i++) {
+            if (gpu_allocations[i].ptr == nullptr) {
+                gpu_allocations[i].ptr = ptr;
+                gpu_allocations[i].size = size_bytes;
+                atomic_fetch_add(&gpu_active_allocations, 1);
+                tracked = true;
+                break;
+            }
+        }
+        
+        if (!tracked) {
+            printf("GPU_BACKEND: Warning - allocation tracking full (%u active), cannot track allocation of %zu bytes\n", 
+                   atomic_load(&gpu_active_allocations), size_bytes);
         }
         
         printf("GPU_BACKEND: Allocated %zu bytes on device (total: %zu).\n", 
@@ -338,15 +349,19 @@ void gpu_free(void* device_ptr) {
     }
     
     // Find allocation and decrement mem_allocated
-    uint32_t count = atomic_load(&gpu_allocation_count);
-    for (uint32_t i = 0; i < count && i < MAX_GPU_ALLOCATIONS; i++) {
+    for (uint32_t i = 0; i < MAX_GPU_ALLOCATIONS; i++) {
         if (gpu_allocations[i].ptr == device_ptr) {
             size_t size = gpu_allocations[i].size;
+            
+            // Decrement memory counter
             atomic_fetch_sub(&gpu_state.mem_allocated, size);
             
             // Clear entry
             gpu_allocations[i].ptr = nullptr;
             gpu_allocations[i].size = 0;
+            
+            // Decrement active allocation count
+            atomic_fetch_sub(&gpu_active_allocations, 1);
             
             printf("GPU_BACKEND: Freed %zu bytes (total: %zu).\n",
                    size, atomic_load(&gpu_state.mem_allocated));
