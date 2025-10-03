@@ -13,7 +13,9 @@ const char* decode_flag_state(uint8_t flags);
 
 
 // Compile-time invariants
-static_assert(sizeof(void*) >= 4, "BTL requires at least 32-bit pointers");
-static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+_Static_assert(sizeof(void*) >= 4, "BTL requires at least 32-bit pointers");
+_Static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
+#endif
 
 #endif // CHIMERA_BTL_H
