@@ -326,7 +326,11 @@ void fair_scheduler_tick_cfs(void* cfs_ptr, uint64_t current_time) {
     
     cfs_scheduler_t* cfs = (cfs_scheduler_t*)cfs_ptr;
     
-    /* Update vruntime for running tasks and requeue if time slice expired */
+    /* Temporary array to collect tasks that need requeueing */
+    node_sched_info_t* requeue_list[256];
+    uint32_t requeue_count = 0;
+    
+    /* Update vruntime for running tasks and collect those needing requeue */
     for (uint32_t i = 0; i < cfs->task_count; i++) {
         node_sched_info_t* task = cfs->tasks[i];
         if (task->is_running) {
@@ -335,14 +339,21 @@ void fair_scheduler_tick_cfs(void* cfs_ptr, uint64_t current_time) {
             
             /* Check if time slice expired (simplified: 10ms slice) */
             if (task->runtime >= 10000000) {
-                /* Time slice expired - mark as not running and requeue */
+                /* Time slice expired - mark as not running and collect for requeue */
                 task->is_running = false;
                 task->runtime = 0;
                 
-                /* Reinsert task in sorted order by vruntime */
-                cfs_requeue_task(cfs, task);
+                /* Add to requeue list instead of requeueing immediately */
+                if (requeue_count < 256) {
+                    requeue_list[requeue_count++] = task;
+                }
             }
         }
+    }
+    
+    /* Now requeue all collected tasks after iteration is complete */
+    for (uint32_t i = 0; i < requeue_count; i++) {
+        cfs_requeue_task(cfs, requeue_list[i]);
     }
 }
 

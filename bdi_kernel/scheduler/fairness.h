@@ -176,8 +176,8 @@ void* fair_scheduler_create_cfs(Scheduler* base);
 void fair_scheduler_destroy_cfs(void* cfs_ptr);
 NodeId fair_scheduler_pick_next_cfs(void* cfs_ptr);
 void fair_scheduler_tick_cfs(void* cfs_ptr, uint64_t current_time);
-int fair_scheduler_enqueue_cfs(void* cfs_ptr, NodeId node_id, int nice);
-int fair_scheduler_dequeue_cfs(void* cfs_ptr, NodeId node_id);
+int fair_scheduler_add_cfs_node(void* cfs_ptr, NodeId node_id, int32_t priority);
+int fair_scheduler_remove_cfs_node(void* cfs_ptr, NodeId node_id);
 
 /* ===================================================================
  * RT Scheduler API
@@ -186,8 +186,8 @@ void* fair_scheduler_create_rt(Scheduler* base);
 void fair_scheduler_destroy_rt(void* rt_ptr);
 NodeId fair_scheduler_pick_next_rt(void* rt_ptr);
 void fair_scheduler_tick_rt(void* rt_ptr, uint64_t current_time);
-int fair_scheduler_enqueue_rt(void* rt_ptr, NodeId node_id, int priority, int policy);
-int fair_scheduler_dequeue_rt(void* rt_ptr, NodeId node_id);
+int fair_scheduler_add_rt_node(void* rt_ptr, NodeId node_id, SchedPolicy policy, int32_t priority);
+int fair_scheduler_remove_rt_node(void* rt_ptr, NodeId node_id);
 
 /* ===================================================================
  * Deadline Scheduler API
@@ -196,7 +196,6 @@ void* fair_scheduler_create_deadline(Scheduler* base);
 void fair_scheduler_destroy_deadline(void* dl_ptr);
 NodeId fair_scheduler_pick_next_deadline(void* dl_ptr);
 void fair_scheduler_tick_deadline(void* dl_ptr, uint64_t current_time);
-int fair_scheduler_enqueue_deadline(void* dl_ptr, NodeId node_id, 
-                                    uint64_t runtime, uint64_t deadline, uint64_t period);
-int fair_scheduler_dequeue_deadline(void* dl_ptr, NodeId node_id);
+int fair_scheduler_add_dl_node(void* dl_ptr, NodeId node_id);
+int fair_scheduler_remove_dl_node(void* dl_ptr, NodeId node_id);
 #endif // AEON_FAIRNESS_H
