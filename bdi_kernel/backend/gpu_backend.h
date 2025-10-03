@@ -2,7 +2,7 @@
 // DESC: Defines the interface and data structures for
 //       interacting with a GPU, conceptually wrapping a framework
 //       like CUDA or ROCm.
-// PHASE 13: Modernized with C23 features
+// PHASE 13: Modernized with C23 features + Day 3 enhancements
 // ===================================================================
 #ifndef AEON_GPU_BACKEND_H
 #define AEON_GPU_BACKEND_H
@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "ham.h" // For HamRegion
 
 // C23 constexpr for device limits
@@ -18,19 +19,24 @@ constexpr int GPU_MAX_GRID_DIM = 65535;
 constexpr int GPU_MAX_BLOCK_DIM = 1024;
 constexpr int GPU_MAX_STREAMS = 32;
 
+// GPU Backend Types
+typedef enum {
+    GPU_BACKEND_CUDA = 0,
+    GPU_BACKEND_OPENCL = 1,
+    GPU_BACKEND_SIMULATION = 2
+} GpuBackendType;
+
 // --- GPU Kernel Representation ---
-// This struct represents a compiled GPU kernel ready for launch.
 typedef struct {
-    const char* kernel_name; // Name of the kernel function to launch
+    const char* kernel_name;
     int grid_dim_x;
     int grid_dim_y;
     int block_dim_x;
     int block_dim_y;
-    void* kernel_handle;     // Opaque handle to compiled kernel
-    uint64_t kernel_hash;    // Hash for caching
+    void* kernel_handle;
+    uint64_t kernel_hash;
 } GpuKernel;
 
-// Validate kernel structure size
 _Static_assert(sizeof(GpuKernel) <= 64, "GpuKernel structure too large");
 
 // --- GPU Stream for Asynchronous Execution ---
@@ -48,48 +54,58 @@ typedef struct {
     GpuStream streams[GPU_MAX_STREAMS];
 } GpuDeviceState;
 
-// --- GPU Backend API ---
-// This API represents the functions our GPU device will use.
-// In a real implementation, these would be wrappers around cudaMalloc,
-// cudaMemcpy, cuLaunchKernel, etc.
+// ============================================================================
+// Core GPU Functions
+// ============================================================================
 
-// Initializes the GPU device.
 [[nodiscard]] int gpu_init(void);
-
-// Frees all GPU resources.
 void gpu_shutdown(void);
-
-// Allocates memory on the GPU device.
 [[nodiscard]] void* gpu_alloc(size_t size_bytes);
-
-// Frees memory on the GPU device.
 void gpu_free(void* device_ptr);
-
-// Copies memory from Host (CPU) to Device (GPU).
 [[nodiscard]] int gpu_memcpy_h2d(void* device_dst, const void* host_src, size_t size_bytes);
-
-// Copies memory from Device (GPU) to Host (CPU).
 [[nodiscard]] int gpu_memcpy_d2h(void* host_dst, const void* device_src, size_t size_bytes);
 
-// Launches a kernel on the GPU.
+// ============================================================================
+// Kernel Launch Functions
+// ============================================================================
+
 [[nodiscard]] int gpu_launch_kernel(GpuKernel kernel, void** args);
-
-// Launches a kernel asynchronously on a specific stream.
 [[nodiscard]] int gpu_launch_kernel_async(GpuKernel kernel, void** args, GpuStream* stream);
-
-// Blocks until the GPU has finished all enqueued work.
+[[nodiscard]] int gpu_launch_kernel_async_callback(GpuKernel kernel, void** args, 
+                                                   GpuStream* stream,
+                                                   void (*callback)(int, void*),
+                                                   void* user_data);
 [[nodiscard]] int gpu_sync(void);
-
-// Synchronizes a specific stream.
 [[nodiscard]] int gpu_stream_sync(GpuStream* stream);
 
-// Creates a new GPU stream.
-[[nodiscard]] GpuStream* gpu_stream_create(int priority);
+// ============================================================================
+// Stream Management
+// ============================================================================
 
-// Destroys a GPU stream.
+[[nodiscard]] GpuStream* gpu_stream_create(int priority);
 void gpu_stream_destroy(GpuStream* stream);
 
-// Gets current device state.
+// ============================================================================
+// Backend Selection
+// ============================================================================
+
+[[nodiscard]] int gpu_select_backend(GpuBackendType type);
+
+// ============================================================================
+// Memory Management (Unified)
+// ============================================================================
+
+[[nodiscard]] void* gpu_alloc_managed(size_t size_bytes, uint32_t flags);
+void gpu_free_managed(void* device_ptr, size_t size_bytes);
+[[nodiscard]] int gpu_memcpy_h2d_zerocopy(void* device_dst, const void* host_src, size_t size_bytes);
+[[nodiscard]] int gpu_memcpy_d2h_zerocopy(void* host_dst, const void* device_src, size_t size_bytes);
+
+// ============================================================================
+// Statistics and Monitoring
+// ============================================================================
+
 [[nodiscard]] GpuDeviceState* gpu_get_state(void);
+void gpu_kernel_cache_stats(void);
+void gpu_print_statistics(void);
 
 #endif // AEON_GPU_BACKEND_H
