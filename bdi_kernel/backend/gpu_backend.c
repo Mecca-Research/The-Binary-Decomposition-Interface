@@ -320,21 +320,25 @@ void gpu_shutdown(void) {
         atomic_fetch_add(&gpu_state.mem_allocated, size_bytes);
         
         // Track allocation for proper memory accounting
-        // Find first available slot (reuse cleared slots)
+        // Find first available slot (reuse cleared slots) with atomic claim
         bool tracked = false;
         for (uint32_t i = 0; i < MAX_GPU_ALLOCATIONS; i++) {
-            if (gpu_allocations[i].ptr == nullptr) {
-                gpu_allocations[i].ptr = ptr;
+            // Try to atomically claim this slot using compare-exchange
+            void* expected = nullptr;
+            if (atomic_compare_exchange_strong((_Atomic(void*)*)&gpu_allocations[i].ptr, &expected, ptr)) {
+                // Successfully claimed slot i - only one thread can succeed
                 gpu_allocations[i].size = size_bytes;
                 atomic_fetch_add(&gpu_active_allocations, 1);
                 tracked = true;
                 break;
             }
+            // If CAS failed, slot was claimed by another thread, try next slot
         }
         
         if (!tracked) {
             printf("GPU_BACKEND: Warning - allocation tracking full (%u active), cannot track allocation of %zu bytes\n", 
                    atomic_load(&gpu_active_allocations), size_bytes);
+            // Still return the allocation, but it won't be tracked for mem_allocated accounting
         }
         
         printf("GPU_BACKEND: Allocated %zu bytes on device (total: %zu).\n", 
