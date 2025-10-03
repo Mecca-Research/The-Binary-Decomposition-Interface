@@ -2,6 +2,7 @@
 // ===================================================================
 // DESC: HID Keyboard driver implementation
 // ===================================================================
+// MODERNIZED: Phase 12 - C23 features (nullptr, [[nodiscard]], _Atomic)
 
 #include "hid_keyboard.h"
 #include <string.h>
@@ -44,7 +45,7 @@ const uint8_t hid_scancode_to_ascii_shift[256] = {
 
 // --- Keyboard Management ---
 
-int hid_keyboard_init(hid_keyboard_t* kbd, uint8_t slot_id, uint8_t ep_id, uint8_t interface_num) {
+[[nodiscard]] int hid_keyboard_init(hid_keyboard_t* kbd, uint8_t slot_id, uint8_t ep_id, uint8_t interface_num) {
     memset(kbd, 0, sizeof(hid_keyboard_t));
     
     kbd->slot_id = slot_id;
@@ -62,7 +63,7 @@ int hid_keyboard_init(hid_keyboard_t* kbd, uint8_t slot_id, uint8_t ep_id, uint8
     return 0;
 }
 
-int hid_keyboard_shutdown(hid_keyboard_t* kbd) {
+[[nodiscard]] int hid_keyboard_shutdown(hid_keyboard_t* kbd) {
     if (!kbd->initialized) {
         return 0;
     }
@@ -93,7 +94,7 @@ static void hid_keyboard_add_event(hid_keyboard_t* kbd, uint8_t scancode, bool p
     kbd->event_count++;
 }
 
-int hid_keyboard_process_report(hid_keyboard_t* kbd, const uint8_t* report_data, uint32_t length) {
+[[nodiscard]] int hid_keyboard_process_report(hid_keyboard_t* kbd, const uint8_t* report_data, uint32_t length) {
     if (!kbd->initialized || length < HID_KEYBOARD_REPORT_SIZE) {
         return -1;
     }
@@ -172,7 +173,7 @@ int hid_keyboard_process_report(hid_keyboard_t* kbd, const uint8_t* report_data,
     return 0;
 }
 
-int hid_keyboard_get_event(hid_keyboard_t* kbd, hid_key_event_t* event) {
+[[nodiscard]] int hid_keyboard_get_event(hid_keyboard_t* kbd, hid_key_event_t* event) {
     if (!kbd->initialized || kbd->event_count == 0) {
         return -1;
     }
@@ -184,13 +185,13 @@ int hid_keyboard_get_event(hid_keyboard_t* kbd, hid_key_event_t* event) {
     return 0;
 }
 
-bool hid_keyboard_has_events(hid_keyboard_t* kbd) {
+[[nodiscard]] bool hid_keyboard_has_events(hid_keyboard_t* kbd) {
     return kbd->initialized && kbd->event_count > 0;
 }
 
 // --- LED Control ---
 
-int hid_keyboard_set_leds(hid_keyboard_t* kbd, uint8_t led_state) {
+[[nodiscard]] int hid_keyboard_set_leds(hid_keyboard_t* kbd, uint8_t led_state) {
     if (!kbd->initialized) {
         return -1;
     }
@@ -204,13 +205,13 @@ int hid_keyboard_set_leds(hid_keyboard_t* kbd, uint8_t led_state) {
     return 0;
 }
 
-uint8_t hid_keyboard_get_leds(hid_keyboard_t* kbd) {
+[[nodiscard]] uint8_t hid_keyboard_get_leds(hid_keyboard_t* kbd) {
     return kbd->initialized ? kbd->led_state : 0;
 }
 
 // --- Utility Functions ---
 
-uint8_t hid_scancode_to_ascii(uint8_t scancode, bool shift, bool caps_lock) {
+[[nodiscard]] uint8_t hid_scancode_to_ascii(uint8_t scancode, bool shift, bool caps_lock) {
     if (scancode >= 256) {
         return 0;
     }
@@ -232,7 +233,7 @@ uint8_t hid_scancode_to_ascii(uint8_t scancode, bool shift, bool caps_lock) {
     return ascii;
 }
 
-bool hid_is_modifier_key(uint8_t scancode) {
+[[nodiscard]] bool hid_is_modifier_key(uint8_t scancode) {
     return (scancode >= HID_KEY_LEFT_CTRL && scancode <= HID_KEY_RIGHT_GUI);
 }
 
@@ -302,4 +303,116 @@ const char* hid_scancode_to_name(uint8_t scancode) {
         case HID_KEY_RIGHT_GUI: return "Right GUI";
         default: return "Unknown";
     }
+
+
+// ===================================================================
+// Key Repeat Handling (Phase 12 Day 3)
+// ===================================================================
+
+#define KEY_REPEAT_INITIAL_DELAY_MS  500   // 500ms initial delay
+#define KEY_REPEAT_RATE_MS           33    // 30 Hz repeat rate
+
+typedef struct {
+    uint8_t scancode;
+    uint64_t press_time;
+    uint64_t last_repeat_time;
+    bool repeating;
+} key_repeat_state_t;
+
+static key_repeat_state_t g_repeat_state = {0};
+static _Atomic bool g_repeat_enabled = true;
+
+/**
+ * Initialize key repeat handling
+ */
+void hid_keyboard_init_repeat(void) {
+    memset(&g_repeat_state, 0, sizeof(g_repeat_state));
+    atomic_store_explicit(&g_repeat_enabled, true, memory_order_release);
+}
+
+/**
+ * Process key repeat (called periodically)
+ */
+void hid_keyboard_process_repeat(hid_keyboard_t* kbd, uint64_t current_time_ms) {
+    if (!kbd || !atomic_load_explicit(&g_repeat_enabled, memory_order_acquire)) {
+        return;
+    }
+    
+    if (!g_repeat_state.repeating) {
+        return;
+    }
+    
+    uint64_t time_since_press = current_time_ms - g_repeat_state.press_time;
+    uint64_t time_since_repeat = current_time_ms - g_repeat_state.last_repeat_time;
+    
+    // Check if we should start repeating
+    if (!g_repeat_state.repeating && time_since_press >= KEY_REPEAT_INITIAL_DELAY_MS) {
+        g_repeat_state.repeating = true;
+        g_repeat_state.last_repeat_time = current_time_ms;
+        
+        // Generate repeat event
+        hid_key_event_t event = {
+            .scancode = g_repeat_state.scancode,
+            .pressed = true,
+            .modifiers = kbd->modifiers
+        };
+        
+        // Add to event buffer (lock-free)
+        uint32_t head = atomic_load_explicit(&kbd->event_head, memory_order_acquire);
+        uint32_t next_head = (head + 1) % HID_KEYBOARD_BUFFER_SIZE;
+        
+        if (next_head != atomic_load_explicit(&kbd->event_tail, memory_order_acquire)) {
+            kbd->event_buffer[head] = event;
+            atomic_store_explicit(&kbd->event_head, next_head, memory_order_release);
+            atomic_fetch_add_explicit(&kbd->event_count, 1, memory_order_release);
+        }
+    }
+    
+    // Check if we should continue repeating
+    if (g_repeat_state.repeating && time_since_repeat >= KEY_REPEAT_RATE_MS) {
+        g_repeat_state.last_repeat_time = current_time_ms;
+        
+        // Generate repeat event
+        hid_key_event_t event = {
+            .scancode = g_repeat_state.scancode,
+            .pressed = true,
+            .modifiers = kbd->modifiers
+        };
+        
+        // Add to event buffer (lock-free)
+        uint32_t head = atomic_load_explicit(&kbd->event_head, memory_order_acquire);
+        uint32_t next_head = (head + 1) % HID_KEYBOARD_BUFFER_SIZE;
+        
+        if (next_head != atomic_load_explicit(&kbd->event_tail, memory_order_acquire)) {
+            kbd->event_buffer[head] = event;
+            atomic_store_explicit(&kbd->event_head, next_head, memory_order_release);
+            atomic_fetch_add_explicit(&kbd->event_count, 1, memory_order_release);
+        }
+    }
+}
+
+/**
+ * Update key repeat state on key press
+ */
+void hid_keyboard_update_repeat(uint8_t scancode, bool pressed, uint64_t time_ms) {
+    if (pressed) {
+        g_repeat_state.scancode = scancode;
+        g_repeat_state.press_time = time_ms;
+        g_repeat_state.last_repeat_time = time_ms;
+        g_repeat_state.repeating = false;
+    } else {
+        if (g_repeat_state.scancode == scancode) {
+            g_repeat_state.repeating = false;
+        }
+    }
+}
+
+/**
+ * Enable/disable key repeat
+ */
+void hid_keyboard_set_repeat_enabled(bool enabled) {
+    atomic_store_explicit(&g_repeat_enabled, enabled, memory_order_release);
+}
+
+
 }

@@ -3,6 +3,7 @@
 // DESC: xHCI Command Ring implementation for BDI Kernel
 //       Handles xHCI command submission and completion
 // ===================================================================
+// MODERNIZED: Phase 12 - C23 features (nullptr, [[nodiscard]], _Atomic)
 
 #include <stdint.h>
 #include <string.h>
@@ -139,7 +140,7 @@ void xhci_cmd_cleanup(void);
 /**
  * Initialize command ring
  */
-int xhci_cmd_init(void *cmd_ring_mem, uint32_t cmd_ring_size, 
+[[nodiscard]] int xhci_cmd_init(void *cmd_ring_mem, uint32_t cmd_ring_size, 
                   void *event_ring_mem, uint32_t event_ring_size,
                   void *doorbell_reg, void *erdp_reg) {
     if (!cmd_ring_mem || !event_ring_mem || cmd_ring_size == 0 || event_ring_size == 0) {
@@ -179,7 +180,7 @@ int xhci_cmd_init(void *cmd_ring_mem, uint32_t cmd_ring_size,
 /**
  * Submit command TRB
  */
-int xhci_cmd_submit(xhci_trb_t *trb) {
+[[nodiscard]] int xhci_cmd_submit(xhci_trb_t *trb) {
     if (!g_cmd_initialized || !trb || !g_command_ring.running) {
         return -1;
     }
@@ -225,7 +226,7 @@ int xhci_cmd_submit(xhci_trb_t *trb) {
 /**
  * Wait for command completion
  */
-int xhci_cmd_wait_completion(uint32_t command_id, xhci_command_completion_t *completion) {
+[[nodiscard]] int xhci_cmd_wait_completion(uint32_t command_id, xhci_command_completion_t *completion) {
     if (!g_cmd_initialized || !completion) {
         return -1;
     }
@@ -257,7 +258,7 @@ int xhci_cmd_wait_completion(uint32_t command_id, xhci_command_completion_t *com
 /**
  * Enable Slot command
  */
-int xhci_cmd_enable_slot(uint32_t *slot_id) {
+[[nodiscard]] int xhci_cmd_enable_slot(uint32_t *slot_id) {
     if (!slot_id) {
         return -1;
     }
@@ -292,7 +293,7 @@ int xhci_cmd_enable_slot(uint32_t *slot_id) {
 /**
  * Disable Slot command
  */
-int xhci_cmd_disable_slot(uint32_t slot_id) {
+[[nodiscard]] int xhci_cmd_disable_slot(uint32_t slot_id) {
     if (slot_id == 0) {
         return -1;
     }
@@ -320,7 +321,7 @@ int xhci_cmd_disable_slot(uint32_t slot_id) {
 /**
  * Address Device command
  */
-int xhci_cmd_address_device(uint32_t slot_id, uint64_t input_context_ptr, uint8_t bsr) {
+[[nodiscard]] int xhci_cmd_address_device(uint32_t slot_id, uint64_t input_context_ptr, uint8_t bsr) {
     if (slot_id == 0 || input_context_ptr == 0) {
         return -1;
     }
@@ -352,7 +353,7 @@ int xhci_cmd_address_device(uint32_t slot_id, uint64_t input_context_ptr, uint8_
 /**
  * Configure Endpoint command
  */
-int xhci_cmd_configure_endpoint(uint32_t slot_id, uint64_t input_context_ptr) {
+[[nodiscard]] int xhci_cmd_configure_endpoint(uint32_t slot_id, uint64_t input_context_ptr) {
     if (slot_id == 0 || input_context_ptr == 0) {
         return -1;
     }
@@ -381,7 +382,7 @@ int xhci_cmd_configure_endpoint(uint32_t slot_id, uint64_t input_context_ptr) {
 /**
  * Reset Endpoint command
  */
-int xhci_cmd_reset_endpoint(uint32_t slot_id, uint32_t endpoint_id) {
+[[nodiscard]] int xhci_cmd_reset_endpoint(uint32_t slot_id, uint32_t endpoint_id) {
     if (slot_id == 0 || endpoint_id == 0) {
         return -1;
     }
@@ -410,7 +411,7 @@ int xhci_cmd_reset_endpoint(uint32_t slot_id, uint32_t endpoint_id) {
 /**
  * Stop Endpoint command
  */
-int xhci_cmd_stop_endpoint(uint32_t slot_id, uint32_t endpoint_id) {
+[[nodiscard]] int xhci_cmd_stop_endpoint(uint32_t slot_id, uint32_t endpoint_id) {
     if (slot_id == 0 || endpoint_id == 0) {
         return -1;
     }
@@ -439,7 +440,7 @@ int xhci_cmd_stop_endpoint(uint32_t slot_id, uint32_t endpoint_id) {
 /**
  * Set TR Dequeue Pointer command
  */
-int xhci_cmd_set_tr_dequeue_pointer(uint32_t slot_id, uint32_t endpoint_id, uint64_t dequeue_ptr) {
+[[nodiscard]] int xhci_cmd_set_tr_dequeue_pointer(uint32_t slot_id, uint32_t endpoint_id, uint64_t dequeue_ptr) {
     if (slot_id == 0 || endpoint_id == 0 || dequeue_ptr == 0) {
         return -1;
     }
@@ -469,7 +470,7 @@ int xhci_cmd_set_tr_dequeue_pointer(uint32_t slot_id, uint32_t endpoint_id, uint
 /**
  * No-Op command
  */
-int xhci_cmd_no_op(void) {
+[[nodiscard]] int xhci_cmd_no_op(void) {
     // Prepare No-Op TRB
     xhci_trb_t trb;
     memset(&trb, 0, sizeof(trb));
@@ -493,7 +494,7 @@ int xhci_cmd_no_op(void) {
 /**
  * Process event ring
  */
-int xhci_cmd_process_events(void) {
+[[nodiscard]] int xhci_cmd_process_events(void) {
     if (!g_cmd_initialized) {
         return -1;
     }
@@ -524,7 +525,7 @@ void xhci_cmd_ring_doorbell(void) {
 /**
  * Get command ring status
  */
-int xhci_cmd_get_ring_status(uint32_t *enqueue, uint32_t *dequeue, uint8_t *cycle_state) {
+[[nodiscard]] int xhci_cmd_get_ring_status(uint32_t *enqueue, uint32_t *dequeue, uint8_t *cycle_state) {
     if (!g_cmd_initialized) {
         return -1;
     }
@@ -545,7 +546,7 @@ int xhci_cmd_get_ring_status(uint32_t *enqueue, uint32_t *dequeue, uint8_t *cycl
 /**
  * Check if command ring is running
  */
-int xhci_cmd_is_running(void) {
+[[nodiscard]] int xhci_cmd_is_running(void) {
     return g_cmd_initialized && g_command_ring.running;
 }
 

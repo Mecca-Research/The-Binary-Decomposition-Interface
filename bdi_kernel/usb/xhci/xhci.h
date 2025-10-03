@@ -2,13 +2,12 @@
 // ===================================================================
 // DESC: xHCI USB host controller driver header
 //       Supporting USB 3.x, 2.0, and 1.x devices with ring structures
-// ===================================================================
+// MODERNIZED: Phase 12 - C23 features (nullptr, [[nodiscard]], _Atomic)
 #ifndef AEON_XHCI_H
 #define AEON_XHCI_H
-
 #include <stdint.h>
 #include <stdbool.h>
-
+#include <stdatomic.h>  // C23: Atomic operations
 // --- xHCI Register Offsets ---
 #define XHCI_CAP_CAPLENGTH      0x00    // Capability Register Length
 #define XHCI_CAP_HCIVERSION     0x02    // Interface Version Number
@@ -19,7 +18,6 @@
 #define XHCI_CAP_DBOFF          0x14    // Doorbell Offset
 #define XHCI_CAP_RTSOFF         0x18    // Runtime Register Space Offset
 #define XHCI_CAP_HCCPARAMS2     0x1C    // Capability Parameters 2
-
 // --- Operational Registers (Base + CAPLENGTH) ---
 #define XHCI_OP_USBCMD          0x00    // USB Command
 #define XHCI_OP_USBSTS          0x04    // USB Status
@@ -28,7 +26,6 @@
 #define XHCI_OP_CRCR            0x18    // Command Ring Control Register
 #define XHCI_OP_DCBAAP          0x30    // Device Context Base Address Array Pointer
 #define XHCI_OP_CONFIG          0x38    // Configure
-
 // --- USB Command Register Bits ---
 #define XHCI_CMD_RUN            (1 << 0)    // Run/Stop
 #define XHCI_CMD_HCRST          (1 << 1)    // Host Controller Reset
@@ -39,7 +36,6 @@
 #define XHCI_CMD_CRS            (1 << 9)    // Controller Restore State
 #define XHCI_CMD_EWE            (1 << 10)   // Enable Wrap Event
 #define XHCI_CMD_EU3S           (1 << 11)   // Enable U3 MFINDEX Stop
-
 // --- USB Status Register Bits ---
 #define XHCI_STS_HCH            (1 << 0)    // HC Halted
 #define XHCI_STS_HSE            (1 << 2)    // Host System Error
@@ -50,7 +46,6 @@
 #define XHCI_STS_SRE            (1 << 10)   // Save/Restore Error
 #define XHCI_STS_CNR            (1 << 11)   // Controller Not Ready
 #define XHCI_STS_HCE            (1 << 12)   // Host Controller Error
-
 // --- TRB Types ---
 #define TRB_TYPE_NORMAL         1
 #define TRB_TYPE_SETUP_STAGE    2
@@ -75,7 +70,6 @@
 #define TRB_TYPE_GET_PORT_BW    21
 #define TRB_TYPE_FORCE_HEADER   22
 #define TRB_TYPE_NO_OP_CMD      23
-
 // --- Event TRB Types ---
 #define TRB_TYPE_TRANSFER       32
 #define TRB_TYPE_CMD_COMPLETION 33
@@ -85,14 +79,14 @@
 #define TRB_TYPE_HOST_CTRL      37
 #define TRB_TYPE_DEVICE_NOTIFY  38
 #define TRB_TYPE_MFINDEX_WRAP   39
-
 // --- TRB Structure (16 bytes) ---
 typedef struct {
     uint64_t parameter;     // Parameter or data buffer pointer
     uint32_t status;        // Status field
     uint32_t control;       // Control field (includes type and cycle bit)
 } __attribute__((packed)) xhci_trb_t;
-
+// C23: Verify TRB structure is exactly 16 bytes
+_Static_assert(sizeof(xhci_trb_t) == 16, "xHCI TRB must be 16 bytes");
 // --- TRB Control Field Bits ---
 #define TRB_CYCLE_BIT           (1 << 0)
 #define TRB_ENT                 (1 << 1)    // Evaluate Next TRB
@@ -104,56 +98,45 @@ typedef struct {
 #define TRB_BEI                 (1 << 9)    // Block Event Interrupt
 #define TRB_TYPE_SHIFT          10
 #define TRB_TYPE_MASK           (0x3F << TRB_TYPE_SHIFT)
-
 // --- Ring Structures ---
-typedef struct {
     xhci_trb_t* trbs;       // TRB array
     uint32_t size;          // Number of TRBs
-    uint32_t enqueue;       // Enqueue pointer
-    uint32_t dequeue;       // Dequeue pointer
-    uint8_t cycle_state;    // Current cycle state
+    _Atomic uint32_t enqueue;       // Enqueue pointer
+    _Atomic uint32_t dequeue;       // Dequeue pointer
+    _Atomic uint8_t cycle_state;    // Current cycle state
     bool producer;          // True for command/transfer rings, false for event rings
 } xhci_ring_t;
-
 // --- Slot Context ---
-typedef struct {
     uint32_t dev_info;      // Device info
     uint32_t dev_info2;     // Device info 2
     uint32_t tt_info;       // TT Hub Slot ID and Port Number
     uint32_t dev_state;     // Device State
     uint32_t reserved[4];   // Reserved
 } __attribute__((packed)) xhci_slot_context_t;
-
+_Static_assert(sizeof(xhci_slot_context_t) == 32, "Slot context must be 32 bytes");
 // --- Endpoint Context ---
-typedef struct {
     uint32_t ep_info;       // Endpoint info
     uint32_t ep_info2;      // Endpoint info 2
     uint64_t dequeue_ptr;   // TR Dequeue Pointer
     uint32_t tx_info;       // Transfer info
     uint32_t reserved[3];   // Reserved
 } __attribute__((packed)) xhci_endpoint_context_t;
-
+_Static_assert(sizeof(xhci_endpoint_context_t) == 32, "Endpoint context must be 32 bytes");
 // --- Device Context ---
-typedef struct {
     xhci_slot_context_t slot;
     xhci_endpoint_context_t endpoints[31]; // EP0 to EP30
 } __attribute__((packed)) xhci_device_context_t;
-
 // --- Input Context ---
-typedef struct {
     uint32_t drop_flags;    // Drop Context flags
     uint32_t add_flags;     // Add Context flags
     uint32_t reserved[6];   // Reserved
-    xhci_slot_context_t slot;
     xhci_endpoint_context_t endpoints[31];
 } __attribute__((packed)) xhci_input_context_t;
-
 // --- Port Registers (Base + 0x400 + port * 0x10) ---
 #define XHCI_PORT_SC            0x00    // Port Status and Control
 #define XHCI_PORT_PMSC          0x04    // Port Power Management Status and Control
 #define XHCI_PORT_LI            0x08    // Port Link Info
 #define XHCI_PORT_HLC           0x0C    // Port Hardware LPM Control
-
 // --- Port Status and Control Bits ---
 #define XHCI_PORT_CCS           (1 << 0)    // Current Connect Status
 #define XHCI_PORT_PED           (1 << 1)    // Port Enabled/Disabled
@@ -177,9 +160,7 @@ typedef struct {
 #define XHCI_PORT_WOE           (1 << 27)   // Wake on Over-current Enable
 #define XHCI_PORT_DR            (1 << 30)   // Device Removable
 #define XHCI_PORT_WPR           (1 << 31)   // Warm Port Reset
-
 // --- USB Device Structure ---
-typedef struct {
     uint8_t slot_id;
     uint8_t port_num;
     uint8_t speed;
@@ -188,9 +169,7 @@ typedef struct {
     xhci_ring_t* ep_rings[31]; // Endpoint transfer rings
     bool configured;
 } xhci_device_t;
-
 // --- xHCI Controller Structure ---
-typedef struct {
     volatile uint8_t* mmio_base;
     volatile uint8_t* cap_regs;     // Capability registers
     volatile uint8_t* op_regs;      // Operational registers
@@ -204,87 +183,71 @@ typedef struct {
     uint32_t hcs_params2;
     uint32_t hcs_params3;
     uint32_t hcc_params1;
-    
     // Derived values
     uint8_t max_slots;
     uint8_t max_intrs;
     uint8_t max_ports;
     uint16_t max_scratchpad_bufs;
-    
     // Rings
     xhci_ring_t* command_ring;
     xhci_ring_t* event_ring;
-    
     // Device Context Base Address Array
     uint64_t* dcbaa;
-    
     // Connected devices
     xhci_device_t devices[256]; // Max 255 devices + slot 0
     uint8_t next_address;
-    
     // Scratchpad buffers
     void** scratchpad_bufs;
-    
     bool initialized;
 } xhci_controller_t;
-
 // --- Function Declarations ---
-
 // Controller management
-int xhci_init_controller(xhci_controller_t* ctrl, volatile uint8_t* mmio_base);
-int xhci_shutdown_controller(xhci_controller_t* ctrl);
-int xhci_reset_controller(xhci_controller_t* ctrl);
-int xhci_start_controller(xhci_controller_t* ctrl);
-int xhci_stop_controller(xhci_controller_t* ctrl);
-
+[[nodiscard]] int xhci_init_controller(xhci_controller_t* ctrl, volatile uint8_t* mmio_base);
+[[nodiscard]] int xhci_shutdown_controller(xhci_controller_t* ctrl);
+[[nodiscard]] int xhci_reset_controller(xhci_controller_t* ctrl);
+[[nodiscard]] int xhci_start_controller(xhci_controller_t* ctrl);
+[[nodiscard]] int xhci_stop_controller(xhci_controller_t* ctrl);
 // Ring management
-xhci_ring_t* xhci_create_ring(uint32_t size, bool producer);
+[[nodiscard]] xhci_ring_t* xhci_create_ring(uint32_t size, bool producer);
 void xhci_free_ring(xhci_ring_t* ring);
-int xhci_enqueue_trb(xhci_ring_t* ring, xhci_trb_t* trb);
-int xhci_dequeue_trb(xhci_ring_t* ring, xhci_trb_t* trb);
-
+[[nodiscard]] int xhci_enqueue_trb(xhci_ring_t* ring, xhci_trb_t* trb);
+[[nodiscard]] int xhci_dequeue_trb(xhci_ring_t* ring, xhci_trb_t* trb);
 // Command operations
-int xhci_send_command(xhci_controller_t* ctrl, xhci_trb_t* cmd_trb, xhci_trb_t* event_trb);
-int xhci_enable_slot(xhci_controller_t* ctrl, uint8_t* slot_id);
-int xhci_disable_slot(xhci_controller_t* ctrl, uint8_t slot_id);
-int xhci_address_device(xhci_controller_t* ctrl, uint8_t slot_id, bool bsr);
-int xhci_configure_endpoint(xhci_controller_t* ctrl, uint8_t slot_id);
-int xhci_reset_endpoint(xhci_controller_t* ctrl, uint8_t slot_id, uint8_t ep_id);
-
+[[nodiscard]] int xhci_send_command(xhci_controller_t* ctrl, xhci_trb_t* cmd_trb, xhci_trb_t* event_trb);
+[[nodiscard]] int xhci_enable_slot(xhci_controller_t* ctrl, uint8_t* slot_id);
+[[nodiscard]] int xhci_disable_slot(xhci_controller_t* ctrl, uint8_t slot_id);
+[[nodiscard]] int xhci_address_device(xhci_controller_t* ctrl, uint8_t slot_id, bool bsr);
+[[nodiscard]] int xhci_configure_endpoint(xhci_controller_t* ctrl, uint8_t slot_id);
+[[nodiscard]] int xhci_reset_endpoint(xhci_controller_t* ctrl, uint8_t slot_id, uint8_t ep_id);
 // Device management
-int xhci_setup_device(xhci_controller_t* ctrl, uint8_t port_num);
-int xhci_configure_device(xhci_controller_t* ctrl, uint8_t slot_id);
-xhci_device_t* xhci_get_device(xhci_controller_t* ctrl, uint8_t slot_id);
-
+[[nodiscard]] int xhci_setup_device(xhci_controller_t* ctrl, uint8_t port_num);
+[[nodiscard]] int xhci_configure_device(xhci_controller_t* ctrl, uint8_t slot_id);
+[[nodiscard]] xhci_device_t* xhci_get_device(xhci_controller_t* ctrl, uint8_t slot_id);
 // Transfer operations
-int xhci_control_transfer(xhci_controller_t* ctrl, uint8_t slot_id, 
+[[nodiscard]] int xhci_control_transfer(xhci_controller_t* ctrl, uint8_t slot_id, 
                          uint8_t request_type, uint8_t request, 
                          uint16_t value, uint16_t index, 
                          void* data, uint16_t length);
-int xhci_bulk_transfer(xhci_controller_t* ctrl, uint8_t slot_id, uint8_t ep_id,
+[[nodiscard]] int xhci_bulk_transfer(xhci_controller_t* ctrl, uint8_t slot_id, uint8_t ep_id,
                       void* data, uint32_t length, bool in);
-int xhci_interrupt_transfer(xhci_controller_t* ctrl, uint8_t slot_id, uint8_t ep_id,
+[[nodiscard]] int xhci_interrupt_transfer(xhci_controller_t* ctrl, uint8_t slot_id, uint8_t ep_id,
                            void* data, uint32_t length, bool in);
-
 // Port management
-int xhci_scan_ports(xhci_controller_t* ctrl);
-int xhci_reset_port(xhci_controller_t* ctrl, uint8_t port_num);
-uint32_t xhci_read_port_reg(xhci_controller_t* ctrl, uint8_t port_num, uint32_t offset);
+[[nodiscard]] int xhci_scan_ports(xhci_controller_t* ctrl);
+[[nodiscard]] int xhci_reset_port(xhci_controller_t* ctrl, uint8_t port_num);
+[[nodiscard]] uint32_t xhci_read_port_reg(xhci_controller_t* ctrl, uint8_t port_num, uint32_t offset);
 void xhci_write_port_reg(xhci_controller_t* ctrl, uint8_t port_num, uint32_t offset, uint32_t value);
-
 // Event handling
-int xhci_handle_events(xhci_controller_t* ctrl);
-int xhci_handle_port_status_event(xhci_controller_t* ctrl, xhci_trb_t* event);
-int xhci_handle_transfer_event(xhci_controller_t* ctrl, xhci_trb_t* event);
-int xhci_handle_command_completion(xhci_controller_t* ctrl, xhci_trb_t* event);
-
+[[nodiscard]] int xhci_handle_events(xhci_controller_t* ctrl);
+[[nodiscard]] int xhci_handle_port_status_event(xhci_controller_t* ctrl, xhci_trb_t* event);
+[[nodiscard]] int xhci_handle_transfer_event(xhci_controller_t* ctrl, xhci_trb_t* event);
+[[nodiscard]] int xhci_handle_command_completion(xhci_controller_t* ctrl, xhci_trb_t* event);
 // Utility functions
-uint32_t xhci_read_cap_reg32(xhci_controller_t* ctrl, uint32_t offset);
-uint32_t xhci_read_op_reg32(xhci_controller_t* ctrl, uint32_t offset);
+[[nodiscard]] uint32_t xhci_read_cap_reg32(xhci_controller_t* ctrl, uint32_t offset);
+[[nodiscard]] uint32_t xhci_read_op_reg32(xhci_controller_t* ctrl, uint32_t offset);
 void xhci_write_op_reg32(xhci_controller_t* ctrl, uint32_t offset, uint32_t value);
-uint64_t xhci_read_op_reg64(xhci_controller_t* ctrl, uint32_t offset);
+[[nodiscard]] uint64_t xhci_read_op_reg64(xhci_controller_t* ctrl, uint32_t offset);
 void xhci_write_op_reg64(xhci_controller_t* ctrl, uint32_t offset, uint64_t value);
-
 // Error codes
 #define XHCI_SUCCESS            0
 #define XHCI_ERROR_TIMEOUT      -1
@@ -293,5 +256,4 @@ void xhci_write_op_reg64(xhci_controller_t* ctrl, uint32_t offset, uint64_t valu
 #define XHCI_ERROR_IO           -4
 #define XHCI_ERROR_NOT_READY    -5
 #define XHCI_ERROR_STALL        -6
-
 #endif // AEON_XHCI_H
