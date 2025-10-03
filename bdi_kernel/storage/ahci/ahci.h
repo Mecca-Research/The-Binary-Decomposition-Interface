@@ -252,6 +252,17 @@ static const uint32_t AHCI_ZERO_COPY_THRESHOLD = (64 * 1024);
 // Cache Line Size
 static const uint32_t CACHE_LINE_SIZE = 64;
 
+// Physical Region Descriptor Table Entry
+#define AHCI_MAX_PRDT_ENTRIES 168  // Maximum PRDT entries per command
+
+typedef struct {
+    uint32_t dba;      // Data Base Address (lower 32 bits)
+    uint32_t dbau;     // Data Base Address Upper (upper 32 bits)
+    uint32_t reserved;
+    uint32_t dbc;      // Data Byte Count (bits 0-21)
+    uint32_t i;        // Interrupt on completion flag (bit 31)
+} __attribute__((packed)) ahci_prdt_entry_t;
+
 typedef struct {
     uint32_t port_num;
     volatile uint8_t* port_base;
@@ -261,6 +272,12 @@ typedef struct {
     bool device_present;
     uint64_t sectors;
     uint32_t sector_size;
+    
+    // Lock-free operation support
+    _Atomic uint32_t cmd_slots_used;   // Bitmap of used command slots
+    _Atomic uint32_t cmd_issue;        // Command issue register
+    _Atomic uint32_t sata_active;      // SATA active register
+    uint32_t max_slots;                // Maximum command slots (typically 32)
 } ahci_port_t;
 
 // --- Controller Structure ---

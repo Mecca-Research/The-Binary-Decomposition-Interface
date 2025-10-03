@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "nvme.h"  // For nvme_device_t, nvme_sq_t, nvme_command_t
 #include <stdlib.h>
 
 // NVMe I/O Command Opcodes

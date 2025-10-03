@@ -150,6 +150,8 @@ typedef struct {
     uint16_t command_id;    // Command identifier
     uint16_t status;        // Status field
 } __attribute__((packed)) nvme_completion_t;
+
+_Static_assert(sizeof(nvme_completion_t) == 16, "nvme_completion_t must be 16 bytes");
 // ===================================================================
 // C23 Modernization - Constexpr Constants
 // ===================================================================
@@ -172,43 +174,6 @@ static const uint32_t NVME_ZERO_COPY_THRESHOLD = (64 * 1024);  // 64KB
 // Cache Line Size for Alignment
 static const uint32_t CACHE_LINE_SIZE = 64;
 
-_Static_assert(sizeof(typedef struct {
-    uint32_t result;        // Command-specific result
-    uint32_t reserved;
-    uint16_t sq_head;       // Submission queue head pointer
-    uint16_t sq_id;         // Submission queue identifier
-    uint16_t command_id;    // Command identifier
-    uint16_t status;        // Status field
-// ===================================================================
-// C23 Modernization - Constexpr Constants
-// ===================================================================
-
-// NVMe Queue Sizes (const for compile-time constants)
-static const uint32_t NVME_ADMIN_QUEUE_SIZE = 64;
-static const uint32_t NVME_IO_QUEUE_SIZE = 1024;
-static const uint32_t NVME_MAX_IO_QUEUES = 128;
-static const uint32_t NVME_QUEUE_ALIGNMENT = 64;
-
-// NVMe Timeouts (in milliseconds)
-static const uint32_t NVME_ADMIN_TIMEOUT_MS = 5000;
-static const uint32_t NVME_IO_TIMEOUT_MS = 30000;
-static const uint32_t NVME_RESET_TIMEOUT_MS = 10000;
-
-// NVMe Transfer Sizes
-static const uint32_t NVME_MAX_TRANSFER_SIZE = (1024 * 1024);  // 1MB
-static const uint32_t NVME_ZERO_COPY_THRESHOLD = (64 * 1024);  // 64KB
-
-// Cache Line Size for Alignment
-static const uint32_t CACHE_LINE_SIZE = 64;
-
-} __attribute__((packed)) nvme_completion_t;) % 64 == 0, "typedef struct {
-    uint32_t result;        // Command-specific result
-    uint32_t reserved;
-    uint16_t sq_head;       // Submission queue head pointer
-    uint16_t sq_id;         // Submission queue identifier
-    uint16_t command_id;    // Command identifier
-    uint16_t status;        // Status field
-} __attribute__((packed)) nvme_completion_t; must be cache-aligned");
 
 // Queue structures
 // ===================================================================
