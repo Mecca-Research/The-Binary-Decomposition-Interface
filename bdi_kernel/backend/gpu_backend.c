@@ -16,8 +16,8 @@
 
 // Allocation metadata for tracking sizes
 typedef struct {
-    void* ptr;
-    size_t size;
+    _Atomic(void*) ptr;      // Atomic pointer for thread-safe CAS
+    _Atomic(size_t) size;    // Atomic size for thread-safe access
 } GpuAllocation;
 
 #define MAX_GPU_ALLOCATIONS 1024
@@ -249,8 +249,8 @@ static GpuDeviceState gpu_state = {
     // Initialize allocation tracking
     atomic_store(&gpu_active_allocations, 0);
     for (int i = 0; i < MAX_GPU_ALLOCATIONS; i++) {
-        gpu_allocations[i].ptr = nullptr;
-        gpu_allocations[i].size = 0;
+        atomic_store(&gpu_allocations[i].ptr, nullptr);
+        atomic_store(&gpu_allocations[i].size, 0);
     }
     
     // Initialize streams
@@ -325,9 +325,10 @@ void gpu_shutdown(void) {
         for (uint32_t i = 0; i < MAX_GPU_ALLOCATIONS; i++) {
             // Try to atomically claim this slot using compare-exchange
             void* expected = nullptr;
-            if (atomic_compare_exchange_strong((_Atomic(void*)*)&gpu_allocations[i].ptr, &expected, ptr)) {
+            if (atomic_compare_exchange_strong(&gpu_allocations[i].ptr, &expected, ptr)) {
                 // Successfully claimed slot i - only one thread can succeed
-                gpu_allocations[i].size = size_bytes;
+                // Use atomic store for size to ensure visibility across threads
+                atomic_store(&gpu_allocations[i].size, size_bytes);
                 atomic_fetch_add(&gpu_active_allocations, 1);
                 tracked = true;
                 break;
@@ -354,15 +355,18 @@ void gpu_free(void* device_ptr) {
     
     // Find allocation and decrement mem_allocated
     for (uint32_t i = 0; i < MAX_GPU_ALLOCATIONS; i++) {
-        if (gpu_allocations[i].ptr == device_ptr) {
-            size_t size = gpu_allocations[i].size;
+        // Use atomic load to read the pointer
+        void* slot_ptr = atomic_load(&gpu_allocations[i].ptr);
+        if (slot_ptr == device_ptr) {
+            // Use atomic load to read the size
+            size_t size = atomic_load(&gpu_allocations[i].size);
             
             // Decrement memory counter
             atomic_fetch_sub(&gpu_state.mem_allocated, size);
             
-            // Clear entry
-            gpu_allocations[i].ptr = nullptr;
-            gpu_allocations[i].size = 0;
+            // Clear entry atomically (makes slot available for reuse)
+            atomic_store(&gpu_allocations[i].ptr, nullptr);
+            atomic_store(&gpu_allocations[i].size, 0);
             
             // Decrement active allocation count
             atomic_fetch_sub(&gpu_active_allocations, 1);
