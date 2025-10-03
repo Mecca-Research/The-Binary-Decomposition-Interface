@@ -259,7 +259,8 @@ typedef struct {
     uint32_t dba;      // Data Base Address (lower 32 bits)
     uint32_t dbau;     // Data Base Address Upper (upper 32 bits)
     uint32_t reserved;
-    uint32_t dbc;      // Data Byte Count (bits 0-21), I flag (bit 31)
+    uint32_t dbc;      // Data Byte Count (bits 0-21)
+    uint32_t i;        // Interrupt on completion flag (bit 31)
 } __attribute__((packed)) ahci_prdt_entry_t;
 
 typedef struct {
