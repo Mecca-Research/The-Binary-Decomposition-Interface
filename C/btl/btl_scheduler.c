@@ -10,6 +10,7 @@ struct BTL_Scheduler {
     BTL_DependencyGraph graph;
     uint32_t *schedule;
     size_t schedule_count;
+    size_t schedule_capacity;
     uint32_t critical_path_length;
 };
 
@@ -34,6 +35,7 @@ BTL_Scheduler* btl_scheduler_create(void) {
     }
     
     scheduler->schedule_count = 0;
+    scheduler->schedule_capacity = INITIAL_CAPACITY;
     scheduler->critical_path_length = 0;
     
     return scheduler;
@@ -248,6 +250,19 @@ bool btl_scheduler_schedule(BTL_Scheduler *scheduler) {
         }
         
         BTL_InstructionNode *node = ready[best_idx];
+        
+        // Expand schedule capacity if needed
+        if (scheduler->schedule_count >= scheduler->schedule_capacity) {
+            size_t new_capacity = scheduler->schedule_capacity * 2;
+            uint32_t *new_schedule = realloc(scheduler->schedule,
+                                             new_capacity * sizeof(uint32_t));
+            if (!new_schedule) {
+                free(ready);
+                return false;
+            }
+            scheduler->schedule = new_schedule;
+            scheduler->schedule_capacity = new_capacity;
+        }
         
         // Schedule the instruction
         node->scheduled = true;
