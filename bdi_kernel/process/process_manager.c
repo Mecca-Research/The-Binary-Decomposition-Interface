@@ -150,20 +150,11 @@ void pcb_free(ProcessControlBlock *pcb) {
         return;
     }
     
-    /* Free memory regions */
-    MemoryRegion *region = pcb->memory_regions;
-    while (region != nullptr) {
-        MemoryRegion *next = region->next;
-        
-        /* Decrement reference count */
-        uint32_t refs = atomic_fetch_sub(&region->ref_count, 1) - 1;
-        if (refs == 0) {
-            /* Free the region */
-            free_memory(region->base, region->size);
-            FREE(region, MemoryRegion);
-        }
-        
-        region = next;
+    /* Free memory regions using proper COW refcount handling */
+    while (pcb->memory_regions != nullptr) {
+        MemoryRegion *region = pcb->memory_regions;
+        pcb->memory_regions = region->next;
+        free_memory_region(region);
     }
     
     /* Free file descriptor table */
