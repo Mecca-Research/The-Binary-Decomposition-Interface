@@ -151,7 +151,7 @@ typedef struct {
     uint16_t status;        // Status field
 } __attribute__((packed)) nvme_completion_t;
 
-_Static_assert(sizeof(nvme_completion_t) % 64 == 0, "nvme_completion_t must be cache-aligned");
+_Static_assert(sizeof(nvme_completion_t) == 16, "nvme_completion_t must be 16 bytes");
 // ===================================================================
 // C23 Modernization - Constexpr Constants
 // ===================================================================
