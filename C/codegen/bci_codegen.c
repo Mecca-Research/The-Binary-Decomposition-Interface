@@ -2,6 +2,7 @@
 // DESC: Implementation of the Code Generator.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "bci_codegen.h"
 #include <stdio.h>
 #include <stdlib.h>

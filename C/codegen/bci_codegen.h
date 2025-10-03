@@ -5,6 +5,7 @@
 #ifndef BCI_CODEGEN_H
 #define BCI_CODEGEN_H
 
+#include "c23_compat.h"
 #include "bci_ast.h"
 #include "bci_chunk.h"
 #include <stdbool.h>
@@ -30,5 +31,10 @@ void codegen_free(CodeGenerator* codegen);
 // Returns true on success, false if an error occurred.
 bool codegen_generate(CodeGenerator* codegen, AstNode* program);
 
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Codegen requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // BCI_CODEGEN_H

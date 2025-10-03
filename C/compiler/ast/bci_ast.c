@@ -2,6 +2,7 @@
 // DESC: Implementation of AST node management functions.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "bci_ast.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -12,7 +13,7 @@ AstNode* ast_new_node(AstNodeKind kind) {
     AstNode* node = calloc(1, sizeof(AstNode)); // calloc initializes to zero
     if (!node) {
         perror("Failed to allocate AstNode");
-        return NULL;
+        return nullptr;
     }
     node->kind = kind;
     return node;
@@ -65,15 +66,15 @@ void ast_free_node(AstNode* node) {
 
 AstNode* ast_new_literal_int(int64_t value) {
     AstNode* node = ast_new_node(AST_NODE_LITERAL);
-    if (!node) return NULL;
-    node->as.literal.type = NULL; // Type will be set during semantic analysis
+    if (!node) return nullptr;
+    node->as.literal.type = nullptr; // Type will be set during semantic analysis
     node->as.literal.value.i64 = value;
     return node;
 }
 
 AstNode* ast_new_binary_op(const char* op, AstNode* left, AstNode* right) {
     AstNode* node = ast_new_node(AST_NODE_BINARY_OP);
-    if (!node) return NULL;
+    if (!node) return nullptr;
     node->as.binary_op.op = op;
     node->as.binary_op.left = left;
     node->as.binary_op.right = right;
@@ -82,12 +83,12 @@ AstNode* ast_new_binary_op(const char* op, AstNode* left, AstNode* right) {
 
 AstNode* ast_new_program() {
     AstNode* node = ast_new_node(AST_NODE_PROGRAM);
-    if (!node) return NULL;
+    if (!node) return nullptr;
     node->as.block = malloc(sizeof(AstBlock));
     if (!node->as.block) {
         perror("Failed to allocate AstBlock for program");
         free(node);
-        return NULL;
+        return nullptr;
     }
     bci_vec_init(node->as.block);
     return node;

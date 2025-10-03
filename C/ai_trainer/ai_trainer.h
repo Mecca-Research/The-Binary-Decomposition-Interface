@@ -5,6 +5,7 @@
 #ifndef AI_TRAINER_H
 #define AI_TRAINER_H
 
+#include "c23_compat.h"
 #include "ai_trainer_types.h"
 
 // --- AI Trainer Structure ---
@@ -25,5 +26,11 @@ void ai_trainer_free(AITrainer* trainer);
 // Runs the main training loop, processing the rules in the curriculum.
 void ai_trainer_run(AITrainer* trainer);
 
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "AI Trainer requires at least 32-bit pointers");
+static_assert(sizeof(float) == 4, "float must be 4 bytes");
+static_assert(sizeof(double) == 8, "double must be 8 bytes");
 
 #endif // AI_TRAINER_H

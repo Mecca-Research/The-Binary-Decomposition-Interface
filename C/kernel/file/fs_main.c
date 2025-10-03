@@ -1,6 +1,7 @@
 // ===================================================================
 // DESC: Implements the main file system logic (inodes, lookups, etc.).
 // ===================================================================
+#include "c23_compat.h"
 #include "fs.h"
 #include <stdio.h>
 
@@ -9,7 +10,7 @@ void log_init();
 void bcache_init();
 void log_commit();
 void log_write();
-void* bcache_get(uint32_t blockno);
+[[nodiscard]] void* bcache_get(uint32_t blockno);
 
 void fs_init() {
     log_init();

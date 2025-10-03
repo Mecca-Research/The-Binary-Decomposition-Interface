@@ -2,6 +2,7 @@
 // DESC: Implements the core logic for the ProcessManager.bdi service,
 //       handling fork, exit, and wait operations.
 // ===================================================================
+#include "c23_compat.h"
 #include "process.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,7 +20,7 @@ void process_manager_init() {
 // Conceptual implementation of the fork service operation.
 ProcessId proc_fork(ProcessId parent_pid) {
     // 1. Find an unused PCB in the process table.
-    ProcessControlBlock* pcb = NULL;
+    ProcessControlBlock* pcb = nullptr;
     for (int i = 0; i < MAX_PROCESSES; i++) {
         if (process_table[i].state == PROC_UNUSED) {
             pcb = &process_table[i];

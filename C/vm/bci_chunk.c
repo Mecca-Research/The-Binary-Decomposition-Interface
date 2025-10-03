@@ -2,6 +2,7 @@
 // DESC: Implementation of the Chunk for storing bytecode.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "bci_chunk.h"
 #include <stdlib.h>
 
@@ -10,8 +11,8 @@
 void chunk_init(Chunk* chunk) {
     chunk->count = 0;
     chunk->capacity = 0;
-    chunk->code = NULL;
-    chunk->lines = NULL;
+    chunk->code = nullptr;
+    chunk->lines = nullptr;
     bci_vec_init(&chunk->constants);
 }
 
@@ -28,7 +29,7 @@ void chunk_write(Chunk* chunk, uint8_t byte, int line) {
         chunk->capacity = old_capacity < 8 ? 8 : old_capacity * 2;
         chunk->code = realloc(chunk->code, chunk->capacity * sizeof(uint8_t));
         chunk->lines = realloc(chunk->lines, chunk->capacity * sizeof(int));
-        // Note: In a real-world application, check if realloc returned NULL
+        // Note: In a real-world application, check if realloc returned nullptr
     }
 
     chunk->code[chunk->count] = byte;

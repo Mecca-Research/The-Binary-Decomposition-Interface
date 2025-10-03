@@ -2,6 +2,7 @@
 // DESC: Implementation of the Parser.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "bci_parser.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -86,7 +87,7 @@ static AstNode* primary(Parser* parser) {
     if (match(parser, TOKEN_NIL)) return ast_new_literal_int(0); // Or a specific nil type
 
     if (match(parser, TOKEN_INT_LITERAL)) {
-        long long value = strtoll(parser->previous.start, NULL, 10);
+        long long value = strtoll(parser->previous.start, nullptr, 10);
         return ast_new_literal_int(value);
     }
     
@@ -94,7 +95,7 @@ static AstNode* primary(Parser* parser) {
         // Note: ast_new_literal_int is a placeholder. A proper AST would have
         // AstNode* ast_new_literal_float(double value);
         // For now, we will truncate.
-        double value = strtod(parser->previous.start, NULL);
+        double value = strtod(parser->previous.start, nullptr);
         return ast_new_literal_int((int64_t)value);
     }
 
@@ -105,7 +106,7 @@ static AstNode* primary(Parser* parser) {
     }
 
     error(parser, "Expect expression.");
-    return NULL;
+    return nullptr;
 }
 
 
@@ -115,7 +116,7 @@ static AstNode* unary(Parser* parser) {
         const char* op = parser->previous.kind == TOKEN_BANG ? "!" : "-";
         AstNode* right = unary(parser);
         // A proper AST would have ast_new_unary_op. We'll reuse binary for now.
-        return ast_new_binary_op(op, NULL, right);
+        return ast_new_binary_op(op, nullptr, right);
     }
     return primary(parser);
 }
@@ -202,9 +203,11 @@ static void synchronize(Parser* parser) {
         switch (parser->current.kind) {
             case TOKEN_CLASS:
             case TOKEN_FUN:
+        [[fallthrough]];
             case TOKEN_VAR:
             case TOKEN_FOR:
             case TOKEN_IF:
+        [[fallthrough]];
             case TOKEN_WHILE:
             case TOKEN_PRINT:
             case TOKEN_RETURN:
@@ -232,7 +235,7 @@ void parser_free(Parser* parser) {
 
 AstNode* parser_parse(Parser* parser) {
     AstNode* program = ast_new_program();
-    if (!program) return NULL;
+    if (!program) return nullptr;
 
     while (!match(parser, TOKEN_EOF)) {
         AstNode* decl = declaration(parser);
@@ -242,5 +245,5 @@ AstNode* parser_parse(Parser* parser) {
         if (parser->panic_mode) synchronize(parser);
     }
 
-    return parser->had_error ? NULL : program;
+    return parser->had_error ? nullptr : program;
 }

@@ -5,6 +5,7 @@
 #ifndef BCI_ANALYZER_H
 #define BCI_ANALYZER_H
 
+#include "c23_compat.h"
 #include "bci_ast.h"
 #include "bci_symbol.h"
 #include <stdbool.h>
@@ -29,5 +30,10 @@ void analyzer_free(Analyzer* analyzer);
 // AST, performs all semantic checks, and annotates the AST with type
 // information. Returns true if the program is semantically valid.
 bool analyzer_analyze(Analyzer* analyzer, AstNode* program);
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Analyzer requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // BCI_ANALYZER_H

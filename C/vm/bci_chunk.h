@@ -5,6 +5,7 @@
 #ifndef BCI_CHUNK_H
 #define BCI_CHUNK_H
 
+#include "c23_compat.h"
 #include "bci_types.h"
 
 // --- Opcode Enumeration ---
@@ -48,5 +49,10 @@ void chunk_write(Chunk* chunk, uint8_t byte, int line);
 
 // Adds a constant to the chunk's constant pool and returns its index.
 int chunk_add_constant(Chunk* chunk, double value);
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Chunk requires at least 32-bit pointers");
+static_assert(sizeof(uint8_t) == 1, "uint8_t must be 1 byte");
 
 #endif // BCI_CHUNK_H

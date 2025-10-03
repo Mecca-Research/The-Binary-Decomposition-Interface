@@ -5,6 +5,7 @@
 #ifndef AEON_SCHEDULER_H
 #define AEON_SCHEDULER_H
 
+#include "c23_compat.h"
 #include "graph.h"
 #include "device.h"
 
@@ -27,11 +28,16 @@ typedef struct {
 } Scheduler;
 
 // --- Scheduler API ---
-Scheduler* aeon_scheduler_create(BdiGraph* g, DeviceVTable** devices, size_t dev_count);
+[[nodiscard]] Scheduler* aeon_scheduler_create(BdiGraph* g, DeviceVTable** devices, size_t dev_count);
 void aeon_scheduler_free(Scheduler* sched);
 // Sets the security policy for the scheduler.
 void aeon_scheduler_set_policy(Scheduler* sched, SecurityPolicy policy);
 // Runs the scheduler for a single wave of execution.
 int aeon_scheduler_run_wave(Scheduler* sched);
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Scheduler requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // AEON_SCHEDULER_H

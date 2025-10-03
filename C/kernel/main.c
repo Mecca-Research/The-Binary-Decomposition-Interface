@@ -10,6 +10,7 @@
 //       - Persistence of learned state to an archive.
 // ===================================================================
 
+#include "c23_compat.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -62,7 +63,7 @@ uint64_t aeon_read(int fd, void* buf, size_t count) {
     printf("AEON_API: Intercepted aeon_read(fd=%d, count=%zu).\n", fd, count);
     // Conceptually, this traps to the kernel, which executes the FileSystem.bdi graph.
     // The FS graph would then call its internal fs_read function.
-    fs_read(NULL, (char*)buf, 0, count); // Simulate call to FS logic
+    fs_read(nullptr, (char*)buf, 0, count); // Simulate call to FS logic
     return count;
 }
 uint64_t aeon_fork() {
@@ -87,7 +88,7 @@ int main(void) {
     // =================================================================
     // 1. Full System Initialization (Kernel Boot)
     // =================================================================
-    DeviceVTable* devices[] = {NULL, &CPU_DEVICE_IMPL, &GPU_DEVICE_IMPL, &BPU_DEVICE_IMPL, &FPGA_DEVICE_IMPL};
+    DeviceVTable* devices[] = {nullptr, &CPU_DEVICE_IMPL, &GPU_DEVICE_IMPL, &BPU_DEVICE_IMPL, &FPGA_DEVICE_IMPL};
     assert(gpu_init() == 0);
     assert(fpga_init() == 0);
 
@@ -100,10 +101,10 @@ int main(void) {
     fs_init();
 
     BdiGraph* g = aeon_graph_create();
-    assert(g != NULL);
+    assert(g != nullptr);
 
     Scheduler* sched = aeon_scheduler_create(g, devices, 4);
-    assert(sched != NULL);
+    assert(sched != nullptr);
 
     printf("-> All kernel services initialized.\n");
 

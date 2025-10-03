@@ -5,6 +5,7 @@
 #ifndef AEON_DEVICE_H
 #define AEON_DEVICE_H
 
+#include "c23_compat.h"
 #include "graph.h"
     const char* name;
 #include "ham.h"
@@ -27,5 +28,11 @@ typedef struct {
     // Blocks until all enqueued kernels on the device are complete.
     int (*sync)(void);
 } DeviceVTable;
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Pointer must be at least 4 bytes");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
+static_assert(sizeof(size_t) >= sizeof(int), "size_t must be at least as large as int");
+static_assert(sizeof(DeviceId) == sizeof(int), "DeviceId must be same size as int");
 
 #endif // AEON_DEVICE_H

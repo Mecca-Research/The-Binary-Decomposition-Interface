@@ -6,6 +6,7 @@
 #ifndef BCI_SYMBOL_H
 #define BCI_SYMBOL_H
 
+#include "c23_compat.h"
 #include "bci_types.h"
 #include "bci_token.h"
 
@@ -43,7 +44,12 @@ void symbol_table_end_scope(SymbolTable* table);
 bool symbol_table_add(SymbolTable* table, Symbol symbol);
 
 // Looks up a symbol by name, searching from the innermost scope outwards.
-// Returns a pointer to the Symbol if found, otherwise NULL.
-Symbol* symbol_table_lookup(SymbolTable* table, Token name);
+// Returns a pointer to the Symbol if found, otherwise nullptr.
+[[nodiscard]] Symbol* symbol_table_lookup(SymbolTable* table, Token name);
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Symbol table requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // BCI_SYMBOL_H

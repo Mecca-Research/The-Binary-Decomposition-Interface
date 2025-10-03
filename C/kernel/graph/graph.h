@@ -6,6 +6,7 @@
 #ifndef AEON_GRAPH_H
 #define AEON_GRAPH_H
 
+#include "c23_compat.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -106,12 +107,17 @@ typedef struct {
 } UpdateSpec;
 
 // --- Graph API ---
-BdiGraph* aeon_graph_create();
+[[nodiscard]] BdiGraph* aeon_graph_create();
 void aeon_graph_free(BdiGraph* g);
 NodeId aeon_graph_add_node(BdiGraph* g, GraphNode node);
 // Binds an update rule to the graph
 int aeon_bind_update(BdiGraph* g, const UpdateSpec* spec);
 // Attaches metadata to a node and stores it in the meta_arena.
 int aeon_attach_meta(BdiGraph* g, NodeId node_id, const NodeMeta* meta);
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Graph requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // AEON_GRAPH_H

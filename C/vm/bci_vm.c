@@ -2,6 +2,7 @@
 // DESC: Implementation of the stack-based Virtual Machine.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "bci_vm.h"
 #include <stdio.h>
 
@@ -9,8 +10,8 @@
 
 void vm_init(VM* vm) {
     vm->stack_top = vm->stack;
-    vm->chunk = NULL;
-    vm->ip = NULL;
+    vm->chunk = nullptr;
+    vm->ip = nullptr;
 }
 
 void vm_free(VM* vm) {

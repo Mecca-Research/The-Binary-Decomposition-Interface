@@ -5,6 +5,7 @@
 #ifndef AI_TRAINER_TYPES_H
 #define AI_TRAINER_TYPES_H
 
+#include "c23_compat.h"
 #include <stdint.h>
 #include <stddef.h>
 

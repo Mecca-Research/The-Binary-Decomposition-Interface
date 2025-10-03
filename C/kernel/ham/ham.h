@@ -5,6 +5,7 @@
 #ifndef AEON_HAM_H
 #define AEON_HAM_H
 
+#include "c23_compat.h"
 #include "graph.h" // For RegionId
 #include "motif.h" 
 
@@ -31,7 +32,7 @@ typedef struct {
     char path[256];
     // --- NEW in M2: Intelligent Memory Fields ---
     HamStats stats;
-    Motif* interned_motif; // If not NULL, this region is compressed.
+    Motif* interned_motif; // If not nullptr, this region is compressed.
 } HamRegion;
 
 // --- HAM Virtual Table (Interface) ---
@@ -56,5 +57,10 @@ typedef struct {
 // --- Test helpers to inspect region state ---
 HamTier ham_get_region_tier(RegionId id);
 void* ham_get_region_base(RegionId id);
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "HAM requires at least 32-bit pointers");
+static_assert(sizeof(size_t) >= 4, "size_t must be at least 4 bytes");
 
 #endif // AEON_HAM_H

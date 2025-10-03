@@ -6,6 +6,7 @@
 #ifndef BCI_AST_H
 #define BCI_AST_H
 
+#include "c23_compat.h"
 #include "bci_types.h"
 
 // --- AST Node Types ---
@@ -90,5 +91,10 @@ void ast_free_node(AstNode* node);
 AstNode* ast_new_literal_int(int64_t value);
 AstNode* ast_new_binary_op(const char* op, AstNode* left, AstNode* right);
 AstNode* ast_new_program();
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "AST requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // BCI_AST_H

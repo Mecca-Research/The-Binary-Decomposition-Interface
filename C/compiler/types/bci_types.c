@@ -2,18 +2,19 @@
 // DESC: Implementation of core dynamic data structures.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "bci_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 // --- Dynamic String Functions ---
-
+[[nodiscard]] 
 BciStr* bci_str_new(const char* init) {
     BciStr* str = malloc(sizeof(BciStr));
     if (!str) {
         perror("Failed to allocate BciStr");
-        return NULL;
+        return nullptr;
     }
     size_t init_len = init ? strlen(init) : 0;
     str->len = init_len;
@@ -22,7 +23,7 @@ BciStr* bci_str_new(const char* init) {
     if (!str->data) {
         perror("Failed to allocate data for BciStr");
         free(str);
-        return NULL;
+        return nullptr;
     }
     if (init) {
         memcpy(str->data, init, init_len);

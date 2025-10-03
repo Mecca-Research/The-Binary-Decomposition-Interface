@@ -5,6 +5,7 @@
 #ifndef AEON_PROCESS_H
 #define AEON_PROCESS_H
 
+#include "c23_compat.h"
 #include "graph.h" // For BdiGraph and basic types
 #include <stdint.h>
 
