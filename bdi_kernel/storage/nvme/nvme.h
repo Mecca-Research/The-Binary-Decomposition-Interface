@@ -80,6 +80,28 @@
 // --- Data Structures ---
 
 // NVMe Command (64 bytes)
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// NVMe Queue Sizes (const for compile-time constants)
+static const uint32_t NVME_ADMIN_QUEUE_SIZE = 64;
+static const uint32_t NVME_IO_QUEUE_SIZE = 1024;
+static const uint32_t NVME_MAX_IO_QUEUES = 128;
+static const uint32_t NVME_QUEUE_ALIGNMENT = 64;
+
+// NVMe Timeouts (in milliseconds)
+static const uint32_t NVME_ADMIN_TIMEOUT_MS = 5000;
+static const uint32_t NVME_IO_TIMEOUT_MS = 30000;
+static const uint32_t NVME_RESET_TIMEOUT_MS = 10000;
+
+// NVMe Transfer Sizes
+static const uint32_t NVME_MAX_TRANSFER_SIZE = (1024 * 1024);  // 1MB
+static const uint32_t NVME_ZERO_COPY_THRESHOLD = (64 * 1024);  // 64KB
+
+// Cache Line Size for Alignment
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     uint8_t  opcode;        // Command opcode
     uint8_t  flags;         // Command flags
@@ -98,6 +120,28 @@ typedef struct {
 } __attribute__((packed)) nvme_command_t;
 
 // NVMe Completion (16 bytes)
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// NVMe Queue Sizes (const for compile-time constants)
+static const uint32_t NVME_ADMIN_QUEUE_SIZE = 64;
+static const uint32_t NVME_IO_QUEUE_SIZE = 1024;
+static const uint32_t NVME_MAX_IO_QUEUES = 128;
+static const uint32_t NVME_QUEUE_ALIGNMENT = 64;
+
+// NVMe Timeouts (in milliseconds)
+static const uint32_t NVME_ADMIN_TIMEOUT_MS = 5000;
+static const uint32_t NVME_IO_TIMEOUT_MS = 30000;
+static const uint32_t NVME_RESET_TIMEOUT_MS = 10000;
+
+// NVMe Transfer Sizes
+static const uint32_t NVME_MAX_TRANSFER_SIZE = (1024 * 1024);  // 1MB
+static const uint32_t NVME_ZERO_COPY_THRESHOLD = (64 * 1024);  // 64KB
+
+// Cache Line Size for Alignment
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     uint32_t result;        // Command-specific result
     uint32_t reserved;
@@ -106,28 +150,155 @@ typedef struct {
     uint16_t command_id;    // Command identifier
     uint16_t status;        // Status field
 } __attribute__((packed)) nvme_completion_t;
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// NVMe Queue Sizes (const for compile-time constants)
+static const uint32_t NVME_ADMIN_QUEUE_SIZE = 64;
+static const uint32_t NVME_IO_QUEUE_SIZE = 1024;
+static const uint32_t NVME_MAX_IO_QUEUES = 128;
+static const uint32_t NVME_QUEUE_ALIGNMENT = 64;
+
+// NVMe Timeouts (in milliseconds)
+static const uint32_t NVME_ADMIN_TIMEOUT_MS = 5000;
+static const uint32_t NVME_IO_TIMEOUT_MS = 30000;
+static const uint32_t NVME_RESET_TIMEOUT_MS = 10000;
+
+// NVMe Transfer Sizes
+static const uint32_t NVME_MAX_TRANSFER_SIZE = (1024 * 1024);  // 1MB
+static const uint32_t NVME_ZERO_COPY_THRESHOLD = (64 * 1024);  // 64KB
+
+// Cache Line Size for Alignment
+static const uint32_t CACHE_LINE_SIZE = 64;
+
+_Static_assert(sizeof(typedef struct {
+    uint32_t result;        // Command-specific result
+    uint32_t reserved;
+    uint16_t sq_head;       // Submission queue head pointer
+    uint16_t sq_id;         // Submission queue identifier
+    uint16_t command_id;    // Command identifier
+    uint16_t status;        // Status field
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// NVMe Queue Sizes (const for compile-time constants)
+static const uint32_t NVME_ADMIN_QUEUE_SIZE = 64;
+static const uint32_t NVME_IO_QUEUE_SIZE = 1024;
+static const uint32_t NVME_MAX_IO_QUEUES = 128;
+static const uint32_t NVME_QUEUE_ALIGNMENT = 64;
+
+// NVMe Timeouts (in milliseconds)
+static const uint32_t NVME_ADMIN_TIMEOUT_MS = 5000;
+static const uint32_t NVME_IO_TIMEOUT_MS = 30000;
+static const uint32_t NVME_RESET_TIMEOUT_MS = 10000;
+
+// NVMe Transfer Sizes
+static const uint32_t NVME_MAX_TRANSFER_SIZE = (1024 * 1024);  // 1MB
+static const uint32_t NVME_ZERO_COPY_THRESHOLD = (64 * 1024);  // 64KB
+
+// Cache Line Size for Alignment
+static const uint32_t CACHE_LINE_SIZE = 64;
+
+} __attribute__((packed)) nvme_completion_t;) % 64 == 0, "typedef struct {
+    uint32_t result;        // Command-specific result
+    uint32_t reserved;
+    uint16_t sq_head;       // Submission queue head pointer
+    uint16_t sq_id;         // Submission queue identifier
+    uint16_t command_id;    // Command identifier
+    uint16_t status;        // Status field
+} __attribute__((packed)) nvme_completion_t; must be cache-aligned");
 
 // Queue structures
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// NVMe Queue Sizes (const for compile-time constants)
+static const uint32_t NVME_ADMIN_QUEUE_SIZE = 64;
+static const uint32_t NVME_IO_QUEUE_SIZE = 1024;
+static const uint32_t NVME_MAX_IO_QUEUES = 128;
+static const uint32_t NVME_QUEUE_ALIGNMENT = 64;
+
+// NVMe Timeouts (in milliseconds)
+static const uint32_t NVME_ADMIN_TIMEOUT_MS = 5000;
+static const uint32_t NVME_IO_TIMEOUT_MS = 30000;
+static const uint32_t NVME_RESET_TIMEOUT_MS = 10000;
+
+// NVMe Transfer Sizes
+static const uint32_t NVME_MAX_TRANSFER_SIZE = (1024 * 1024);  // 1MB
+static const uint32_t NVME_ZERO_COPY_THRESHOLD = (64 * 1024);  // 64KB
+
+// Cache Line Size for Alignment
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     nvme_command_t* commands;
-    uint32_t head;
-    uint32_t tail;
+    _Atomic uint32_t head;
+    _Atomic uint32_t tail;
     uint32_t size;
     uint16_t queue_id;
     volatile uint32_t* doorbell;
 } nvme_sq_t;
+_Static_assert(sizeof(nvme_sq_t) % 64 == 0, "nvme_sq_t must be cache-aligned");
+
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// NVMe Queue Sizes (const for compile-time constants)
+static const uint32_t NVME_ADMIN_QUEUE_SIZE = 64;
+static const uint32_t NVME_IO_QUEUE_SIZE = 1024;
+static const uint32_t NVME_MAX_IO_QUEUES = 128;
+static const uint32_t NVME_QUEUE_ALIGNMENT = 64;
+
+// NVMe Timeouts (in milliseconds)
+static const uint32_t NVME_ADMIN_TIMEOUT_MS = 5000;
+static const uint32_t NVME_IO_TIMEOUT_MS = 30000;
+static const uint32_t NVME_RESET_TIMEOUT_MS = 10000;
+
+// NVMe Transfer Sizes
+static const uint32_t NVME_MAX_TRANSFER_SIZE = (1024 * 1024);  // 1MB
+static const uint32_t NVME_ZERO_COPY_THRESHOLD = (64 * 1024);  // 64KB
+
+// Cache Line Size for Alignment
+static const uint32_t CACHE_LINE_SIZE = 64;
 
 typedef struct {
     nvme_completion_t* completions;
-    uint32_t head;
-    uint32_t tail;
+    _Atomic uint32_t head;
+    _Atomic uint32_t tail;
     uint32_t size;
     uint16_t queue_id;
     uint8_t phase;
     volatile uint32_t* doorbell;
 } nvme_cq_t;
+_Static_assert(sizeof(nvme_cq_t) % 64 == 0, "nvme_cq_t must be cache-aligned");
 
 // Controller structure
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// NVMe Queue Sizes (const for compile-time constants)
+static const uint32_t NVME_ADMIN_QUEUE_SIZE = 64;
+static const uint32_t NVME_IO_QUEUE_SIZE = 1024;
+static const uint32_t NVME_MAX_IO_QUEUES = 128;
+static const uint32_t NVME_QUEUE_ALIGNMENT = 64;
+
+// NVMe Timeouts (in milliseconds)
+static const uint32_t NVME_ADMIN_TIMEOUT_MS = 5000;
+static const uint32_t NVME_IO_TIMEOUT_MS = 30000;
+static const uint32_t NVME_RESET_TIMEOUT_MS = 10000;
+
+// NVMe Transfer Sizes
+static const uint32_t NVME_MAX_TRANSFER_SIZE = (1024 * 1024);  // 1MB
+static const uint32_t NVME_ZERO_COPY_THRESHOLD = (64 * 1024);  // 64KB
+
+// Cache Line Size for Alignment
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     volatile uint8_t* mmio_base;
     uint64_t capabilities;
@@ -154,30 +325,30 @@ typedef struct {
 // --- Function Declarations ---
 
 // Controller management
-int nvme_init_controller(nvme_controller_t* ctrl, volatile uint8_t* mmio_base);
-int nvme_shutdown_controller(nvme_controller_t* ctrl);
-int nvme_reset_controller(nvme_controller_t* ctrl);
+[[nodiscard]] int nvme_init_controller(nvme_controller_t* ctrl, volatile uint8_t* mmio_base);
+[[nodiscard]] int nvme_shutdown_controller(nvme_controller_t* ctrl);
+[[nodiscard]] int nvme_reset_controller(nvme_controller_t* ctrl);
 
 // Queue management
-int nvme_setup_admin_queues(nvme_controller_t* ctrl);
-int nvme_create_io_queue_pair(nvme_controller_t* ctrl, uint16_t queue_id, uint16_t queue_size);
-int nvme_delete_io_queue_pair(nvme_controller_t* ctrl, uint16_t queue_id);
+[[nodiscard]] int nvme_setup_admin_queues(nvme_controller_t* ctrl);
+[[nodiscard]] int nvme_create_io_queue_pair(nvme_controller_t* ctrl, uint16_t queue_id, uint16_t queue_size);
+[[nodiscard]] int nvme_delete_io_queue_pair(nvme_controller_t* ctrl, uint16_t queue_id);
 
 // Command submission and completion
-int nvme_submit_admin_command(nvme_controller_t* ctrl, nvme_command_t* cmd, nvme_completion_t* completion);
-int nvme_submit_io_command(nvme_controller_t* ctrl, uint16_t queue_id, nvme_command_t* cmd);
-int nvme_poll_completion(nvme_controller_t* ctrl, uint16_t queue_id, nvme_completion_t* completion);
+[[nodiscard]] int nvme_submit_admin_command(nvme_controller_t* ctrl, nvme_command_t* cmd, nvme_completion_t* completion);
+[[nodiscard]] int nvme_submit_io_command(nvme_controller_t* ctrl, uint16_t queue_id, nvme_command_t* cmd);
+[[nodiscard]] int nvme_poll_completion(nvme_controller_t* ctrl, uint16_t queue_id, nvme_completion_t* completion);
 
 // High-level operations
-int nvme_identify_controller(nvme_controller_t* ctrl, void* data);
-int nvme_identify_namespace(nvme_controller_t* ctrl, uint32_t nsid, void* data);
-int nvme_read_blocks(nvme_controller_t* ctrl, uint32_t nsid, uint64_t lba, uint32_t count, void* buffer);
-int nvme_write_blocks(nvme_controller_t* ctrl, uint32_t nsid, uint64_t lba, uint32_t count, const void* buffer);
-int nvme_flush(nvme_controller_t* ctrl, uint32_t nsid);
+[[nodiscard]] int nvme_identify_controller(nvme_controller_t* ctrl, void* data);
+[[nodiscard]] int nvme_identify_namespace(nvme_controller_t* ctrl, uint32_t nsid, void* data);
+[[nodiscard]] int nvme_read_blocks(nvme_controller_t* ctrl, uint32_t nsid, uint64_t lba, uint32_t count, void* buffer);
+[[nodiscard]] int nvme_write_blocks(nvme_controller_t* ctrl, uint32_t nsid, uint64_t lba, uint32_t count, const void* buffer);
+[[nodiscard]] int nvme_flush(nvme_controller_t* ctrl, uint32_t nsid);
 
 // Utility functions
-uint32_t nvme_read_reg32(nvme_controller_t* ctrl, uint32_t offset);
-uint64_t nvme_read_reg64(nvme_controller_t* ctrl, uint32_t offset);
+[[nodiscard]] uint32_t nvme_read_reg32(nvme_controller_t* ctrl, uint32_t offset);
+[[nodiscard]] uint64_t nvme_read_reg64(nvme_controller_t* ctrl, uint32_t offset);
 void nvme_write_reg32(nvme_controller_t* ctrl, uint32_t offset, uint32_t value);
 void nvme_write_reg64(nvme_controller_t* ctrl, uint32_t offset, uint64_t value);
 

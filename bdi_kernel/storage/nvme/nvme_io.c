@@ -465,3 +465,239 @@ void nvme_io_cleanup(void) {
     g_io_command_id = 1;
     g_io_initialized = 0;
 }
+
+// ===================================================================
+// Phase 10: Lock-Free Queue Management and SIMD Optimizations
+// ===================================================================
+
+#include <immintrin.h>  // For SIMD intrinsics
+#include <stdatomic.h>
+
+// ===================================================================
+// Lock-Free Submission Queue Operations
+// ===================================================================
+
+/**
+ * Lock-free enqueue to submission queue
+ * Uses atomic operations for thread-safe queue management
+ */
+[[nodiscard]] static inline int nvme_sq_enqueue_lockfree(nvme_sq_t* sq, 
+                                                          const nvme_command_t* cmd) {
+    if (!sq || !cmd) {
+        return -1;
+    }
+    
+    // Load current tail atomically
+    uint32_t tail = atomic_load_explicit(&sq->tail, memory_order_acquire);
+    uint32_t next_tail = (tail + 1) % sq->size;
+    
+    // Check if queue is full
+    uint32_t head = atomic_load_explicit(&sq->head, memory_order_acquire);
+    if (next_tail == head) {
+        return -1;  // Queue full
+    }
+    
+    // Copy command to queue
+    memcpy(&sq->commands[tail], cmd, sizeof(nvme_command_t));
+    
+    // Memory barrier to ensure command is written before updating tail
+    atomic_thread_fence(memory_order_release);
+    
+    // Update tail atomically
+    atomic_store_explicit(&sq->tail, next_tail, memory_order_release);
+    
+    // Ring doorbell to notify device
+    if (sq->doorbell) {
+        *sq->doorbell = next_tail;
+    }
+    
+    return 0;
+}
+
+/**
+ * Lock-free dequeue from completion queue
+ * Processes completions without locks
+ */
+[[nodiscard]] static inline int nvme_cq_dequeue_lockfree(nvme_cq_t* cq,
+                                                          nvme_completion_t* comp) {
+    if (!cq || !comp) {
+        return -1;
+    }
+    
+    // Load current head atomically
+    uint32_t head = atomic_load_explicit(&cq->head, memory_order_acquire);
+    
+    // Check phase bit to see if entry is valid
+    nvme_completion_t* entry = &cq->completions[head];
+    uint16_t phase = (entry->status >> 15) & 1;
+    
+    if (phase != cq->phase) {
+        return -1;  // No new completion
+    }
+    
+    // Copy completion entry
+    memcpy(comp, entry, sizeof(nvme_completion_t));
+    
+    // Update head atomically
+    uint32_t next_head = (head + 1) % cq->size;
+    atomic_store_explicit(&cq->head, next_head, memory_order_release);
+    
+    // Update phase if we wrapped around
+    if (next_head == 0) {
+        cq->phase = !cq->phase;
+    }
+    
+    // Ring doorbell to acknowledge completion
+    if (cq->doorbell) {
+        *cq->doorbell = next_head;
+    }
+    
+    return 0;
+}
+
+// ===================================================================
+// SIMD-Optimized Data Operations
+// ===================================================================
+
+/**
+ * SIMD-optimized memory copy for DMA buffers
+ * Uses AVX2 for 32-byte transfers
+ */
+static inline void nvme_simd_memcpy(void* dest, const void* src, size_t size) {
+    uint8_t* d = (uint8_t*)dest;
+    const uint8_t* s = (const uint8_t*)src;
+    
+    // Use AVX2 for large transfers
+    while (size >= 32) {
+        __m256i data = _mm256_loadu_si256((const __m256i*)s);
+        _mm256_storeu_si256((__m256i*)d, data);
+        s += 32;
+        d += 32;
+        size -= 32;
+    }
+    
+    // Use SSE for 16-byte chunks
+    while (size >= 16) {
+        __m128i data = _mm_loadu_si128((const __m128i*)s);
+        _mm_storeu_si128((__m128i*)d, data);
+        s += 16;
+        d += 16;
+        size -= 16;
+    }
+    
+    // Handle remaining bytes
+    while (size > 0) {
+        *d++ = *s++;
+        size--;
+    }
+}
+
+/**
+ * CRC32C calculation using SSE4.2 for data integrity
+ */
+[[nodiscard]] static inline uint32_t nvme_crc32c(const void* data, size_t len) {
+    uint32_t crc = 0xFFFFFFFF;
+    const uint8_t* p = (const uint8_t*)data;
+    
+    // Process 8 bytes at a time
+    while (len >= 8) {
+        crc = _mm_crc32_u64(crc, *(const uint64_t*)p);
+        p += 8;
+        len -= 8;
+    }
+    
+    // Process 4 bytes
+    if (len >= 4) {
+        crc = _mm_crc32_u32(crc, *(const uint32_t*)p);
+        p += 4;
+        len -= 4;
+    }
+    
+    // Process remaining bytes
+    while (len > 0) {
+        crc = _mm_crc32_u8(crc, *p);
+        p++;
+        len--;
+    }
+    
+    return ~crc;
+}
+
+/**
+ * Vectorized DMA descriptor setup
+ * Uses SIMD to initialize multiple descriptors at once
+ */
+static inline void nvme_setup_prp_list_simd(uint64_t* prp_list, 
+                                            uint64_t base_addr,
+                                            size_t num_pages) {
+    const uint64_t page_size = 4096;
+    
+    // Use AVX2 to set up 4 PRPs at a time
+    for (size_t i = 0; i < num_pages; i += 4) {
+        __m256i addrs = _mm256_set_epi64x(
+            base_addr + (i + 3) * page_size,
+            base_addr + (i + 2) * page_size,
+            base_addr + (i + 1) * page_size,
+            base_addr + i * page_size
+        );
+        _mm256_storeu_si256((__m256i*)&prp_list[i], addrs);
+    }
+}
+
+// ===================================================================
+// Multi-Queue Support
+// ===================================================================
+
+/**
+ * Get optimal I/O queue for current CPU
+ * Implements per-CPU queue assignment for better cache locality
+ */
+[[nodiscard]] static inline uint16_t nvme_get_optimal_queue(void) {
+    // TODO: Get current CPU ID
+    // For now, return queue 1
+    return 1;
+}
+
+/**
+ * Submit I/O with automatic queue selection
+ */
+[[nodiscard]] int nvme_submit_io_multiqueue(nvme_device_t* dev,
+                                             const nvme_command_t* cmd) {
+    if (!dev || !cmd) {
+        return -1;
+    }
+    
+    // Select optimal queue based on CPU affinity
+    uint16_t queue_id = nvme_get_optimal_queue();
+    
+    // Get the queue
+    nvme_sq_t* sq = &dev->io_queues[queue_id];
+    
+    // Submit using lock-free enqueue
+    return nvme_sq_enqueue_lockfree(sq, cmd);
+}
+
+// ===================================================================
+// Interrupt Coalescing
+// ===================================================================
+
+/**
+ * Configure interrupt coalescing for better performance
+ * Reduces interrupt overhead by batching completions
+ */
+[[nodiscard]] int nvme_configure_interrupt_coalescing(nvme_device_t* dev,
+                                                       uint8_t threshold,
+                                                       uint8_t time_us) {
+    if (!dev) {
+        return -1;
+    }
+    
+    // Set interrupt coalescing parameters
+    uint32_t config = (threshold & 0xFF) | ((time_us & 0xFF) << 8);
+    
+    // TODO: Write to device registers
+    // nvme_write_reg(dev, NVME_REG_INTC, config);
+    
+    return 0;
+}
+

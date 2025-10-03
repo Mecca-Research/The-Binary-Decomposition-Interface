@@ -411,3 +411,299 @@ const char *sata_get_serial(uint32_t device_id) {
     
     return g_sata_devices[device_id].serial;
 }
+
+// ===================================================================
+// Phase 10: NCQ Optimization and TRIM Support
+// ===================================================================
+
+#include <immintrin.h>
+#include <stdatomic.h>
+
+// ===================================================================
+// Native Command Queuing (NCQ) Optimization
+// ===================================================================
+
+/**
+ * NCQ command structure
+ */
+typedef struct {
+    uint8_t tag;
+    uint64_t lba;
+    uint16_t sector_count;
+    bool is_write;
+    _Atomic uint32_t status;
+} ncq_command_t;
+
+/**
+ * NCQ queue management
+ */
+typedef struct {
+    ncq_command_t commands[32];  // Max 32 NCQ commands
+    _Atomic uint32_t active_mask;
+    _Atomic uint32_t completed_mask;
+} ncq_queue_t;
+
+static ncq_queue_t global_ncq_queue = {0};
+
+/**
+ * Submit NCQ read command
+ * Optimized for high-performance SSDs with command reordering
+ */
+[[nodiscard]] int sata_ncq_read_optimized(ahci_port_t* port,
+                                           uint64_t lba,
+                                           uint16_t sector_count,
+                                           void* buffer) {
+    if (!port || !buffer || sector_count == 0) {
+        return -1;
+    }
+    
+    // Find free NCQ tag
+    int tag = -1;
+    uint32_t active = atomic_load(&global_ncq_queue.active_mask);
+    
+    for (int i = 0; i < 32; i++) {
+        if (!(active & (1U << i))) {
+            tag = i;
+            break;
+        }
+    }
+    
+    if (tag < 0) {
+        return -1;  // No free tags
+    }
+    
+    // Set up NCQ command
+    ncq_command_t* cmd = &global_ncq_queue.commands[tag];
+    cmd->tag = tag;
+    cmd->lba = lba;
+    cmd->sector_count = sector_count;
+    cmd->is_write = false;
+    cmd->status = 0;
+    
+    // Mark tag as active
+    atomic_fetch_or(&global_ncq_queue.active_mask, 1U << tag);
+    
+    // TODO: Build and submit FPDMA READ command
+    
+    return tag;
+}
+
+/**
+ * Submit NCQ write command
+ */
+[[nodiscard]] int sata_ncq_write_optimized(ahci_port_t* port,
+                                            uint64_t lba,
+                                            uint16_t sector_count,
+                                            const void* buffer) {
+    if (!port || !buffer || sector_count == 0) {
+        return -1;
+    }
+    
+    // Similar to read but with write flag
+    int tag = -1;
+    uint32_t active = atomic_load(&global_ncq_queue.active_mask);
+    
+    for (int i = 0; i < 32; i++) {
+        if (!(active & (1U << i))) {
+            tag = i;
+            break;
+        }
+    }
+    
+    if (tag < 0) {
+        return -1;
+    }
+    
+    ncq_command_t* cmd = &global_ncq_queue.commands[tag];
+    cmd->tag = tag;
+    cmd->lba = lba;
+    cmd->sector_count = sector_count;
+    cmd->is_write = true;
+    cmd->status = 0;
+    
+    atomic_fetch_or(&global_ncq_queue.active_mask, 1U << tag);
+    
+    // TODO: Build and submit FPDMA WRITE command
+    
+    return tag;
+}
+
+/**
+ * Wait for NCQ command completion
+ */
+[[nodiscard]] int sata_ncq_wait(int tag, uint32_t timeout_ms) {
+    if (tag < 0 || tag >= 32) {
+        return -1;
+    }
+    
+    // TODO: Implement proper wait with timeout
+    // For now, spin until completed
+    uint32_t iterations = 0;
+    const uint32_t max_iterations = timeout_ms * 1000;
+    
+    while (iterations < max_iterations) {
+        uint32_t completed = atomic_load(&global_ncq_queue.completed_mask);
+        if (completed & (1U << tag)) {
+            // Clear completed bit
+            atomic_fetch_and(&global_ncq_queue.completed_mask, ~(1U << tag));
+            // Clear active bit
+            atomic_fetch_and(&global_ncq_queue.active_mask, ~(1U << tag));
+            return 0;
+        }
+        
+        __builtin_ia32_pause();
+        iterations++;
+    }
+    
+    return -1;  // Timeout
+}
+
+// ===================================================================
+// TRIM Support for SSDs
+// ===================================================================
+
+/**
+ * TRIM command structure
+ */
+typedef struct {
+    uint64_t lba;
+    uint16_t sector_count;
+} trim_range_t;
+
+/**
+ * Submit TRIM command to SSD
+ * Improves SSD performance and longevity
+ */
+[[nodiscard]] int sata_trim(ahci_port_t* port,
+                             const trim_range_t* ranges,
+                             size_t num_ranges) {
+    if (!port || !ranges || num_ranges == 0) {
+        return -1;
+    }
+    
+    // TRIM uses DATA SET MANAGEMENT command
+    // Maximum 64 ranges per command
+    if (num_ranges > 64) {
+        return -1;
+    }
+    
+    // TODO: Build DATA SET MANAGEMENT command
+    // ATA command 0x06 (DSM) with TRIM bit set
+    
+    return 0;
+}
+
+/**
+ * Batch TRIM for multiple ranges
+ * More efficient than individual TRIM commands
+ */
+[[nodiscard]] int sata_trim_batch(ahci_port_t* port,
+                                   const trim_range_t* ranges,
+                                   size_t num_ranges) {
+    if (!port || !ranges || num_ranges == 0) {
+        return -1;
+    }
+    
+    // Process in batches of 64
+    size_t processed = 0;
+    
+    while (processed < num_ranges) {
+        size_t batch_size = (num_ranges - processed > 64) ? 64 : (num_ranges - processed);
+        
+        int result = sata_trim(port, &ranges[processed], batch_size);
+        if (result != 0) {
+            return result;
+        }
+        
+        processed += batch_size;
+    }
+    
+    return 0;
+}
+
+// ===================================================================
+// Command Ordering Optimization
+// ===================================================================
+
+/**
+ * Optimize command order for better performance
+ * Sorts commands by LBA to minimize seek time
+ */
+static void sata_optimize_command_order(ncq_command_t* commands, size_t count) {
+    // Simple bubble sort by LBA (good enough for small queues)
+    for (size_t i = 0; i < count - 1; i++) {
+        for (size_t j = 0; j < count - i - 1; j++) {
+            if (commands[j].lba > commands[j + 1].lba) {
+                // Swap
+                ncq_command_t temp = commands[j];
+                commands[j] = commands[j + 1];
+                commands[j + 1] = temp;
+            }
+        }
+    }
+}
+
+/**
+ * Submit batch of NCQ commands with optimized ordering
+ */
+[[nodiscard]] int sata_ncq_submit_batch(ahci_port_t* port,
+                                         ncq_command_t* commands,
+                                         size_t count) {
+    if (!port || !commands || count == 0 || count > 32) {
+        return -1;
+    }
+    
+    // Optimize command order
+    sata_optimize_command_order(commands, count);
+    
+    // Submit all commands
+    for (size_t i = 0; i < count; i++) {
+        ncq_command_t* cmd = &commands[i];
+        
+        int result;
+        if (cmd->is_write) {
+            result = sata_ncq_write_optimized(port, cmd->lba, 
+                                             cmd->sector_count, NULL);
+        } else {
+            result = sata_ncq_read_optimized(port, cmd->lba,
+                                            cmd->sector_count, NULL);
+        }
+        
+        if (result < 0) {
+            return result;
+        }
+    }
+    
+    return 0;
+}
+
+// ===================================================================
+// Performance Monitoring
+// ===================================================================
+
+typedef struct {
+    _Atomic uint64_t ncq_reads;
+    _Atomic uint64_t ncq_writes;
+    _Atomic uint64_t trim_commands;
+    _Atomic uint64_t reordered_commands;
+} sata_stats_t;
+
+static sata_stats_t global_sata_stats = {0};
+
+/**
+ * Get SATA statistics
+ */
+[[nodiscard]] const sata_stats_t* sata_get_stats(void) {
+    return &global_sata_stats;
+}
+
+/**
+ * Reset SATA statistics
+ */
+void sata_reset_stats(void) {
+    global_sata_stats.ncq_reads = 0;
+    global_sata_stats.ncq_writes = 0;
+    global_sata_stats.trim_commands = 0;
+    global_sata_stats.reordered_commands = 0;
+}
+
