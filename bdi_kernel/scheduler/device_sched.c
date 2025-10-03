@@ -92,6 +92,14 @@ void* device_scheduler_create(Scheduler* base) {
     
     ds->base_scheduler = base;
     ds->num_devices = base->device_count;
+    
+    /* Clamp to maximum supported devices */
+    if (ds->num_devices > SCHED_MAX_DEVICES) {
+        fprintf(stderr, "WARNING: Requested %u devices, clamping to %u\n",
+                ds->num_devices, SCHED_MAX_DEVICES);
+        ds->num_devices = SCHED_MAX_DEVICES;
+    }
+    
     ds->balance_threshold = 10; /* Load difference threshold */
     ds->total_dispatched = 0;
     ds->total_migrations = 0;

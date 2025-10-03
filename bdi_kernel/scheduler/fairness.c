@@ -183,6 +183,50 @@ static int cfs_dequeue_task_internal(cfs_scheduler_t* cfs, node_sched_info_t* ta
 /**
  * @brief Pick next task from CFS queue
  */
+/**
+ * @brief Requeue a task after vruntime update (maintains sorted order)
+ */
+static void cfs_requeue_task(cfs_scheduler_t* cfs, node_sched_info_t* task) {
+    /* Find current position */
+    uint32_t old_pos = UINT32_MAX;
+    for (uint32_t i = 0; i < cfs->task_count; i++) {
+        if (cfs->tasks[i] == task) {
+            old_pos = i;
+            break;
+        }
+    }
+    
+    if (old_pos == UINT32_MAX) {
+        return; /* Task not in queue */
+    }
+    
+    /* Find new position based on updated vruntime */
+    uint32_t new_pos = old_pos;
+    
+    /* Check if we need to move forward (vruntime increased) */
+    for (uint32_t i = old_pos + 1; i < cfs->task_count; i++) {
+        if (task->vruntime > cfs->tasks[i]->vruntime) {
+            new_pos = i;
+        } else {
+            break;
+        }
+    }
+    
+    /* Only reposition if position changed */
+    if (new_pos != old_pos) {
+        /* Remove from old position */
+        node_sched_info_t* temp = cfs->tasks[old_pos];
+        
+        /* Shift tasks between old and new position */
+        for (uint32_t i = old_pos; i < new_pos; i++) {
+            cfs->tasks[i] = cfs->tasks[i + 1];
+        }
+        
+        /* Insert at new position */
+        cfs->tasks[new_pos] = temp;
+    }
+}
+
 static node_sched_info_t* cfs_pick_next_task_internal(cfs_scheduler_t* cfs) {
     if (cfs->task_count == 0) {
         return nullptr;
@@ -282,12 +326,22 @@ void fair_scheduler_tick_cfs(void* cfs_ptr, uint64_t current_time) {
     
     cfs_scheduler_t* cfs = (cfs_scheduler_t*)cfs_ptr;
     
-    /* Update vruntime for running tasks */
+    /* Update vruntime for running tasks and requeue if time slice expired */
     for (uint32_t i = 0; i < cfs->task_count; i++) {
         node_sched_info_t* task = cfs->tasks[i];
         if (task->is_running) {
             /* Assume 1ms tick */
             cfs_update_vruntime(cfs, task, 1000000);
+            
+            /* Check if time slice expired (simplified: 10ms slice) */
+            if (task->runtime >= 10000000) {
+                /* Time slice expired - mark as not running and requeue */
+                task->is_running = false;
+                task->runtime = 0;
+                
+                /* Reinsert task in sorted order by vruntime */
+                cfs_requeue_task(cfs, task);
+            }
         }
     }
 }
