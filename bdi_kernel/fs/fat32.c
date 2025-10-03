@@ -111,18 +111,45 @@ int fat32_read(struct fat32_file *file, void *buf, size_t count) {
         uint32_t bytes_in_cluster = file->fs->cluster_size - cluster_offset;
         uint32_t to_read = (count < bytes_in_cluster) ? count : bytes_in_cluster;
         
-        /* Calculate sector */
+        /* Calculate sector and intra-sector offset */
         uint64_t sector = file->fs->data_start + 
                          ((file->current_cluster - 2) * file->fs->boot.sectors_per_cluster);
         sector += cluster_offset / file->fs->boot.bytes_per_sector;
+        uint32_t sector_offset = cluster_offset % file->fs->boot.bytes_per_sector;
         
-        /* Read data */
-        int ret = file->fs->read_sectors(file->fs->device, sector, 
-                                        buffer + bytes_read, 
-                                        (to_read + file->fs->boot.bytes_per_sector - 1) / 
-                                        file->fs->boot.bytes_per_sector);
-        if (ret < 0) {
-            return ret;
+        /*
+         * BUG FIX: Honor intra-sector offsets when reading FAT32 clusters.
+         * When a read begins in the middle of a sector, we must:
+         * 1. Read the sector(s) into a temporary buffer
+         * 2. Skip the unwanted leading bytes (sector_offset)
+         * 3. Copy only the desired data to the output buffer
+         */
+        if (sector_offset != 0 || to_read < file->fs->boot.bytes_per_sector) {
+            /* Read needs to handle partial sector */
+            uint32_t sectors_needed = (sector_offset + to_read + file->fs->boot.bytes_per_sector - 1) / 
+                                     file->fs->boot.bytes_per_sector;
+            uint8_t temp_buf[4096];  /* Temporary buffer for staging sectors */
+            
+            if (sectors_needed * file->fs->boot.bytes_per_sector > sizeof(temp_buf)) {
+                return -EINVAL;  /* Sanity check */
+            }
+            
+            int ret = file->fs->read_sectors(file->fs->device, sector, temp_buf, sectors_needed);
+            if (ret < 0) {
+                return ret;
+            }
+            
+            /* Copy only the desired portion, skipping sector_offset bytes */
+            memcpy(buffer + bytes_read, temp_buf + sector_offset, to_read);
+        } else {
+            /* Aligned read - can read directly into output buffer */
+            int ret = file->fs->read_sectors(file->fs->device, sector, 
+                                            buffer + bytes_read, 
+                                            (to_read + file->fs->boot.bytes_per_sector - 1) / 
+                                            file->fs->boot.bytes_per_sector);
+            if (ret < 0) {
+                return ret;
+            }
         }
         
         bytes_read += to_read;

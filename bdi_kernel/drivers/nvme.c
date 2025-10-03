@@ -12,9 +12,11 @@
  * - I/O batching and coalescing
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include "nvme.h"
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 /* Debug flag - can be disabled in production */
 [[maybe_unused]] static int nvme_debug = 0;
@@ -92,6 +94,69 @@ static int nvme_init_queue(struct nvme_queue *q, uint16_t qid, uint16_t depth,
     q->cq_doorbell = (volatile char *)doorbell_base + (2 * qid + 1) * doorbell_stride;
     
     return 0;
+}
+
+/**
+ * @brief Submit admin command and wait for completion
+ */
+static int nvme_submit_admin_cmd(struct nvme_ctrl *ctrl, struct nvme_command *cmd, 
+                                 struct nvme_completion *cpl) {
+    int ret;
+    
+    /* Submit command to admin queue */
+    ret = nvme_submit_cmd(&ctrl->admin_q, cmd);
+    if (ret) {
+        return ret;
+    }
+    
+    /* Poll for completion */
+    while (1) {
+        ret = nvme_poll_cq(&ctrl->admin_q, cpl);
+        if (ret == 0) {
+            break;
+        }
+        if (ret != -EAGAIN) {
+            return ret;
+        }
+        /* In real kernel, would yield CPU here */
+    }
+    
+    /* Check completion status */
+    if ((cpl->status >> 1) != NVME_SC_SUCCESS) {
+        return -EIO;
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief Create I/O completion queue via admin command
+ */
+static int nvme_create_cq(struct nvme_ctrl *ctrl, struct nvme_queue *q) {
+    struct nvme_command cmd = {0};
+    struct nvme_completion cpl;
+    
+    cmd.opcode = NVME_ADMIN_CREATE_CQ;
+    cmd.prp1 = (uint64_t)q->cq;
+    cmd.cdw10 = ((q->depth - 1) << 16) | q->qid;  /* Queue size and ID */
+    cmd.cdw11 = 0x1;  /* Physically contiguous */
+    
+    return nvme_submit_admin_cmd(ctrl, &cmd, &cpl);
+}
+
+/**
+ * @brief Create I/O submission queue via admin command
+ */
+static int nvme_create_sq(struct nvme_ctrl *ctrl, struct nvme_queue *q) {
+    struct nvme_command cmd = {0};
+    struct nvme_completion cpl;
+    
+    cmd.opcode = NVME_ADMIN_CREATE_SQ;
+    cmd.prp1 = (uint64_t)q->sq;
+    cmd.cdw10 = ((q->depth - 1) << 16) | q->qid;  /* Queue size and ID */
+    cmd.cdw11 = (q->qid << 16) | 0x1;  /* Associated CQ ID and physically contiguous */
+    
+    return nvme_submit_admin_cmd(ctrl, &cmd, &cpl);
 }
 
 /**
@@ -180,8 +245,35 @@ int nvme_init(struct nvme_ctrl *ctrl, volatile void *bar) {
         return ret;
     }
     
-    /* TODO: Create I/O queues using admin commands */
-    /* This would involve submitting CREATE_CQ and CREATE_SQ admin commands */
+    /*
+     * BUG FIX: Create I/O queues using admin commands.
+     * The controller must be informed about the I/O queues via CREATE_CQ and CREATE_SQ
+     * admin commands before any I/O operations can be performed. Without this, the
+     * controller doesn't know about the queue memory locations and I/O operations will hang.
+     */
+    
+    /* Create I/O completion queue */
+    ret = nvme_create_cq(ctrl, &ctrl->io_queues[0]);
+    if (ret) {
+        free(ctrl->io_queues[0].sq);
+        free(ctrl->io_queues[0].cq);
+        free(ctrl->io_queues);
+        free(ctrl->admin_q.sq);
+        free(ctrl->admin_q.cq);
+        return ret;
+    }
+    
+    /* Create I/O submission queue */
+    ret = nvme_create_sq(ctrl, &ctrl->io_queues[0]);
+    if (ret) {
+        /* TODO: Delete the CQ we just created */
+        free(ctrl->io_queues[0].sq);
+        free(ctrl->io_queues[0].cq);
+        free(ctrl->io_queues);
+        free(ctrl->admin_q.sq);
+        free(ctrl->admin_q.cq);
+        return ret;
+    }
     
     ctrl->max_transfer_size = 128 * 1024; /* 128KB default */
     
@@ -237,7 +329,8 @@ int nvme_poll_cq(struct nvme_queue *q, struct nvme_completion *cpl) {
     entry = &q->cq[head];
     
     /* Check phase bit to see if entry is valid */
-    status = atomic_load_explicit((_Atomic uint16_t *)&entry->status, memory_order_acquire);
+    /* Use memcpy to avoid alignment issues with packed struct */
+    memcpy(&status, &entry->status, sizeof(status));
     if ((status & 1) != q->cq_phase) {
         return -EAGAIN;  /* No completion yet */
     }
