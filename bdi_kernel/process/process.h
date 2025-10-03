@@ -298,6 +298,9 @@ void process_shutdown(void);
  */
 void pcb_free(ProcessControlBlock *pcb);
 
+/* Free a memory region with proper COW refcount handling */
+void free_memory_region(MemoryRegion *region);
+
 /**
  * @brief Increment PCB reference count
  * 

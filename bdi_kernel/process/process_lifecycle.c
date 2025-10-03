@@ -107,7 +107,7 @@ static int copy_memory_regions_cow(ProcessControlBlock *parent,
  * 
  * @param region Memory region to free
  */
-static void free_memory_region(MemoryRegion *region) {
+void free_memory_region(MemoryRegion *region) {
     if (region == nullptr) {
         return;
     }
