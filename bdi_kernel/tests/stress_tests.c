@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <stdatomic.h>
+#include <stdint.h>
 
 // Stress test configuration
 #define STRESS_DURATION_SECONDS 60
