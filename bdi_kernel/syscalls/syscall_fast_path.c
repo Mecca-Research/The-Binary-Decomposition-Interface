@@ -23,6 +23,7 @@
  */
 
 #include "syscalls.h"
+#include <errno.h>
 #include "../process/process.h"
 #include "../scheduler/scheduler.h"
 #include <stdio.h>
@@ -271,6 +272,12 @@ int64_t sys_batch(const syscall_args_t *args) {
     
     uint32_t success_count = 0;
     bool atomic_batch = (params->flags & 0x1) != 0;
+
+    /* Atomic batches not yet supported - reject early */
+    if (atomic_batch) {
+        printf("sys_batch: Atomic batches not yet implemented\n");
+        return -ENOSYS;
+    }
     
     /* Execute each syscall in the batch */
     for (uint32_t i = 0; i < params->count; i++) {
@@ -283,14 +290,6 @@ int64_t sys_batch(const syscall_args_t *args) {
         
         if (result >= 0) {
             success_count++;
-        } else if (atomic_batch) {
-            /* Atomic batch: rollback on first error */
-            printf("sys_batch: Atomic batch failed at syscall %u (error %ld)\n", 
-                   i, result);
-            
-            /* TODO: Implement rollback mechanism for atomic batches */
-            /* For now, just return the error */
-            return result;
         }
     }
     
