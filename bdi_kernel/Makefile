@@ -85,3 +85,9 @@ info:
 	@echo "Flags: $(CFLAGS)"
 	@echo "Sources: $(words $(ALL_SRCS)) files"
 	@echo "Target: $(TARGET)"
+
+# Phase 5: Storage I/O Fast Paths
+DRIVER_OBJS = drivers/nvme.o drivers/ahci.o drivers/xhci.o drivers/usb_hid.o
+FS_OBJS = fs/fat32.o fs/ext2.o
+
+OBJS += $(DRIVER_OBJS) $(FS_OBJS)
