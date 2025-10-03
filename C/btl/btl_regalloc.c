@@ -88,8 +88,10 @@ int btl_regalloc_acquire(BTL_RegAllocator *allocator, uint32_t var_id,
             allocator->registers[i].live_start = start;
             allocator->registers[i].live_end = end;
             
-            // Add live interval
-            btl_regalloc_add_interval(allocator, var_id, start, end);
+            // NOTE: Do NOT add interval here during linear scan.
+            // Intervals should already exist before the scan begins.
+            // Adding intervals during scan causes the loop to process
+            // newly appended entries, leading to infinite growth.
             
             return (int)i;
         }
