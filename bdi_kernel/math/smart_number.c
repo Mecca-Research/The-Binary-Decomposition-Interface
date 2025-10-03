@@ -109,13 +109,17 @@ static void *pool_alloc(size_t size) {
     }
     
     memory_pool_t *pool = nullptr;
+    uint32_t pool_count = 0;
     
     if (size <= MATH_POOL_SMALL_SIZE) {
         pool = &g_small_pool;
+        pool_count = MATH_POOL_SMALL_COUNT;
     } else if (size <= MATH_POOL_MEDIUM_SIZE) {
         pool = &g_medium_pool;
+        pool_count = MATH_POOL_MEDIUM_COUNT;
     } else if (size <= MATH_POOL_LARGE_SIZE) {
         pool = &g_large_pool;
+        pool_count = MATH_POOL_LARGE_COUNT;
     } else {
         return malloc(size);
     }
@@ -123,7 +127,7 @@ static void *pool_alloc(size_t size) {
     uint32_t free_count = atomic_load(&pool->free_count);
     if (free_count > 0) {
         uint32_t idx = atomic_fetch_sub(&pool->free_count, 1) - 1;
-        if (idx < MATH_POOL_SMALL_COUNT) {
+        if (idx < pool_count) {
             void *block = pool->blocks[idx];
             atomic_fetch_add(&pool->allocated, 1);
             return block;
@@ -140,22 +144,26 @@ static void pool_free(void *ptr, size_t size) {
     }
     
     memory_pool_t *pool = nullptr;
+    uint32_t pool_count = 0;
     
     if (size <= MATH_POOL_SMALL_SIZE) {
         pool = &g_small_pool;
+        pool_count = MATH_POOL_SMALL_COUNT;
     } else if (size <= MATH_POOL_MEDIUM_SIZE) {
         pool = &g_medium_pool;
+        pool_count = MATH_POOL_MEDIUM_COUNT;
     } else if (size <= MATH_POOL_LARGE_SIZE) {
         pool = &g_large_pool;
+        pool_count = MATH_POOL_LARGE_COUNT;
     } else {
         free(ptr);
         return;
     }
     
     uint32_t free_count = atomic_load(&pool->free_count);
-    if (free_count < MATH_POOL_SMALL_COUNT) {
+    if (free_count < pool_count) {
         uint32_t idx = atomic_fetch_add(&pool->free_count, 1);
-        if (idx < MATH_POOL_SMALL_COUNT) {
+        if (idx < pool_count) {
             pool->blocks[idx] = ptr;
             atomic_fetch_sub(&pool->allocated, 1);
             return;
