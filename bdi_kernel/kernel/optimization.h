@@ -139,6 +139,8 @@
  */
 ALWAYS_INLINE HOT_CODE
 void* opt_memcpy(void* RESTRICT dst, const void* RESTRICT src, size_t n) {
+    void *orig_dst = dst;  /* Preserve original pointer for return */
+    
 #if defined(HAS_AVX512F)
     /* AVX-512 path: 64 bytes per iteration */
     if (n >= 64 && ((uintptr_t)dst & 63) == 0 && ((uintptr_t)src & 63) == 0) {
@@ -193,7 +195,7 @@ void* opt_memcpy(void* RESTRICT dst, const void* RESTRICT src, size_t n) {
         d8[i] = s8[i];
     }
     
-    return dst;
+    return orig_dst;  /* Return original pointer, not modified one */
 }
 
 /**
@@ -201,6 +203,7 @@ void* opt_memcpy(void* RESTRICT dst, const void* RESTRICT src, size_t n) {
  */
 ALWAYS_INLINE HOT_CODE
 void* opt_memset(void* dst, int c, size_t n) {
+    void *orig_dst = dst;  /* Preserve original pointer for return */
     uint8_t val = (uint8_t)c;
     
 #if defined(HAS_AVX512F)
@@ -250,7 +253,7 @@ void* opt_memset(void* dst, int c, size_t n) {
         d8[i] = val;
     }
     
-    return dst;
+    return orig_dst;  /* Return original pointer, not modified one */
 }
 
 /* ============================================================================
