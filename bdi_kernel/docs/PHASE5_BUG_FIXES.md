@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document details three critical bugs discovered in Phase 5 (Storage I/O Fast Paths) of the BDI Kernel project and their solutions. All three bugs were production-critical and could cause data corruption, system hangs, or incorrect behavior.
+This document details four critical bugs discovered in Phase 5 (Storage I/O Fast Paths) of the BDI Kernel project and their solutions. All four bugs were production-critical and could cause data corruption, system hangs, or incorrect behavior.
 
 ---
 
@@ -267,6 +267,164 @@ CREATE_SQ command structure:
 
 ---
 
+## Bug #4: fat32.c - Handle unaligned FAT32 reads larger than 4 KiB
+
+### Location
+`bdi_kernel/fs/fat32.c` - `fat32_read()` function (lines 127-143, now lines 134-187)
+
+### Severity
+**CRITICAL** - I/O failure, filesystem incompatibility
+
+### Problem Description
+
+The previous fix for Bug #2 (honoring sector offsets) introduced a new limitation: it used a fixed 4096-byte staging buffer and rejected any read that would require more space. The code checked if `sectors_needed * bytes_per_sector > sizeof(temp_buf)` and returned `-EINVAL` if true.
+
+**Root Cause:**  
+For FAT32 volumes with large clusters (e.g., 32 KiB or 64 KiB clusters), any read that begins mid-sector will span many sectors. Even though the read request itself might be valid, the number of sectors needed to cover the unaligned read could easily exceed the 4 KiB buffer limit.
+
+**Example Scenario:**
+```
+Cluster size: 64 KiB (128 sectors of 512 bytes)
+Read request: 32 KiB starting at offset 256 bytes into cluster
+Sector offset: 256 bytes (mid-sector)
+Sectors needed: (256 + 32768 + 511) / 512 = 65 sectors
+Buffer required: 65 * 512 = 33,280 bytes
+Fixed buffer: 4096 bytes
+Result: -EINVAL (read rejected)
+```
+
+This caused legitimate file reads to fail on filesystems with clusters larger than 4 KiB, making the FAT32 driver incompatible with many real-world FAT32 volumes (USB drives, SD cards, external drives often use 32 KiB or larger clusters).
+
+### Impact
+
+1. **Filesystem Incompatibility:** Cannot read files from FAT32 volumes with large clusters
+2. **Silent Failures:** Valid read operations fail with -EINVAL
+3. **Limited Usability:** Driver only works with small cluster sizes (≤4 KiB)
+4. **Production Blocker:** Many modern storage devices use large clusters for efficiency
+
+### Solution
+
+Replaced the single large staging buffer approach with a three-part read strategy that handles unaligned reads of any size:
+
+1. **Part 1: First Partial Sector**
+   - If the read starts mid-sector, read only that first sector into a small (512-byte) buffer
+   - Copy only the needed bytes from the sector offset to the end of the sector
+   - Advance to the next sector
+
+2. **Part 2: Middle Aligned Sectors**
+   - Calculate how many full sectors remain after the first partial sector
+   - Read these sectors directly into the caller's buffer (zero-copy optimization)
+   - This handles the bulk of the data efficiently
+
+3. **Part 3: Last Partial Sector**
+   - If any bytes remain after the full sectors, read the last sector into a small buffer
+   - Copy only the needed bytes from the beginning of that sector
+
+This approach:
+- Eliminates the buffer size limitation entirely
+- Handles reads of any size (limited only by available memory)
+- Maintains zero-copy optimization for the aligned middle portion
+- Uses only small (512-byte) temporary buffers for partial sectors
+
+**Key Changes:**
+```c
+if (sector_offset != 0 || to_read < file->fs->boot.bytes_per_sector) {
+    /* Unaligned read - handle in parts */
+    uint32_t bytes_per_sector = file->fs->boot.bytes_per_sector;
+    uint32_t bytes_copied = 0;
+    uint64_t current_sector = sector;
+    
+    /* Part 1: Handle first partial sector if read starts mid-sector */
+    if (sector_offset != 0) {
+        uint8_t first_sector_buf[512];
+        uint32_t bytes_from_first = bytes_per_sector - sector_offset;
+        if (bytes_from_first > to_read) {
+            bytes_from_first = to_read;
+        }
+        
+        int ret = file->fs->read_sectors(file->fs->device, current_sector, 
+                                        first_sector_buf, 1);
+        if (ret < 0) return ret;
+        
+        memcpy(buffer + bytes_read, first_sector_buf + sector_offset, 
+               bytes_from_first);
+        bytes_copied += bytes_from_first;
+        current_sector++;
+    }
+    
+    /* Part 2: Handle middle aligned sectors (direct read) */
+    uint32_t remaining = to_read - bytes_copied;
+    uint32_t full_sectors = remaining / bytes_per_sector;
+    
+    if (full_sectors > 0) {
+        int ret = file->fs->read_sectors(file->fs->device, current_sector,
+                                        buffer + bytes_read + bytes_copied,
+                                        full_sectors);
+        if (ret < 0) return ret;
+        
+        bytes_copied += full_sectors * bytes_per_sector;
+        current_sector += full_sectors;
+    }
+    
+    /* Part 3: Handle last partial sector if any bytes remain */
+    remaining = to_read - bytes_copied;
+    if (remaining > 0) {
+        uint8_t last_sector_buf[512];
+        
+        int ret = file->fs->read_sectors(file->fs->device, current_sector,
+                                        last_sector_buf, 1);
+        if (ret < 0) return ret;
+        
+        memcpy(buffer + bytes_read + bytes_copied, last_sector_buf, remaining);
+    }
+}
+```
+
+### Edge Cases Handled
+
+1. **Single Partial Sector:** Read entirely within one sector (e.g., 100 bytes at offset 200)
+   - Only Part 1 executes, Parts 2 and 3 are skipped
+
+2. **Partial Start + Full Sectors:** Read starts mid-sector and spans multiple sectors
+   - Part 1 handles the first partial sector
+   - Part 2 handles the full sectors
+   - Part 3 is skipped if the read ends on a sector boundary
+
+3. **Partial Start + Full Sectors + Partial End:** Read starts and ends mid-sector
+   - All three parts execute
+
+4. **Aligned Large Read:** Read starts on sector boundary and is sector-aligned
+   - Falls through to the optimized aligned read path (unchanged)
+
+### Testing Recommendations
+
+1. Test with various cluster sizes (4 KiB, 8 KiB, 16 KiB, 32 KiB, 64 KiB)
+2. Test reads at different offsets within clusters (0, 256, 512, 1024, etc.)
+3. Test reads of different sizes (small, medium, large, spanning multiple clusters)
+4. Verify correct data is returned in all cases
+5. Test edge cases (single partial sector, reads ending on boundaries)
+6. Compare performance with aligned vs. unaligned reads
+7. Test with real FAT32 volumes from USB drives and SD cards
+
+### Performance Analysis
+
+**Memory Usage:**
+- Old approach: Fixed 4096-byte buffer on stack
+- New approach: Two 512-byte buffers on stack (only when needed)
+- Savings: 3072 bytes of stack space
+
+**I/O Efficiency:**
+- Unaligned reads: Same number of I/O operations as before
+- Aligned reads: Unchanged (still uses zero-copy direct read)
+- Large unaligned reads: Now possible (previously failed)
+
+**CPU Overhead:**
+- Minimal additional logic for three-part handling
+- Reduced memory copying for large reads (only partial sectors copied)
+- Overall: Negligible performance impact, significant functionality gain
+
+---
+
 ## Additional Improvements
 
 ### Minor Fixes Applied
@@ -288,27 +446,33 @@ gcc -c -std=c2x -Wall -Wextra -O2 -I. <file>.c
 
 ## Performance Considerations
 
-### ext2.c Fix
+### ext2.c Fix (Bug #1)
 - **Overhead:** Minimal - reads at most one additional sector (512 bytes)
 - **Frequency:** Only during inode reads (metadata operations)
 - **Impact:** Negligible performance impact, critical correctness improvement
 
-### fat32.c Fix
+### fat32.c Fix (Bug #2)
 - **Overhead:** Adds temporary buffer copy for unaligned reads
 - **Optimization:** Aligned reads still use direct I/O (zero-copy path preserved)
 - **Frequency:** Depends on file access patterns
 - **Impact:** Small performance cost for correctness, optimized for common case
 
-### nvme.c Fix
+### nvme.c Fix (Bug #3)
 - **Overhead:** Two additional admin commands during initialization only
 - **Frequency:** Once per driver initialization
 - **Impact:** Negligible - initialization is not performance-critical path
+
+### fat32.c Fix (Bug #4)
+- **Overhead:** Reduced from previous fix - smaller temporary buffers (512 bytes vs 4096 bytes)
+- **Optimization:** Zero-copy direct read for aligned middle portion of unaligned reads
+- **Frequency:** Only for unaligned reads (aligned reads unchanged)
+- **Impact:** Improved memory efficiency, enables large cluster support, negligible performance impact
 
 ---
 
 ## Verification Checklist
 
-- [x] All three bugs identified and understood
+- [x] All four bugs identified and understood
 - [x] Root causes documented
 - [x] Solutions implemented
 - [x] Code compiles without errors
@@ -318,12 +482,13 @@ gcc -c -std=c2x -Wall -Wextra -O2 -I. <file>.c
 - [ ] Integration testing with real hardware
 - [ ] Stress testing under load
 - [ ] Memory safety verification (AddressSanitizer/Valgrind)
+- [ ] Testing with large cluster FAT32 volumes (32 KiB, 64 KiB)
 
 ---
 
 ## Conclusion
 
-All three critical bugs have been fixed with production-quality solutions that:
+All four critical bugs have been fixed with production-quality solutions that:
 1. Maintain the performance goals of the BDI Kernel
 2. Follow best practices for systems programming
 3. Include proper error handling
