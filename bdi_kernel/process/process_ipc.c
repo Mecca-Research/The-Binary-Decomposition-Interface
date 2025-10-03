@@ -1,4 +1,5 @@
 
+
 /**
  * @file process_ipc.c
  * @brief Process IPC Integration
@@ -194,6 +195,15 @@ void *process_create_shm(ProcessControlBlock *pcb1,
         return nullptr;
     }
     
+    /* Allocate shared COW refcount */
+    _Atomic(int) *shared_ref = ALLOC(_Atomic(int));
+    if (shared_ref == nullptr) {
+        fprintf(stderr, "PROCESS_IPC: Failed to allocate shared refcount\n");
+        free_memory(shm_ptr, size);
+        return nullptr;
+    }
+    atomic_init(shared_ref, 2);  /* Shared by 2 processes */
+    
     /* Create memory region descriptors for both processes */
     MemoryRegion *region1 = ALLOC(MemoryRegion);
     MemoryRegion *region2 = ALLOC(MemoryRegion);
@@ -202,21 +212,24 @@ void *process_create_shm(ProcessControlBlock *pcb1,
         fprintf(stderr, "PROCESS_IPC: Failed to allocate memory regions\n");
         if (region1 != nullptr) FREE(region1, MemoryRegion);
         if (region2 != nullptr) FREE(region2, MemoryRegion);
+        FREE(shared_ref, _Atomic(int));
         free_memory(shm_ptr, size);
         return nullptr;
     }
     
-    /* Initialize region descriptors */
+    /* Initialize region descriptors with shared COW refcount */
     region1->base = shm_ptr;
     region1->size = size;
     region1->flags = flags;
-    atomic_init(&region1->ref_count, 2);  /* Shared by 2 processes */
+    atomic_init(&region1->ref_count, 1);  /* Descriptor refcount */
+    region1->cow_ref_count = shared_ref;  /* Shared physical memory refcount */
     region1->next = pcb1->memory_regions;
     
     region2->base = shm_ptr;
     region2->size = size;
     region2->flags = flags;
-    atomic_init(&region2->ref_count, 2);  /* Shared by 2 processes */
+    atomic_init(&region2->ref_count, 1);  /* Descriptor refcount */
+    region2->cow_ref_count = shared_ref;  /* Shared physical memory refcount */
     region2->next = pcb2->memory_regions;
     
     /* Add to process memory region lists */
@@ -247,22 +260,32 @@ int process_destroy_shm(ProcessControlBlock *pcb, void *shm_ptr) {
     
     while (region != nullptr) {
         if (region->base == shm_ptr) {
-            /* Decrement reference count */
-            uint32_t refs = atomic_fetch_sub(&region->ref_count, 1) - 1;
-            
-            if (refs == 0) {
-                /* Last reference, free the memory */
-                free_memory(region->base, region->size);
-                printf("PROCESS_IPC: Shared memory freed\n");
-            }
-            
-            /* Remove from list */
+            /* Remove from list first */
             if (prev == nullptr) {
                 pcb->memory_regions = region->next;
             } else {
                 prev->next = region->next;
             }
             
+            /* Decrement shared refcount if COW */
+            if (region->cow_ref_count != nullptr) {
+                int old_count = atomic_fetch_sub(region->cow_ref_count, 1);
+                if (old_count == 1) {
+                    /* Last reference - free the shared refcount and physical memory */
+                    FREE(region->cow_ref_count, _Atomic(int));
+                    free_memory(region->base, region->size);
+                    printf("PROCESS_IPC: Shared memory freed (last reference)\n");
+                } else {
+                    printf("PROCESS_IPC: Decremented shared refcount (remaining: %d)\n",
+                           old_count - 1);
+                }
+            } else {
+                /* Not COW - free physical memory directly */
+                free_memory(region->base, region->size);
+                printf("PROCESS_IPC: Non-COW memory freed\n");
+            }
+            
+            /* Free the descriptor */
             FREE(region, MemoryRegion);
             return 0;
         }
