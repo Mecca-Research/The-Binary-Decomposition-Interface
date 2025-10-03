@@ -7,7 +7,7 @@
 #define BCI_AST_H
 
 #include "c23_compat.h"
-#include "bci_types.h"
+#include "../types/bci_types.h"
 
 // --- AST Node Types ---
 typedef enum {

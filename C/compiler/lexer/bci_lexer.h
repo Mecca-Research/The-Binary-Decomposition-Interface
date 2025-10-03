@@ -6,7 +6,7 @@
 #define BCI_LEXER_H
 
 #include "c23_compat.h"
-#include "bci_token.h"
+#include "../lexer/bci_token.h"
 
 // --- Lexer Structure ---
 // Holds the state of the scanner as it reads through the source code.
