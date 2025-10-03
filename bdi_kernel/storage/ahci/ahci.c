@@ -266,7 +266,7 @@ static int ahci_send_command(ahci_controller_t* ctrl, uint32_t port_num, uint8_t
     if (buffer) {
         cmd_table->prdt[0].dba = (uint64_t)(uintptr_t)buffer;
         cmd_table->prdt[0].dbc = (count * 512) - 1; // 0-based byte count
-        cmd_table->prdt[0].i = 1; // Interrupt on completion
+        cmd_table->prdt[0].dbc |= (1U << 31); // Interrupt on completion
     }
     
     // Issue command
@@ -453,7 +453,7 @@ static inline void ahci_setup_prdt_simd(ahci_prdt_entry_t* prdt,
         prdt[i].dba = phys_addrs[i] & 0xFFFFFFFF;
         prdt[i].dbau = (phys_addrs[i] >> 32) & 0xFFFFFFFF;
         prdt[i].dbc = (sizes[i] - 1) & 0x3FFFFF;  // Size - 1, max 4MB
-        prdt[i].i = 0;  // No interrupt on completion for individual entries
+        // Bit 31 (interrupt flag) is 0 due to 0x3FFFFF mask above
     }
 }
 
