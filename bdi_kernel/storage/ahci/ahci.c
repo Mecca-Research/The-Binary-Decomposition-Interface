@@ -266,7 +266,7 @@ static int ahci_send_command(ahci_controller_t* ctrl, uint32_t port_num, uint8_t
     if (buffer) {
         cmd_table->prdt[0].dba = (uint64_t)(uintptr_t)buffer;
         cmd_table->prdt[0].dbc = (count * 512) - 1; // 0-based byte count
-        cmd_table->prdt[0].dbc |= (1U << 31); // Interrupt on completion
+        cmd_table->prdt[0].i = 1; // Interrupt on completion
     }
     
     // Issue command
