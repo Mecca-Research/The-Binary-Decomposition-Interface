@@ -1,77 +1,36 @@
 // ===================================================================
 // DESC: Implements the conceptual FPGA backend API for
 //       synthesizing and loading bitstreams.
-// PHASE 13: Modernized with C23 features + Day 4 enhancements
+// PHASE 13: Modernized with C23 features
 // ===================================================================
 #include "fpga_backend.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
-// ============================================================================
-// Bitstream Cache with LRU Eviction
-// ============================================================================
-
+// --- FPGA Backend State ---
 static FpgaDeviceState fpga_state = {
     .initialized = false,
     .active_syntheses = 0,
     .bitstreams_cached = 0
 };
 
+// Simple bitstream cache (hash table would be better in production)
 static FpgaBitstream* bitstream_cache[FPGA_MAX_CACHED_BITSTREAMS] = {nullptr};
 
-// Synthesis job queue
-typedef struct SynthesisJob {
-    uint64_t job_id;
-    BdiGraph* graph;
-    NodeId start_node;
-    NodeId end_node;
-    _Atomic bool completed;
-    FpgaBitstream* result;
-    int status;
-} SynthesisJob;
-
-constexpr int MAX_SYNTHESIS_JOBS = 32;
-
-typedef struct {
-    SynthesisJob jobs[MAX_SYNTHESIS_JOBS];
-    _Atomic int active_jobs;
-    _Atomic uint64_t next_job_id;
-    _Atomic uint64_t total_syntheses;
-} SynthesisQueue;
-
-static SynthesisQueue synthesis_queue = {
-    .active_jobs = 0,
-    .next_job_id = 1,
-    .total_syntheses = 0
-};
-
-// ============================================================================
-// Hash and Utility Functions
-// ============================================================================
-
+// Simple hash function for a subgraph (placeholder)
 static uint64_t hash_subgraph(BdiGraph* g, NodeId start_node, NodeId end_node) {
     uint64_t hash = 5381;
     hash = ((hash << 5) + hash) + start_node;
     hash = ((hash << 5) + hash) + end_node;
+    // A real implementation would hash all nodes and edges in the subgraph.
     return hash;
 }
-
-static uint64_t get_timestamp(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec;
-}
-
-// ============================================================================
-// FPGA Initialization
-// ============================================================================
 
 [[nodiscard]] int fpga_init(void) {
     bool expected = false;
     if (!atomic_compare_exchange_strong(&fpga_state.initialized, &expected, true)) {
-        return 0;
+        return 0; // Already initialized
     }
     
     printf("FPGA_BACKEND: Initializing FPGA... OK.\n");
@@ -86,19 +45,13 @@ static uint64_t get_timestamp(void) {
         fpga_state.regions[i].current_bitstream = nullptr;
     }
     
-    // Initialize synthesis queue
-    for (int i = 0; i < MAX_SYNTHESIS_JOBS; i++) {
-        synthesis_queue.jobs[i].job_id = 0;
-        atomic_store(&synthesis_queue.jobs[i].completed, true);
-    }
-    
     return 0;
 }
 
 void fpga_shutdown(void) {
     bool expected = true;
     if (!atomic_compare_exchange_strong(&fpga_state.initialized, &expected, false)) {
-        return;
+        return; // Not initialized
     }
     
     printf("FPGA_BACKEND: Shutting down FPGA.\n");
@@ -110,107 +63,24 @@ void fpga_shutdown(void) {
             bitstream_cache[i] = nullptr;
         }
     }
-    
-    fpga_print_statistics();
 }
-
-// ============================================================================
-// Bitstream Cache Management
-// ============================================================================
 
 [[nodiscard]] FpgaBitstream* fpga_get_cached_bitstream(uint64_t subgraph_hash) {
     for (int i = 0; i < FPGA_MAX_CACHED_BITSTREAMS; i++) {
         if (bitstream_cache[i] != nullptr && 
             bitstream_cache[i]->subgraph_hash == subgraph_hash) {
             atomic_fetch_add(&bitstream_cache[i]->ref_count, 1);
-            printf("FPGA_BACKEND: Bitstream cache HIT for hash %llx\n", 
+            printf("FPGA_BACKEND: Cache hit for bitstream hash %llx\n", 
                    (unsigned long long)subgraph_hash);
             return bitstream_cache[i];
         }
     }
-    printf("FPGA_BACKEND: Bitstream cache MISS for hash %llx\n",
-           (unsigned long long)subgraph_hash);
     return nullptr;
 }
 
-static void add_to_cache(FpgaBitstream* bs) {
-    int cached_count = atomic_load(&fpga_state.bitstreams_cached);
-    if (cached_count >= FPGA_MAX_CACHED_BITSTREAMS) {
-        // Find LRU entry to evict (simplified: just use first slot)
-        if (bitstream_cache[0] != nullptr) {
-            printf("FPGA_BACKEND: Evicting cached bitstream\n");
-            fpga_free_bitstream(bitstream_cache[0]);
-        }
-        bitstream_cache[0] = bs;
-        atomic_fetch_add(&bs->ref_count, 1);
-    } else {
-        for (int i = 0; i < FPGA_MAX_CACHED_BITSTREAMS; i++) {
-            if (bitstream_cache[i] == nullptr) {
-                bitstream_cache[i] = bs;
-                atomic_fetch_add(&fpga_state.bitstreams_cached, 1);
-                atomic_fetch_add(&bs->ref_count, 1);
-                printf("FPGA_BACKEND: Bitstream cached at slot %d\n", i);
-                break;
-            }
-        }
-    }
-}
-
-// ============================================================================
-// Synthesis Pipeline
-// ============================================================================
-
-[[nodiscard]] uint64_t fpga_synthesis_request(BdiGraph* g, NodeId start_node, NodeId end_node) {
-    if (!atomic_load(&fpga_state.initialized)) {
-        fpga_init();
-    }
-    
-    // Find available job slot
-    for (int i = 0; i < MAX_SYNTHESIS_JOBS; i++) {
-        bool expected = true;
-        if (atomic_compare_exchange_strong(&synthesis_queue.jobs[i].completed, 
-                                          &expected, false)) {
-            SynthesisJob* job = &synthesis_queue.jobs[i];
-            job->job_id = atomic_fetch_add(&synthesis_queue.next_job_id, 1);
-            job->graph = g;
-            job->start_node = start_node;
-            job->end_node = end_node;
-            job->result = nullptr;
-            job->status = 0;
-            
-            atomic_fetch_add(&synthesis_queue.active_jobs, 1);
-            
-            printf("FPGA_BACKEND: Synthesis job %llu queued\n", 
-                   (unsigned long long)job->job_id);
-            return job->job_id;
-        }
-    }
-    
-    return 0; // Queue full
-}
-
-[[nodiscard]] int fpga_synthesis_status(uint64_t job_id, FpgaBitstream** out_bitstream) {
-    for (int i = 0; i < MAX_SYNTHESIS_JOBS; i++) {
-        if (synthesis_queue.jobs[i].job_id == job_id) {
-            if (atomic_load(&synthesis_queue.jobs[i].completed)) {
-                if (out_bitstream != nullptr) {
-                    *out_bitstream = synthesis_queue.jobs[i].result;
-                }
-                return synthesis_queue.jobs[i].status;
-            }
-            return -1; // Still in progress
-        }
-    }
-    return -2; // Job not found
-}
-
-// ============================================================================
-// Bitstream Synthesis
-// ============================================================================
-
 [[nodiscard]] FpgaBitstream* fpga_synthesize_subgraph(BdiGraph* g, NodeId start_node, NodeId end_node) {
     if (!atomic_load(&fpga_state.initialized)) {
-        fpga_init();
+        return nullptr;
     }
     
     uint64_t hash = hash_subgraph(g, start_node, end_node);
@@ -222,7 +92,6 @@ static void add_to_cache(FpgaBitstream* bs) {
     }
     
     atomic_fetch_add(&fpga_state.active_syntheses, 1);
-    atomic_fetch_add(&synthesis_queue.total_syntheses, 1);
     
     printf("FPGA_BACKEND: Starting synthesis for subgraph (Nodes %llu to %llu).\n",
            (unsigned long long)start_node, (unsigned long long)end_node);
@@ -234,7 +103,10 @@ static void add_to_cache(FpgaBitstream* bs) {
     }
 
     bs->subgraph_hash = hash;
-    bs->bitstream_size = 1024 + (rand() % 1024);
+    
+    // Simulate bitstream generation. A real backend would invoke tools like
+    // Vivado/Quartus here to generate Verilog and synthesize it.
+    bs->bitstream_size = 1024 + (rand() % 1024); // Dummy size
     bs->bitstream_data = malloc(bs->bitstream_size);
     if (bs->bitstream_data == nullptr) {
         free(bs);
@@ -242,6 +114,7 @@ static void add_to_cache(FpgaBitstream* bs) {
         return nullptr;
     }
     
+    // Fill with a dummy pattern
     memset(bs->bitstream_data, 0xAB, bs->bitstream_size);
     atomic_store(&bs->is_loaded, false);
     atomic_store(&bs->ref_count, 1);
@@ -249,14 +122,23 @@ static void add_to_cache(FpgaBitstream* bs) {
     
     printf("FPGA_BACKEND: Synthesis complete. Bitstream size: %zu bytes.\n", bs->bitstream_size);
     
-    add_to_cache(bs);
+    // Add to cache if space available
+    int cached_count = atomic_load(&fpga_state.bitstreams_cached);
+    if (cached_count < FPGA_MAX_CACHED_BITSTREAMS) {
+        for (int i = 0; i < FPGA_MAX_CACHED_BITSTREAMS; i++) {
+            if (bitstream_cache[i] == nullptr) {
+                bitstream_cache[i] = bs;
+                atomic_fetch_add(&fpga_state.bitstreams_cached, 1);
+                atomic_fetch_add(&bs->ref_count, 1); // Cache holds a reference
+                printf("FPGA_BACKEND: Bitstream cached at slot %d\n", i);
+                break;
+            }
+        }
+    }
+    
     atomic_fetch_sub(&fpga_state.active_syntheses, 1);
     return bs;
 }
-
-// ============================================================================
-// Partial Reconfiguration
-// ============================================================================
 
 [[nodiscard]] int fpga_load_bitstream(FpgaBitstream* bitstream) {
     if (bitstream == nullptr) {
@@ -266,8 +148,7 @@ static void add_to_cache(FpgaBitstream* bs) {
     // Load to first available region
     for (int i = 0; i < FPGA_MAX_REGIONS; i++) {
         bool expected = false;
-        if (atomic_compare_exchange_strong(&fpga_state.regions[i].is_occupied, 
-                                          &expected, true)) {
+        if (atomic_compare_exchange_strong(&fpga_state.regions[i].is_occupied, &expected, true)) {
             return fpga_load_bitstream_region(bitstream, i);
         }
     }
@@ -287,9 +168,11 @@ static void add_to_cache(FpgaBitstream* bs) {
         return -1;
     }
     
-    printf("FPGA_BACKEND: Loading bitstream (hash: %llx) onto region %d (partial reconfig)...\n",
+    printf("FPGA_BACKEND: Loading bitstream (hash: %llx) onto region %d...\n",
            (unsigned long long)bitstream->subgraph_hash, region_id);
     
+    // This is where the HAL would be called to perform partial reconfiguration.
+    // We'll just simulate the success.
     atomic_store(&bitstream->is_loaded, true);
     bitstream->region_id = region_id;
     region->current_bitstream = bitstream;
@@ -317,13 +200,6 @@ static void add_to_cache(FpgaBitstream* bs) {
     return 0;
 }
 
-[[nodiscard]] int fpga_reconfigure_region(int region_id, FpgaBitstream* new_bitstream) {
-    if (fpga_unload_region(region_id) != 0) {
-        return -1;
-    }
-    return fpga_load_bitstream_region(new_bitstream, region_id);
-}
-
 void fpga_free_bitstream(FpgaBitstream* bitstream) {
     if (bitstream == nullptr) {
         return;
@@ -331,7 +207,7 @@ void fpga_free_bitstream(FpgaBitstream* bitstream) {
     
     int ref_count = atomic_fetch_sub(&bitstream->ref_count, 1);
     if (ref_count > 1) {
-        return;
+        return; // Still referenced
     }
     
     // Remove from cache if present
@@ -352,22 +228,28 @@ void fpga_free_bitstream(FpgaBitstream* bitstream) {
 }
 
 // ============================================================================
-// Memory Management Integration (from Day 2)
+// FPGA Memory Management Integration
 // ============================================================================
 
+// External memory management functions
 extern void* backend_alloc(int device_id, size_t size, uint32_t flags);
 extern void backend_free(int device_id, void* ptr, size_t size);
 extern int backend_transfer_h2d_zerocopy(int device_id, void* device_ptr,
                                         const void* host_ptr, size_t size);
 
+// Memory flags from backend_memory.c
 #define MEM_FLAG_ZERO_COPY (1 << 0)
 #define MEM_FLAG_UNIFIED (1 << 1)
 
+/**
+ * Allocate FPGA memory using unified memory manager
+ */
 [[nodiscard]] void* fpga_alloc_managed(size_t size_bytes, uint32_t flags) {
     if (!atomic_load(&fpga_state.initialized)) {
         return nullptr;
     }
     
+    // Use device 1 for FPGA (in real implementation, select actual FPGA device)
     void* ptr = backend_alloc(1, size_bytes, flags);
     if (ptr != nullptr) {
         printf("FPGA_BACKEND: Managed alloc %zu bytes (flags=0x%x)\n", size_bytes, flags);
@@ -375,6 +257,9 @@ extern int backend_transfer_h2d_zerocopy(int device_id, void* device_ptr,
     return ptr;
 }
 
+/**
+ * Free FPGA memory using unified memory manager
+ */
 void fpga_free_managed(void* device_ptr, size_t size_bytes) {
     if (device_ptr == nullptr) {
         return;
@@ -384,6 +269,9 @@ void fpga_free_managed(void* device_ptr, size_t size_bytes) {
     printf("FPGA_BACKEND: Managed free %zu bytes\n", size_bytes);
 }
 
+/**
+ * Zero-copy transfer to FPGA
+ */
 [[nodiscard]] int fpga_transfer_zerocopy(void* fpga_dst, const void* host_src, size_t size_bytes) {
     if (fpga_dst == nullptr || host_src == nullptr) {
         return -1;
@@ -391,29 +279,4 @@ void fpga_free_managed(void* device_ptr, size_t size_bytes) {
     
     printf("FPGA_BACKEND: Zero-copy transfer %zu bytes\n", size_bytes);
     return backend_transfer_h2d_zerocopy(1, fpga_dst, host_src, size_bytes);
-}
-
-// ============================================================================
-// Statistics
-// ============================================================================
-
-void fpga_print_statistics(void) {
-    printf("\n=== FPGA Backend Statistics ===\n");
-    printf("Initialized: %s\n", atomic_load(&fpga_state.initialized) ? "Yes" : "No");
-    printf("Active syntheses: %d\n", atomic_load(&fpga_state.active_syntheses));
-    printf("Bitstreams cached: %d / %d\n", 
-           atomic_load(&fpga_state.bitstreams_cached), FPGA_MAX_CACHED_BITSTREAMS);
-    printf("Total syntheses: %llu\n",
-           (unsigned long long)atomic_load(&synthesis_queue.total_syntheses));
-    printf("Active synthesis jobs: %d / %d\n",
-           atomic_load(&synthesis_queue.active_jobs), MAX_SYNTHESIS_JOBS);
-    
-    int occupied_regions = 0;
-    for (int i = 0; i < FPGA_MAX_REGIONS; i++) {
-        if (atomic_load(&fpga_state.regions[i].is_occupied)) {
-            occupied_regions++;
-        }
-    }
-    printf("Occupied regions: %d / %d\n", occupied_regions, FPGA_MAX_REGIONS);
-    printf("================================\n\n");
 }
