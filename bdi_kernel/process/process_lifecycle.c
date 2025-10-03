@@ -34,6 +34,11 @@ extern uint32_t pcb_unref(ProcessControlBlock *pcb);
 
 /**
  * @brief Copy memory regions with COW support
+ * 
+ * For proper COW semantics, both parent and child must share the same
+ * MemoryRegion objects (not copies) so they share the same atomic refcount.
+ * This prevents use-after-free when one process exits while the other still
+ * holds references to the shared memory.
  */
 static int copy_memory_regions_cow(ProcessControlBlock *parent,
                                    ProcessControlBlock *child) {
@@ -41,36 +46,23 @@ static int copy_memory_regions_cow(ProcessControlBlock *parent,
         return -EINVAL;
     }
     
-    /* Copy memory region list with COW */
+    /* Share memory region list with COW - both processes reference the same regions */
     MemoryRegion *parent_region = parent->memory_regions;
     MemoryRegion *prev_child_region = nullptr;
     
     while (parent_region != nullptr) {
-        /* Allocate new region descriptor */
-        MemoryRegion *child_region = ALLOC(MemoryRegion);
-        if (child_region == nullptr) {
-            fprintf(stderr, "PROCESS: Failed to allocate memory region\n");
-            return -ENOMEM;
-        }
-        
-        /* Copy region metadata */
-        child_region->base = parent_region->base;
-        child_region->size = parent_region->size;
-        child_region->flags = parent_region->flags | MEM_FLAG_NUMA;
-        child_region->next = nullptr;
-        
-        /* Increment reference count for COW */
-        atomic_init(&child_region->ref_count, 1);
+        /* Share the same MemoryRegion object between parent and child */
+        /* Increment reference count for COW - both processes share this region */
         atomic_fetch_add(&parent_region->ref_count, 1);
         
-        /* Link into child's region list */
+        /* Link the shared region into child's region list */
         if (prev_child_region == nullptr) {
-            child->memory_regions = child_region;
+            child->memory_regions = parent_region;
         } else {
-            prev_child_region->next = child_region;
+            prev_child_region->next = parent_region;
         }
         
-        prev_child_region = child_region;
+        prev_child_region = parent_region;
         parent_region = parent_region->next;
     }
     
@@ -242,8 +234,12 @@ ProcessId process_fork(void) {
     process_set_state(child, PROC_READY);
     
     /* Insert into process table */
-    extern ProcessControlBlock *g_process_table[];
-    g_process_table[child_pid] = child;
+    ret = process_insert(child);
+    if (ret < 0) {
+        fprintf(stderr, "PROCESS: Failed to insert child into process table\n");
+        pcb_free(child);
+        return ret;
+    }
     
     printf("PROCESS: Fork successful - Parent=%llu Child=%llu\n",
            (unsigned long long)parent->pid,
