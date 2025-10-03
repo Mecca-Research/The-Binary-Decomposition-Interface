@@ -2,6 +2,7 @@
 // DESC: Implementation of the AI Training Engine.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "ai_trainer.h"
 #include <stdio.h>
 

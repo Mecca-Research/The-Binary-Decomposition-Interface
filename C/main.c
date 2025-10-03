@@ -4,6 +4,7 @@
 //       code.
 // ===================================================================
 
+#include "c23_compat.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -24,7 +25,7 @@ static InterpretResult compile_and_run(const char* source) {
     Parser parser;
     parser_init(&parser, &lexer);
     AstNode* program = parser_parse(&parser);
-    if (program == NULL || parser.had_error) {
+    if (program == nullptr || parser.had_error) {
         fprintf(stderr, "Compilation failed: Syntax Error.\n");
         if (program) ast_free_node(program);
         return INTERPRET_COMPILE_ERROR;

@@ -5,6 +5,7 @@
 #ifndef BCI_PARSER_H
 #define BCI_PARSER_H
 
+#include "c23_compat.h"
 #include "bci_lexer.h"
 #include "bci_ast.h"
 
@@ -29,8 +30,13 @@ void parser_free(Parser* parser);
 
 // The main entry point for parsing. It consumes tokens from the lexer
 // and returns the root of the constructed Abstract Syntax Tree.
-// Returns NULL if a fatal syntax error occurs.
+// Returns nullptr if a fatal syntax error occurs.
 AstNode* parser_parse(Parser* parser);
 
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Parser requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // BCI_PARSER_H

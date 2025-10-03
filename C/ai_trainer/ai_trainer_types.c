@@ -3,6 +3,7 @@
 //       structures.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "ai_trainer_types.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,7 +12,7 @@
 
 void training_table_init(TrainingTable* table) {
     if (!table) return;
-    table->rules = NULL;
+    table->rules = nullptr;
     table->count = 0;
     table->capacity = 0;
 }
@@ -31,7 +32,7 @@ void training_table_add_rule(TrainingTable* table, TrainingRule rule) {
         table->capacity = old_capacity < 8 ? 8 : old_capacity * 2;
         table->rules = realloc(table->rules, table->capacity * sizeof(TrainingRule));
 
-        if (table->rules == NULL) {
+        if (table->rules == nullptr) {
             perror("Failed to reallocate training table");
             // In a real application, this should be handled more gracefully.
             exit(1);

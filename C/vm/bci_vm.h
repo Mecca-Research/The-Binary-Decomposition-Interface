@@ -4,6 +4,7 @@
 #ifndef BCI_VM_H
 #define BCI_VM_H
 
+#include "c23_compat.h"
 #include "bci_chunk.h"
 
 #define STACK_MAX 256
@@ -42,5 +43,10 @@ InterpretResult vm_interpret(VM* vm, Chunk* chunk);
 // Stack operations (for internal use, but declared for modularity).
 void vm_stack_push(VM* vm, double value);
 double vm_stack_pop(VM* vm);
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "VM requires at least 32-bit pointers");
+static_assert(sizeof(double) == 8, "VM requires 64-bit doubles");
+static_assert(sizeof(InterpretResult) == sizeof(int), "InterpretResult must be int-sized");
 
 #endif // BCI_VM_H

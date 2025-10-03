@@ -5,6 +5,7 @@
 #ifndef AEON_FPGA_BACKEND_H
 #define AEON_FPGA_BACKEND_H
 
+#include "c23_compat.h"
 #include "graph.h"
 
 // Represents a compiled hardware bitstream for a BDI subgraph.
@@ -20,7 +21,7 @@ typedef struct {
 // the software-to-hardware pipeline.
 
 // Initializes the FPGA backend.
-int fpga_init();
+[[nodiscard]] int fpga_init();
 void fpga_shutdown();
 
 // Takes a BDI subgraph and "synthesizes" it into a bitstream.
@@ -32,5 +33,10 @@ int fpga_load_bitstream(FpgaBitstream* bitstream);
 
 // Frees the memory for a bitstream object.
 void fpga_free_bitstream(FpgaBitstream* bitstream);
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "FPGA backend requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // AEON_FPGA_BACKEND_H

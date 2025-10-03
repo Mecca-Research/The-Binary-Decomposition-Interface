@@ -2,6 +2,7 @@
 // DESC: Provides a simple hashing function for metadata.
 //       A real implementation would use a robust algorithm like SHA-256.
 // ===================================================================
+#include "c23_compat.h"
 #include "graph.h" // For NodeMeta struct
 #include <string.h>
 

@@ -2,6 +2,7 @@
 // DESC: Implementation of the Lexer (Scanner).
 // ===================================================================
 
+#include "c23_compat.h"
 #include "bci_lexer.h"
 #include <string.h>
 #include <stdbool.h>

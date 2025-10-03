@@ -5,6 +5,7 @@
 #ifndef BCI_TYPES_H
 #define BCI_TYPES_H
 
+#include "c23_compat.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -37,7 +38,7 @@ typedef struct {
     size_t len;
     size_t capacity;
 } BciStr;
-
+[[nodiscard]] 
 BciStr* bci_str_new(const char* init);
 void bci_str_free(BciStr* str);
 void bci_str_append(BciStr* str, const char* suffix);
@@ -46,7 +47,7 @@ void bci_str_append(BciStr* str, const char* suffix);
 // A type-safe vector implementation using macros.
 #define BciVec(T) struct { T* data; size_t len; size_t capacity; }
 
-#define bci_vec_init(v)     do { (v)->data = NULL; (v)->len = 0; (v)->capacity = 0; } while (0)
+#define bci_vec_init(v)     do { (v)->data = nullptr; (v)->len = 0; (v)->capacity = 0; } while (0)
 #define bci_vec_free(v)     free((v)->data)
 #define bci_vec_push(v, val) do { \
     if ((v)->len >= (v)->capacity) { \
@@ -55,5 +56,10 @@ void bci_str_append(BciStr* str, const char* suffix);
     } \
     (v)->data[(v)->len++] = (val); \
 } while (0)
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Type system requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // BCI_TYPES_H

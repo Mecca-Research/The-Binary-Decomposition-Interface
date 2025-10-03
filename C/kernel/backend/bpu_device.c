@@ -1,6 +1,7 @@
 // ===================================================================
 // DESC: A stub implementation for the BPU device.
 // ===================================================================
+#include "c23_compat.h"
 #include "device.h"
 #include <stdio.h>
 

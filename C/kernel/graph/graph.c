@@ -2,15 +2,16 @@
 // DESC: Implements the basic memory management for BDI graph
 //       structures.
 // ===================================================================
+#include "c23_compat.h"
 #include "graph.h"
 #include <stdlib.h>
 #include <string.h>
-
+[[nodiscard]] 
 BdiGraph* aeon_graph_create() {
     BdiGraph* g = (BdiGraph*)calloc(1, sizeof(BdiGraph));
-    if (!g) return NULL;
+    if (!g) return nullptr;
     // Initialize update spec array
-    g->updates = NULL;
+    g->updates = nullptr;
     g->update_count = 0;
     g->update_capacity = 0;
     return g;

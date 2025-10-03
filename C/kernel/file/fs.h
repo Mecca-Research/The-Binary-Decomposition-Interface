@@ -4,6 +4,7 @@
 #ifndef AEON_FS_H
 #define AEON_FS_H
 
+#include "c23_compat.h"
 #include <stdint.h>
 
 #define FS_BLOCK_SIZE 4096
@@ -30,5 +31,10 @@ typedef struct {
     uint32_t inum;
     char name[MAX_FILENAME];
 } DirectoryEntry;
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "FS requires at least 32-bit pointers");
+static_assert(sizeof(size_t) >= 4, "size_t must be at least 4 bytes");
 
 #endif // AEON_FS_H

@@ -3,6 +3,7 @@
 //       to perform semantic checks and build the symbol table.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "bci_analyzer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,7 +39,7 @@ static void analyze_binary_op(Analyzer* analyzer, AstNode* node) {
     // A proper implementation would have a type promotion system.
     node->resolved_type = malloc(sizeof(BciType));
     node->resolved_type->kind = BCI_TYPE_I64;
-    node->resolved_type->base = NULL;
+    node->resolved_type->base = nullptr;
 }
 
 // Handles a literal node.
@@ -46,7 +47,7 @@ static void analyze_literal(Analyzer* analyzer, AstNode* node) {
     // The type is inherent to the literal. For now, we only have i64.
     node->resolved_type = malloc(sizeof(BciType));
     node->resolved_type->kind = BCI_TYPE_I64;
-    node->resolved_type->base = NULL;
+    node->resolved_type->base = nullptr;
 }
 
 // Main dispatcher for traversing any AST node.

@@ -2,6 +2,7 @@
 // DESC: Implements the conceptual GPU backend API.
 //       This simulates a wrapper around a real GPU framework like CUDA.
 // ===================================================================
+#include "c23_compat.h"
 #include "gpu_backend.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +13,7 @@ static bool gpu_initialized = false;
 static size_t gpu_mem_allocated = 0;
 #define GPU_MEMORY_CAPACITY (1024 * 1024) // Simulate 1MB of GPU memory
 
-int gpu_init() {
+[[nodiscard]] int gpu_init() {
     if (gpu_initialized) return 0;
     printf("GPU_BACKEND: Initializing GPU... OK.\n");
     gpu_initialized = true;
@@ -25,10 +26,10 @@ void gpu_shutdown() {
     printf("GPU_BACKEND: Shutting down GPU.\n");
     gpu_initialized = false;
 }
-
+[[nodiscard]] 
 void* gpu_alloc(size_t size_bytes) {
     if (!gpu_initialized || gpu_mem_allocated + size_bytes > GPU_MEMORY_CAPACITY) {
-        return NULL;
+        return nullptr;
     }
     // In a real implementation, this would return a device pointer.
     // We'll return a host pointer from malloc to simulate it.

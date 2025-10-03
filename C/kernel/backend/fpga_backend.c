@@ -2,6 +2,7 @@
 // DESC: Implements the conceptual FPGA backend API for
 //       synthesizing and loading bitstreams.
 // ===================================================================
+#include "c23_compat.h"
 #include "fpga_backend.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +17,7 @@ static uint64_t hash_subgraph(BdiGraph* g, NodeId start_node, NodeId end_node) {
     return hash;
 }
 
-int fpga_init() {
+[[nodiscard]] int fpga_init() {
     printf("FPGA_BACKEND: Initializing FPGA... OK.\n");
     return 0;
 }
@@ -30,7 +31,7 @@ FpgaBitstream* fpga_synthesize_subgraph(BdiGraph* g, NodeId start_node, NodeId e
            (unsigned long long)start_node, (unsigned long long)end_node);
 
     FpgaBitstream* bs = (FpgaBitstream*)malloc(sizeof(FpgaBitstream));
-    if (!bs) return NULL;
+    if (!bs) return nullptr;
 
     bs->subgraph_hash = hash_subgraph(g, start_node, end_node);
     
@@ -38,7 +39,7 @@ FpgaBitstream* fpga_synthesize_subgraph(BdiGraph* g, NodeId start_node, NodeId e
     // Vivado/Quartus here to generate Verilog and synthesize it.
     bs->bitstream_size = 1024 + (rand() % 1024); // Dummy size
     bs->bitstream_data = malloc(bs->bitstream_size);
-    if (!bs->bitstream_data) { free(bs); return NULL; }
+    if (!bs->bitstream_data) { free(bs); return nullptr; }
     
     // Fill with a dummy pattern
     memset(bs->bitstream_data, 0xAB, bs->bitstream_size);

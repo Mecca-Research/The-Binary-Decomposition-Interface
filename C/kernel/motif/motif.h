@@ -6,6 +6,7 @@
 #ifndef AEON_MOTIF_H
 #define AEON_MOTIF_H
 
+#include "c23_compat.h"
 #include "graph.h" // For BdiGraph and basic types
 
 // Represents a unique, interned data pattern.
@@ -31,5 +32,10 @@ void motif_dict_free(MotifDictionary* dict);
 Motif* motif_dict_intern(MotifDictionary* dict, void* data, size_t size);
 // Decrements the reference count of a motif.
 void motif_dict_release(MotifDictionary* dict, uint64_t hash);
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Motif requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // AEON_MOTIF_H

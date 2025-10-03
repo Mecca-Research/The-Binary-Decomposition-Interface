@@ -3,6 +3,7 @@
 //       identifiers.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "bci_symbol.h"
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +52,7 @@ bool symbol_table_add(SymbolTable* table, Symbol symbol) {
     bci_vec_push(&table->symbols, symbol);
     return true;
 }
-
+[[nodiscard]] 
 Symbol* symbol_table_lookup(SymbolTable* table, Token name) {
     // Search backwards to find the innermost declaration (shadowing).
     for (int i = table->symbols.len - 1; i >= 0; i--) {
@@ -61,5 +62,5 @@ Symbol* symbol_table_lookup(SymbolTable* table, Token name) {
             return symbol;
         }
     }
-    return NULL;
+    return nullptr;
 }

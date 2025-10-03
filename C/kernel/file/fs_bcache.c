@@ -2,6 +2,7 @@
 // DESC: Implements the buffer cache layer to keep frequently used
 //       disk blocks in HAM regions.
 // ===================================================================
+#include "c23_compat.h"
 #include "fs.h"
 #include "ham.h"
 #include <stdio.h>
@@ -13,7 +14,7 @@ void bcache_init() {
 
 // Gets a block from the cache. If not present, allocates a HAM
 // region and reads it from the archive (disk).
-void* bcache_get(uint32_t blockno) {
+[[nodiscard]] void* bcache_get(uint32_t blockno) {
     printf("FS_BCACHE: Requesting block %u.\n", blockno);
     // 1. Search for block in the cache.
     // 2. If not found:
@@ -21,5 +22,5 @@ void* bcache_get(uint32_t blockno) {
     //    b. ham->load(...) the block from disk.
     //    c. Add to cache.
     // 3. Return pointer to the cached data.
-    return NULL; // Placeholder
+    return nullptr; // Placeholder
 }

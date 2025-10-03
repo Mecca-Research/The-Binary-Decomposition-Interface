@@ -2,6 +2,7 @@
 // DESC: Defines the standard Service IDs and Operation Codes for the
 //       Aeon kernel's system call interface.
 // ===================================================================
+#include "c23_compat.h"
 #ifndef AEON_SYSCALLS_H
 #define AEON_SYSCALLS_H
 
@@ -19,5 +20,8 @@
 #define PROC_OP_FORK 1
 #define PROC_OP_EXIT 2
 #define PROC_OP_WAIT 3
+
+// Compile-time invariants
+static_assert(sizeof(int) >= 4, "Syscall codes require at least 32-bit int");
 
 #endif // AEON_SYSCALLS_H

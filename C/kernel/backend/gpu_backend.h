@@ -6,6 +6,7 @@
 #ifndef AEON_GPU_BACKEND_H
 #define AEON_GPU_BACKEND_H
 
+#include "c23_compat.h"
 #include "ham.h" // For HamRegion
 
 // --- GPU Kernel Representation ---
@@ -24,11 +25,11 @@ typedef struct {
 // cudaMemcpy, cuLaunchKernel, etc.
 
 // Initializes the GPU device.
-int gpu_init();
+[[nodiscard]] int gpu_init();
 // Frees all GPU resources.
 void gpu_shutdown();
 // Allocates memory on the GPU device.
-void* gpu_alloc(size_t size_bytes);
+[[nodiscard]] void* gpu_alloc(size_t size_bytes);
 // Frees memory on the GPU device.
 void gpu_free(void* device_ptr);
 // Copies memory from Host (CPU) to Device (GPU).
@@ -40,5 +41,11 @@ int gpu_launch_kernel(GpuKernel kernel, void** args);
 // Blocks until the GPU has finished all enqueued work.
 int gpu_sync();
 
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "GPU backend requires at least 32-bit pointers");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
+static_assert(sizeof(float) == 4, "float must be 4 bytes");
 
 #endif // AEON_GPU_BACKEND_H

@@ -4,6 +4,7 @@
 //       the complete Structured Intelligence Formation process.
 // ===================================================================
 
+#include "c23_compat.h"
 #include "ai_trainer.h"
 #include <stdio.h>
 

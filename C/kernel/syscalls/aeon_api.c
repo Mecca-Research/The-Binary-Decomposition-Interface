@@ -2,6 +2,7 @@
 // DESC: Implements the user-facing C API for Aeon system services.
 //       These functions wrap the low-level BDI OS_SERVICE_CALL mechanism.
 // ===================================================================
+#include "c23_compat.h"
 #include "syscalls.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -26,5 +27,5 @@ uint64_t aeon_read(int fd, void* buf, size_t count) {
 }
 
 uint64_t aeon_fork() {
-    return bdi_os_service_call(SERVICE_PROCESS_MANAGER, PROC_OP_FORK, NULL);
+    return bdi_os_service_call(SERVICE_PROCESS_MANAGER, PROC_OP_FORK, nullptr);
 }

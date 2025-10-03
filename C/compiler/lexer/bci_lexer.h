@@ -5,6 +5,7 @@
 #ifndef BCI_LEXER_H
 #define BCI_LEXER_H
 
+#include "c23_compat.h"
 #include "bci_token.h"
 
 // --- Lexer Structure ---
@@ -22,5 +23,11 @@ void lexer_init(Lexer* lexer, const char* source);
 
 // Scans and returns the next token from the source code.
 Token lexer_scan_token(Lexer* lexer);
+
+
+// Compile-time invariants
+static_assert(sizeof(void*) >= 4, "Lexer requires at least 32-bit pointers");
+static_assert(sizeof(char) == 1, "char must be 1 byte");
+static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
 
 #endif // BCI_LEXER_H

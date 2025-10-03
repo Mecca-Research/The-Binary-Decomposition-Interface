@@ -1,6 +1,7 @@
 // ===================================================================
 // DESC: Implements the scheduler with its secure policy gate.
 // ===================================================================
+#include "c23_compat.h"
 #include "scheduler.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -9,10 +10,10 @@
 void aeon_hash_meta(const GraphNode* node, uint8_t out_hash[32]);
 
 // --- Scheduler API Implementation ---
-
+[[nodiscard]] 
 Scheduler* aeon_scheduler_create(BdiGraph* g, DeviceVTable** devices, size_t dev_count) {
     Scheduler* sched = (Scheduler*)calloc(1, sizeof(Scheduler));
-    if (!sched) return NULL;
+    if (!sched) return nullptr;
     sched->graph = g;
     sched->devices = devices;
     sched->device_count = dev_count;
@@ -89,7 +90,7 @@ int aeon_scheduler_run_wave(Scheduler* sched) {
                     printf("SCHEDULER: Dispatching Node %llu to Device '%s'.\n", (unsigned long long)node->id, device->name);
                     void* kernel;
                     device->lower(node, &kernel);
-                    device->enqueue(kernel, NULL, 0);
+                    device->enqueue(kernel, nullptr, 0);
                 }
             }
         }

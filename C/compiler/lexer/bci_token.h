@@ -2,6 +2,7 @@
 // DESC: Defines the Token structure and the different kinds of tokens
 //       that the Lexer can produce.
 // ===================================================================
+#include "c23_compat.h"
 #ifndef BCI_TOKEN_H
 #define BCI_TOKEN_H
 
@@ -42,5 +43,10 @@ typedef struct {
     int length;        // Length of the lexeme.
     int line;          // Line number where the token appears, for error reporting.
 } Token;
+
+// Compile-time invariants
+static_assert(sizeof(int) >= 4, "Token types require at least 32-bit int");
+static_assert(sizeof(Token) > 0, "Token must have non-zero size");
+static_assert(sizeof(TokenKind) == sizeof(int), "TokenKind must be int-sized");
 
 #endif // BCI_TOKEN_H

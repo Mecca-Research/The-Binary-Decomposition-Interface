@@ -2,6 +2,7 @@
 // DESC: Implements the logging/journaling layer for the file system,
 //       using the BDI Ledger for crash safety.
 // ===================================================================
+#include "c23_compat.h"
 #include "fs.h"
 #include <stdio.h>
 

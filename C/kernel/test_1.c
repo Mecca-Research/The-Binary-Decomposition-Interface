@@ -3,6 +3,7 @@
 //       This test creates a simple graph (c = a + b), allocates memory
 //       with HAM, and executes the nodes on the CPU device.
 // ===================================================================
+#include "c23_compat.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -24,7 +25,7 @@ int main(void) {
 
     // 2. Create the BDI Graph
     BdiGraph* g = aeon_graph_create();
-    assert(g != NULL && "Failed to create graph.");
+    assert(g != nullptr && "Failed to create graph.");
     printf("-> BDI Graph created.\n");
 
     // 3. Allocate Memory Regions using HAM for our variables a, b, and c
@@ -66,10 +67,10 @@ int main(void) {
     
     // "Execute" the CONST nodes (this is a no-op in our M0 model)
     cpu->lower(&g->nodes[node_a_id-1], &kernel_ptr);
-    cpu->enqueue(kernel_ptr, NULL, 0);
+    cpu->enqueue(kernel_ptr, nullptr, 0);
     
     cpu->lower(&g->nodes[node_b_id-1], &kernel_ptr);
-    cpu->enqueue(kernel_ptr, NULL, 0);
+    cpu->enqueue(kernel_ptr, nullptr, 0);
 
     // Execute the ADD node
     // A real scheduler would build this list based on node->inputs
