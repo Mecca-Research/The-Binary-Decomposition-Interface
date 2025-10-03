@@ -1,3 +1,4 @@
+
 // ===================================================================
 // DESC: Implements the conceptual GPU backend API.
 //       This simulates a wrapper around a real GPU framework like CUDA.
@@ -8,6 +9,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+// ============================================================================
+// Allocation Tracking for Memory Accounting
+// ============================================================================
+
+// Allocation metadata for tracking sizes
+typedef struct {
+    void* ptr;
+    size_t size;
+} GpuAllocation;
+
+#define MAX_GPU_ALLOCATIONS 1024
+static GpuAllocation gpu_allocations[MAX_GPU_ALLOCATIONS];
+static _Atomic uint32_t gpu_allocation_count = 0;
 
 // ============================================================================
 // Kernel Compilation Cache
@@ -173,12 +188,7 @@ static AsyncExecutor async_executor = {
 // ============================================================================
 // CUDA/OpenCL Abstraction Layer
 // ============================================================================
-
-typedef enum {
-    GPU_BACKEND_CUDA = 0,
-    GPU_BACKEND_OPENCL = 1,
-    GPU_BACKEND_SIMULATION = 2
-} GpuBackendType;
+// NOTE: GpuBackendType typedef removed - already declared in gpu_backend.h
 
 typedef struct {
     GpuBackendType type;
@@ -235,6 +245,13 @@ static GpuDeviceState gpu_state = {
     printf("GPU_BACKEND: Initializing GPU (%s)... OK.\n", backends[current_backend].name);
     atomic_store(&gpu_state.mem_allocated, 0);
     atomic_store(&gpu_state.active_kernels, 0);
+    
+    // Initialize allocation tracking
+    atomic_store(&gpu_allocation_count, 0);
+    for (int i = 0; i < MAX_GPU_ALLOCATIONS; i++) {
+        gpu_allocations[i].ptr = nullptr;
+        gpu_allocations[i].size = 0;
+    }
     
     // Initialize streams
     for (int i = 0; i < GPU_MAX_STREAMS; i++) {
@@ -301,6 +318,14 @@ void gpu_shutdown(void) {
     void* ptr = backends[current_backend].alloc_func(size_bytes);
     if (ptr != nullptr) {
         atomic_fetch_add(&gpu_state.mem_allocated, size_bytes);
+        
+        // Track allocation for proper memory accounting
+        uint32_t idx = atomic_fetch_add(&gpu_allocation_count, 1);
+        if (idx < MAX_GPU_ALLOCATIONS) {
+            gpu_allocations[idx].ptr = ptr;
+            gpu_allocations[idx].size = size_bytes;
+        }
+        
         printf("GPU_BACKEND: Allocated %zu bytes on device (total: %zu).\n", 
                size_bytes, atomic_load(&gpu_state.mem_allocated));
     }
@@ -310,6 +335,23 @@ void gpu_shutdown(void) {
 void gpu_free(void* device_ptr) {
     if (device_ptr == nullptr) {
         return;
+    }
+    
+    // Find allocation and decrement mem_allocated
+    uint32_t count = atomic_load(&gpu_allocation_count);
+    for (uint32_t i = 0; i < count && i < MAX_GPU_ALLOCATIONS; i++) {
+        if (gpu_allocations[i].ptr == device_ptr) {
+            size_t size = gpu_allocations[i].size;
+            atomic_fetch_sub(&gpu_state.mem_allocated, size);
+            
+            // Clear entry
+            gpu_allocations[i].ptr = nullptr;
+            gpu_allocations[i].size = 0;
+            
+            printf("GPU_BACKEND: Freed %zu bytes (total: %zu).\n",
+                   size, atomic_load(&gpu_state.mem_allocated));
+            break;
+        }
     }
     
     backends[current_backend].free_func(device_ptr);

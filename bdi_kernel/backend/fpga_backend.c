@@ -1,3 +1,4 @@
+
 // ===================================================================
 // DESC: Implements the conceptual FPGA backend API for
 //       synthesizing and loading bitstreams.
@@ -293,6 +294,10 @@ static void add_to_cache(FpgaBitstream* bs) {
     atomic_store(&bitstream->is_loaded, true);
     bitstream->region_id = region_id;
     region->current_bitstream = bitstream;
+    
+    // Increment reference count to prevent premature freeing
+    atomic_fetch_add(&bitstream->ref_count, 1);
+    
     atomic_store(&region->is_occupied, true);
     
     printf("FPGA_BACKEND: Bitstream loaded successfully to region %d.\n", region_id);
@@ -307,8 +312,14 @@ static void add_to_cache(FpgaBitstream* bs) {
     FpgaRegion* region = &fpga_state.regions[region_id];
     
     if (region->current_bitstream != nullptr) {
-        atomic_store(&region->current_bitstream->is_loaded, false);
-        region->current_bitstream->region_id = -1;
+        FpgaBitstream* bitstream = region->current_bitstream;
+        
+        atomic_store(&bitstream->is_loaded, false);
+        bitstream->region_id = -1;
+        
+        // Decrement reference count when unloading
+        atomic_fetch_sub(&bitstream->ref_count, 1);
+        
         region->current_bitstream = nullptr;
     }
     
