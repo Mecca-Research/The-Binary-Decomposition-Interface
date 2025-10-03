@@ -258,6 +258,35 @@ ProcessControlBlock *process_find(ProcessId pid) {
 }
 
 /**
+ * @brief Insert process into process table
+ * 
+ * This function provides external access to insert a PCB into the process table.
+ * Used by process_fork() to register newly created child processes.
+ * 
+ * @param pcb Process control block to insert
+ * @return 0 on success, negative error code on failure
+ */
+int process_insert(ProcessControlBlock *pcb) {
+    if (pcb == nullptr) {
+        return -EINVAL;
+    }
+    
+    ProcessId pid = pcb->pid;
+    if (pid == INVALID_PID || pid >= MAX_PROCESSES) {
+        return -EINVAL;
+    }
+    
+    /* Insert into process table */
+    g_process_table.processes[pid] = pcb;
+    
+    /* Update statistics */
+    atomic_fetch_add(&g_process_table.total_processes, 1);
+    atomic_fetch_add(&g_process_table.active_processes, 1);
+    
+    return 0;
+}
+
+/**
  * @brief Get current process
  */
 ProcessControlBlock *process_current(void) {

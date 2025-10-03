@@ -321,6 +321,14 @@ uint32_t pcb_unref(ProcessControlBlock *pcb);
 [[nodiscard]] ProcessControlBlock *process_find(ProcessId pid);
 
 /**
+ * @brief Insert process into process table
+ * 
+ * @param pcb Process control block to insert
+ * @return 0 on success, negative error code on failure
+ */
+[[nodiscard]] int process_insert(ProcessControlBlock *pcb);
+
+/**
  * @brief Get current process
  * 
  * @return Pointer to current PCB
