@@ -1,4 +1,5 @@
 
+
 /**
  * @file process.h
  * @brief Process Control Block (PCB) and Process Management
@@ -385,6 +386,36 @@ void process_print_info(const ProcessControlBlock *pcb);
  * @return State name string
  */
 const char *process_state_name(ProcessState state);
+
+/* ===================================================================
+ * Process Table Accessor Functions
+ * =================================================================== */
+
+/**
+ * @brief Insert a process into the process table
+ * 
+ * @param pcb Process control block to insert
+ * @return 0 on success, negative error code on failure
+ */
+[[nodiscard]] int process_table_insert(ProcessControlBlock *pcb);
+
+/**
+ * @brief Remove a process from the process table
+ * 
+ * @param pid Process ID to remove
+ * @return 0 on success, negative error code on failure
+ */
+[[nodiscard]] int process_table_remove(ProcessId pid);
+
+/**
+ * @brief Lookup a process in the process table
+ * 
+ * This is an alias for process_find() for consistency with other accessors.
+ * 
+ * @param pid Process ID to lookup
+ * @return Pointer to PCB, or nullptr if not found
+ */
+[[nodiscard]] ProcessControlBlock *process_table_lookup(ProcessId pid);
 
 /* ===================================================================
  * Process Lifecycle Functions (Implemented in process_lifecycle.c)

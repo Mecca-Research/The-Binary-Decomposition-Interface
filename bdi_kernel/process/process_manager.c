@@ -1,4 +1,5 @@
 
+
 /**
  * @file process_manager.c
  * @brief Process Manager Implementation
@@ -37,6 +38,73 @@ static ProcessTable g_process_table = {
 
 /* Thread-local current process */
 static _Thread_local ProcessControlBlock *current_process = nullptr;
+
+/* ===================================================================
+ * Process Table Accessor Functions
+ * =================================================================== */
+
+/**
+ * @brief Insert a process into the process table
+ * 
+ * @param pcb Process control block to insert
+ * @return 0 on success, negative error code on failure
+ */
+int process_table_insert(ProcessControlBlock *pcb) {
+    if (pcb == nullptr) {
+        fprintf(stderr, "PROCESS: Cannot insert null PCB\n");
+        return -1;
+    }
+    
+    ProcessId pid = pcb->pid;
+    if (pid == INVALID_PID || pid >= MAX_PROCESSES) {
+        fprintf(stderr, "PROCESS: Invalid PID %llu for insertion\n", 
+                (unsigned long long)pid);
+        return -1;
+    }
+    
+    /* Check if slot is already occupied */
+    if (g_process_table.processes[pid] != nullptr) {
+        fprintf(stderr, "PROCESS: PID %llu already occupied\n", 
+                (unsigned long long)pid);
+        return -1;
+    }
+    
+    /* Insert into process table */
+    g_process_table.processes[pid] = pcb;
+    
+    return 0;
+}
+
+/**
+ * @brief Remove a process from the process table
+ * 
+ * @param pid Process ID to remove
+ * @return 0 on success, negative error code on failure
+ */
+int process_table_remove(ProcessId pid) {
+    if (pid == INVALID_PID || pid >= MAX_PROCESSES) {
+        fprintf(stderr, "PROCESS: Invalid PID %llu for removal\n", 
+                (unsigned long long)pid);
+        return -1;
+    }
+    
+    /* Remove from process table */
+    g_process_table.processes[pid] = nullptr;
+    
+    return 0;
+}
+
+/**
+ * @brief Lookup a process in the process table
+ * 
+ * This is an alias for process_find() for consistency with other accessors.
+ * 
+ * @param pid Process ID to lookup
+ * @return Pointer to PCB, or nullptr if not found
+ */
+ProcessControlBlock *process_table_lookup(ProcessId pid) {
+    return process_find(pid);
+}
 
 /* ===================================================================
  * Process Management Functions

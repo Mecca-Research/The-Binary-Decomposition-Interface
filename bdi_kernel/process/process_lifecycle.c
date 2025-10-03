@@ -1,4 +1,5 @@
 
+
 /**
  * @file process_lifecycle.c
  * @brief Process Lifecycle Management
@@ -20,7 +21,7 @@
 #include <string.h>
 #include <errno.h>
 
-/* External process table access */
+/* External process management functions */
 extern ProcessControlBlock *process_find(ProcessId pid);
 extern ProcessId pid_alloc(void);
 extern ProcessControlBlock *pcb_alloc(void);
@@ -28,12 +29,31 @@ extern void pcb_free(ProcessControlBlock *pcb);
 extern uint32_t pcb_ref(ProcessControlBlock *pcb);
 extern uint32_t pcb_unref(ProcessControlBlock *pcb);
 
+/* Process table accessor functions */
+extern int process_table_insert(ProcessControlBlock *pcb);
+extern int process_table_remove(ProcessId pid);
+extern ProcessControlBlock *process_table_lookup(ProcessId pid);
+
 /* ===================================================================
  * Helper Functions
  * =================================================================== */
 
 /**
  * @brief Copy memory regions with COW support
+ * 
+ * IMPORTANT: This function implements true Copy-On-Write semantics.
+ * The child process shares the parent's MemoryRegion objects rather than
+ * creating deep copies. Both processes point to the same MemoryRegion
+ * structures, and only the shared reference count is incremented.
+ * 
+ * When either process writes to a COW page, a page fault handler will:
+ * 1. Allocate a new physical page
+ * 2. Copy the page contents
+ * 3. Create a new MemoryRegion for the writing process
+ * 4. Decrement the shared region's refcount
+ * 
+ * This approach ensures correct reference counting and prevents
+ * use-after-free or double-free bugs.
  */
 static int copy_memory_regions_cow(ProcessControlBlock *parent,
                                    ProcessControlBlock *child) {
@@ -41,27 +61,23 @@ static int copy_memory_regions_cow(ProcessControlBlock *parent,
         return -EINVAL;
     }
     
-    /* Copy memory region list with COW */
+    /* Share memory regions with COW - child points to parent's regions */
     MemoryRegion *parent_region = parent->memory_regions;
     MemoryRegion *prev_child_region = nullptr;
     
     while (parent_region != nullptr) {
-        /* Allocate new region descriptor */
-        MemoryRegion *child_region = ALLOC(MemoryRegion);
-        if (child_region == nullptr) {
-            fprintf(stderr, "PROCESS: Failed to allocate memory region\n");
-            return -ENOMEM;
-        }
+        /* 
+         * CRITICAL FIX (Bug #2): Share the parent's MemoryRegion object
+         * instead of creating a deep copy. Both parent and child will
+         * point to the same MemoryRegion structure with a shared refcount.
+         */
+        MemoryRegion *child_region = parent_region;  /* Share the same object */
         
-        /* Copy region metadata */
-        child_region->base = parent_region->base;
-        child_region->size = parent_region->size;
-        child_region->flags = parent_region->flags | MEM_FLAG_NUMA;
-        child_region->next = nullptr;
-        
-        /* Increment reference count for COW */
-        atomic_init(&child_region->ref_count, 1);
+        /* Increment the shared reference count for COW */
         atomic_fetch_add(&parent_region->ref_count, 1);
+        
+        /* Mark region as COW in both parent and child */
+        parent_region->flags |= MEM_FLAG_COW;
         
         /* Link into child's region list */
         if (prev_child_region == nullptr) {
@@ -241,9 +257,16 @@ ProcessId process_fork(void) {
     /* Transition to READY state */
     process_set_state(child, PROC_READY);
     
-    /* Insert into process table */
-    extern ProcessControlBlock *g_process_table[];
-    g_process_table[child_pid] = child;
+    /* 
+     * CRITICAL FIX (Bug #1): Use process_table_insert() accessor function
+     * instead of directly accessing g_process_table array
+     */
+    ret = process_table_insert(child);
+    if (ret < 0) {
+        fprintf(stderr, "PROCESS: Failed to insert child into process table\n");
+        pcb_free(child);
+        return ret;
+    }
     
     printf("PROCESS: Fork successful - Parent=%llu Child=%llu\n",
            (unsigned long long)parent->pid,
