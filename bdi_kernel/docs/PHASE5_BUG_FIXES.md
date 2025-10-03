@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document details four critical bugs discovered in Phase 5 (Storage I/O Fast Paths) of the BDI Kernel project and their solutions. All four bugs were production-critical and could cause data corruption, system hangs, or incorrect behavior.
+This document details five critical bugs discovered in Phase 5 (Storage I/O Fast Paths) of the BDI Kernel project and their solutions. All five bugs were production-critical and could cause data corruption, system hangs, or incorrect behavior.
 
 ---
 
@@ -425,6 +425,161 @@ if (sector_offset != 0 || to_read < file->fs->boot.bytes_per_sector) {
 
 ---
 
+## Bug #5: fat32.c - Respect bytes_per_sector when allocating partial sector buffers
+
+### Location
+`bdi_kernel/fs/fat32.c` - `fat32_read()` function, unaligned read handling code (lines 142 and 178)
+
+### Severity
+**CRITICAL** - Stack overflow, memory corruption, system crash
+
+### Problem Description
+
+The fix for Bug #4 introduced proper handling of unaligned reads by using temporary buffers for partial sectors. However, these buffers were hardcoded to 512 bytes (`uint8_t first_sector_buf[512]` and `uint8_t last_sector_buf[512]`), while FAT32 supports sector sizes from 512 to 4096 bytes.
+
+**Root Cause:**  
+When a FAT32 volume uses a sector size larger than 512 bytes (e.g., 1024, 2048, or 4096 bytes), the `read_sectors()` function writes `bytes_per_sector` bytes into the fixed 512-byte stack buffer. This causes:
+1. Stack buffer overflow
+2. Memory corruption of adjacent stack variables
+3. Undefined behavior and potential system crashes
+4. Data corruption before the partial sector data is even copied
+
+**Example Scenario:**
+```
+FAT32 volume with 2048-byte sectors:
+- first_sector_buf allocated: 512 bytes on stack
+- read_sectors(..., count=1) called
+- Device writes 2048 bytes into 512-byte buffer
+- Stack overflow: 1536 bytes written beyond buffer
+- Adjacent stack variables corrupted
+- Potential crash or undefined behavior
+```
+
+Valid FAT32 sector sizes per specification:
+- 512 bytes (most common)
+- 1024 bytes
+- 2048 bytes
+- 4096 bytes (maximum)
+
+### Impact
+
+1. **Stack Overflow:** Writing beyond allocated buffer corrupts stack memory
+2. **Memory Corruption:** Adjacent variables and return addresses can be overwritten
+3. **System Crashes:** Corrupted stack can cause immediate crashes or delayed failures
+4. **Security Risk:** Stack overflow can potentially be exploited
+5. **Data Corruption:** Even if system doesn't crash, corrupted data may be returned
+6. **Filesystem Incompatibility:** Cannot safely read from FAT32 volumes with sector sizes > 512 bytes
+
+### Solution
+
+Changed both temporary buffers from fixed 512-byte arrays to 4096-byte arrays (the maximum valid FAT32 sector size). This ensures the buffers can safely hold data from any valid FAT32 sector size without overflow.
+
+**Key Changes:**
+
+1. **First partial sector buffer:**
+```c
+/* OLD - Bug #5: Hardcoded 512 bytes */
+uint8_t first_sector_buf[512];  /* Single sector buffer */
+
+/* NEW - Fixed: Max FAT32 sector size */
+/*
+ * BUG FIX #5: Allocate buffer based on actual sector size, not hardcoded 512.
+ * FAT32 supports sector sizes from 512 to 4096 bytes. Using a fixed 512-byte
+ * buffer causes stack overflow when bytes_per_sector is larger (1024, 2048, 4096).
+ * We use a 4096-byte buffer (max FAT32 sector size) to safely handle all cases.
+ */
+uint8_t first_sector_buf[4096];  /* Max FAT32 sector size */
+```
+
+2. **Last partial sector buffer:**
+```c
+/* OLD - Bug #5: Hardcoded 512 bytes */
+uint8_t last_sector_buf[512];  /* Single sector buffer */
+
+/* NEW - Fixed: Max FAT32 sector size */
+/*
+ * BUG FIX #5: Allocate buffer based on actual sector size, not hardcoded 512.
+ * FAT32 supports sector sizes from 512 to 4096 bytes. Using a fixed 512-byte
+ * buffer causes stack overflow when bytes_per_sector is larger (1024, 2048, 4096).
+ * We use a 4096-byte buffer (max FAT32 sector size) to safely handle all cases.
+ */
+uint8_t last_sector_buf[4096];  /* Max FAT32 sector size */
+```
+
+### Why 4096 Bytes?
+
+1. **FAT32 Specification:** Maximum sector size is 4096 bytes
+2. **Safety:** Handles all valid sector sizes (512, 1024, 2048, 4096)
+3. **Simplicity:** Avoids dynamic allocation overhead and complexity
+4. **Stack Usage:** 4096 bytes is reasonable for stack allocation in kernel code
+5. **Performance:** Stack allocation is faster than heap allocation
+
+### Alternative Approaches Considered
+
+1. **Dynamic Allocation:**
+   - Allocate buffer based on `bytes_per_sector` at runtime
+   - Pros: Uses exact amount of memory needed
+   - Cons: Allocation overhead, error handling complexity, potential allocation failures
+   - Rejected: Added complexity not worth the memory savings
+
+2. **Variable-Length Arrays (VLAs):**
+   - Use `uint8_t buffer[bytes_per_sector]`
+   - Pros: Automatic sizing
+   - Cons: VLAs are problematic in kernel code, can cause stack overflow if size is large
+   - Rejected: Not recommended for kernel/systems programming
+
+3. **Fixed 4096-byte buffer (chosen):**
+   - Use maximum possible size
+   - Pros: Simple, safe, no allocation overhead, handles all cases
+   - Cons: Uses more stack space than strictly necessary for 512-byte sectors
+   - Chosen: Best balance of safety, simplicity, and performance
+
+### Testing Recommendations
+
+1. **Sector Size Testing:**
+   - Test with FAT32 volumes using 512-byte sectors
+   - Test with FAT32 volumes using 1024-byte sectors
+   - Test with FAT32 volumes using 2048-byte sectors
+   - Test with FAT32 volumes using 4096-byte sectors
+
+2. **Unaligned Read Testing:**
+   - Test reads starting at various offsets within sectors
+   - Test reads ending at various offsets within sectors
+   - Test reads spanning multiple sectors with different alignments
+
+3. **Memory Safety Testing:**
+   - Run with AddressSanitizer to detect any remaining buffer overflows
+   - Run with Valgrind to detect memory errors
+   - Use stack canaries to detect stack corruption
+
+4. **Integration Testing:**
+   - Test reading files from real FAT32 volumes with various sector sizes
+   - Verify correct data is returned in all cases
+   - Test with different cluster sizes combined with different sector sizes
+
+### Performance Analysis
+
+**Stack Usage:**
+- Old approach: 512 bytes per buffer × 2 = 1024 bytes
+- New approach: 4096 bytes per buffer × 2 = 8192 bytes
+- Increase: 7168 bytes additional stack usage
+
+**Impact:**
+- Stack usage increase is acceptable for kernel code
+- Buffers are only allocated when needed (unaligned reads)
+- No performance impact on execution speed
+- Eliminates critical memory safety bug
+
+**Memory Efficiency:**
+- For 512-byte sectors: Uses 8× more stack than needed (acceptable tradeoff)
+- For 1024-byte sectors: Uses 4× more stack than needed
+- For 2048-byte sectors: Uses 2× more stack than needed
+- For 4096-byte sectors: Uses exactly what's needed
+
+The safety and simplicity benefits far outweigh the modest increase in stack usage.
+
+---
+
 ## Additional Improvements
 
 ### Minor Fixes Applied
@@ -472,7 +627,7 @@ gcc -c -std=c2x -Wall -Wextra -O2 -I. <file>.c
 
 ## Verification Checklist
 
-- [x] All four bugs identified and understood
+- [x] All five bugs identified and understood
 - [x] Root causes documented
 - [x] Solutions implemented
 - [x] Code compiles without errors
@@ -483,12 +638,13 @@ gcc -c -std=c2x -Wall -Wextra -O2 -I. <file>.c
 - [ ] Stress testing under load
 - [ ] Memory safety verification (AddressSanitizer/Valgrind)
 - [ ] Testing with large cluster FAT32 volumes (32 KiB, 64 KiB)
+- [ ] Testing with FAT32 volumes using various sector sizes (512, 1024, 2048, 4096 bytes)
 
 ---
 
 ## Conclusion
 
-All four critical bugs have been fixed with production-quality solutions that:
+All five critical bugs have been fixed with production-quality solutions that:
 1. Maintain the performance goals of the BDI Kernel
 2. Follow best practices for systems programming
 3. Include proper error handling

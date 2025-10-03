@@ -139,7 +139,13 @@ int fat32_read(struct fat32_file *file, void *buf, size_t count) {
             
             /* Part 1: Handle first partial sector if read starts mid-sector */
             if (sector_offset != 0) {
-                uint8_t first_sector_buf[512];  /* Single sector buffer */
+                /*
+                 * BUG FIX #5: Allocate buffer based on actual sector size, not hardcoded 512.
+                 * FAT32 supports sector sizes from 512 to 4096 bytes. Using a fixed 512-byte
+                 * buffer causes stack overflow when bytes_per_sector is larger (1024, 2048, 4096).
+                 * We use a 4096-byte buffer (max FAT32 sector size) to safely handle all cases.
+                 */
+                uint8_t first_sector_buf[4096];  /* Max FAT32 sector size */
                 uint32_t bytes_from_first = bytes_per_sector - sector_offset;
                 if (bytes_from_first > to_read) {
                     bytes_from_first = to_read;
@@ -175,7 +181,13 @@ int fat32_read(struct fat32_file *file, void *buf, size_t count) {
             /* Part 3: Handle last partial sector if any bytes remain */
             remaining = to_read - bytes_copied;
             if (remaining > 0) {
-                uint8_t last_sector_buf[512];  /* Single sector buffer */
+                /*
+                 * BUG FIX #5: Allocate buffer based on actual sector size, not hardcoded 512.
+                 * FAT32 supports sector sizes from 512 to 4096 bytes. Using a fixed 512-byte
+                 * buffer causes stack overflow when bytes_per_sector is larger (1024, 2048, 4096).
+                 * We use a 4096-byte buffer (max FAT32 sector size) to safely handle all cases.
+                 */
+                uint8_t last_sector_buf[4096];  /* Max FAT32 sector size */
                 
                 int ret = file->fs->read_sectors(file->fs->device, current_sector,
                                                 last_sector_buf, 1);
