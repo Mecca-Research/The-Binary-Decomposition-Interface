@@ -98,7 +98,7 @@ ifneq ($(BUILD_MODE),debug)
     # Check for AVX-512 support
     AVX512_SUPPORT := $(shell $(CC) -march=native -dM -E - < /dev/null 2>/dev/null | grep -q AVX512F && echo 1 || echo 0)
     ifeq ($(AVX512_SUPPORT),1)
-        CFLAGS += -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl
+	CFLAGS += -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl
     endif
 endif
 
@@ -167,8 +167,8 @@ SYSCALL_SRCS := bdi_kernel/syscalls/aeon_api.c
 
 # Userland
 USERLAND_SRCS := bdi_kernel/userland/bdi_shell.c \
-                 bdi_kernel/userland/shell_commands.c \
-                 bdi_kernel/userland/shell_integration.c
+	         bdi_kernel/userland/shell_commands.c \
+	         bdi_kernel/userland/shell_integration.c
 
 # Process and scheduler
 PROCESS_SRCS := bdi_kernel/process/process_manager.c
@@ -196,146 +196,146 @@ TARGET := bdi_kernel
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-        @echo "==> Linking $(TARGET) [$(BUILD_MODE)]..."
-        $(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-        @echo "==> Build complete: $(TARGET)"
-        @$(MAKE) --no-print-directory validate-build
+	@echo "==> Linking $(TARGET) [$(BUILD_MODE)]..."
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	@echo "==> Build complete: $(TARGET)"
+	@$(MAKE) --no-print-directory validate-build
 
 %.o: %.c
-        @echo "  CC  $<"
-        @$(CC) $(CFLAGS) -c $< -o $@
+	@echo "  CC  $<"
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 # ============================================================================
 # PGO Workflow
 # ============================================================================
 
 pgo-generate:
-        @echo "==> Building with PGO instrumentation..."
-        @$(MAKE) clean
-        @$(MAKE) BUILD_MODE=pgo-gen all
-        @echo "==> PGO instrumented build complete"
-        @echo "==> Run workload: ./$(TARGET) --benchmark"
-        @echo "==> Then run: make pgo-optimize"
+	@echo "==> Building with PGO instrumentation..."
+	@$(MAKE) clean
+	@$(MAKE) BUILD_MODE=pgo-gen all
+	@echo "==> PGO instrumented build complete"
+	@echo "==> Run workload: ./$(TARGET) --benchmark"
+	@echo "==> Then run: make pgo-optimize"
 
 pgo-merge:
-        @echo "==> Merging PGO profiles..."
-        @if [ -d pgo-data ]; then \
-                find pgo-data -name "*.gcda" | wc -l | xargs echo "Found profile files:"; \
-                echo "Profile data ready for optimization"; \
-        else \
-                echo "ERROR: No PGO data found. Run pgo-generate first."; \
-                exit 1; \
-        fi
+	@echo "==> Merging PGO profiles..."
+	@if [ -d pgo-data ]; then \
+	        find pgo-data -name "*.gcda" | wc -l | xargs echo "Found profile files:"; \
+	        echo "Profile data ready for optimization"; \
+	else \
+	        echo "ERROR: No PGO data found. Run pgo-generate first."; \
+	        exit 1; \
+	fi
 
 pgo-optimize: pgo-merge
-        @echo "==> Building with PGO optimization..."
-        @$(MAKE) clean-objs
-        @$(MAKE) BUILD_MODE=pgo-use all
-        @echo "==> PGO optimized build complete"
+	@echo "==> Building with PGO optimization..."
+	@$(MAKE) clean-objs
+	@$(MAKE) BUILD_MODE=pgo-use all
+	@echo "==> PGO optimized build complete"
 
 # ============================================================================
 # Optimization Validation
 # ============================================================================
 
 check-optimization:
-        @echo "==> Checking optimization flags..."
-        @echo "Build Mode: $(BUILD_MODE)"
-        @echo "CFLAGS: $(CFLAGS)"
-        @echo "LDFLAGS: $(LDFLAGS)"
-        @echo ""
-        @echo "Checking compiler support:"
-        @$(CC) --version | head -1
-        @echo ""
-        @echo "ISA Extensions:"
-        @$(CC) -march=native -dM -E - < /dev/null 2>/dev/null | grep -E "AVX|SSE|FMA" | head -10 || echo "No SIMD extensions detected"
+	@echo "==> Checking optimization flags..."
+	@echo "Build Mode: $(BUILD_MODE)"
+	@echo "CFLAGS: $(CFLAGS)"
+	@echo "LDFLAGS: $(LDFLAGS)"
+	@echo ""
+	@echo "Checking compiler support:"
+	@$(CC) --version | head -1
+	@echo ""
+	@echo "ISA Extensions:"
+	@$(CC) -march=native -dM -E - < /dev/null 2>/dev/null | grep -E "AVX|SSE|FMA" | head -10 || echo "No SIMD extensions detected"
 
 validate-build: $(TARGET)
-        @echo "==> Validating build..."
-        @if [ -f $(TARGET) ]; then \
-                echo "✓ Binary exists"; \
-                size $(TARGET) | tail -1; \
-                echo "✓ Size check passed"; \
-                file $(TARGET); \
-                echo "✓ File type check passed"; \
-        else \
-                echo "✗ Build validation failed"; \
-                exit 1; \
-        fi
+	@echo "==> Validating build..."
+	@if [ -f $(TARGET) ]; then \
+	        echo "✓ Binary exists"; \
+	        size $(TARGET) | tail -1; \
+	        echo "✓ Size check passed"; \
+	        file $(TARGET); \
+	        echo "✓ File type check passed"; \
+	else \
+	        echo "✗ Build validation failed"; \
+	        exit 1; \
+	fi
 
 # ============================================================================
 # Benchmarking
 # ============================================================================
 
 benchmark: $(TARGET)
-        @echo "==> Running benchmarks..."
-        @./$(TARGET) --benchmark || echo "Benchmark not implemented yet"
+	@echo "==> Running benchmarks..."
+	@./$(TARGET) --benchmark || echo "Benchmark not implemented yet"
 
 # ============================================================================
 # Cleaning
 # ============================================================================
 
 clean:
-        @echo "==> Cleaning build artifacts..."
-        @rm -f $(OBJS) $(TARGET)
-        @find . -name "*.o" -type f -delete
-        @echo "==> Clean complete"
+	@echo "==> Cleaning build artifacts..."
+	@rm -f $(OBJS) $(TARGET)
+	@find . -name "*.o" -type f -delete
+	@echo "==> Clean complete"
 
 clean-objs:
-        @echo "==> Cleaning object files only..."
-        @rm -f $(OBJS)
-        @find . -name "*.o" -type f -delete
+	@echo "==> Cleaning object files only..."
+	@rm -f $(OBJS)
+	@find . -name "*.o" -type f -delete
 
 clean-pgo:
-        @echo "==> Cleaning PGO data..."
-        @rm -rf pgo-data
-        @find . -name "*.gcda" -delete
-        @find . -name "*.gcno" -delete
+	@echo "==> Cleaning PGO data..."
+	@rm -rf pgo-data
+	@find . -name "*.gcda" -delete
+	@find . -name "*.gcno" -delete
 
 clean-all: clean clean-pgo
-        @echo "==> Full clean complete"
+	@echo "==> Full clean complete"
 
 # ============================================================================
 # Testing
 # ============================================================================
 
 test: $(TARGET)
-        @echo "==> Running tests..."
-        @./$(TARGET) --test || echo "Tests not implemented yet"
+	@echo "==> Running tests..."
+	@./$(TARGET) --test || echo "Tests not implemented yet"
 
 # ============================================================================
 # Information
 # ============================================================================
 
 info:
-        @echo "========================================"
-        @echo "BDI Kernel Build System - Phase 6"
-        @echo "========================================"
-        @echo "Build Mode:    $(BUILD_MODE)"
-        @echo "Compiler:      $(CC)"
-        @echo "Target:        $(TARGET)"
-        @echo "Source Files:  $(words $(ALL_SRCS))"
-        @echo "Object Files:  $(words $(OBJS))"
-        @echo ""
-        @echo "Optimization Features:"
-        @echo "  - LTO:       $(if $(findstring -flto,$(CFLAGS)),Enabled,Disabled)"
-        @echo "  - PGO:       $(if $(findstring -fprofile,$(CFLAGS)),Enabled,Disabled)"
-        @echo "  - AVX2:      $(if $(findstring -mavx2,$(CFLAGS)),Enabled,Disabled)"
-        @echo "  - AVX-512:   $(if $(findstring -mavx512,$(CFLAGS)),Enabled,Disabled)"
-        @echo ""
-        @echo "Build Modes:"
-        @echo "  make BUILD_MODE=debug       - Debug build"
-        @echo "  make BUILD_MODE=release     - Release build (default)"
-        @echo "  make pgo-generate           - PGO instrumented build"
-        @echo "  make pgo-optimize           - PGO optimized build"
-        @echo ""
-        @echo "Targets:"
-        @echo "  make all                    - Build kernel"
-        @echo "  make clean                  - Clean build artifacts"
-        @echo "  make test                   - Run tests"
-        @echo "  make benchmark              - Run benchmarks"
-        @echo "  make check-optimization     - Check optimization settings"
-        @echo "  make validate-build         - Validate build output"
-        @echo "========================================"
+	@echo "========================================"
+	@echo "BDI Kernel Build System - Phase 6"
+	@echo "========================================"
+	@echo "Build Mode:    $(BUILD_MODE)"
+	@echo "Compiler:      $(CC)"
+	@echo "Target:        $(TARGET)"
+	@echo "Source Files:  $(words $(ALL_SRCS))"
+	@echo "Object Files:  $(words $(OBJS))"
+	@echo ""
+	@echo "Optimization Features:"
+	@echo "  - LTO:       $(if $(findstring -flto,$(CFLAGS)),Enabled,Disabled)"
+	@echo "  - PGO:       $(if $(findstring -fprofile,$(CFLAGS)),Enabled,Disabled)"
+	@echo "  - AVX2:      $(if $(findstring -mavx2,$(CFLAGS)),Enabled,Disabled)"
+	@echo "  - AVX-512:   $(if $(findstring -mavx512,$(CFLAGS)),Enabled,Disabled)"
+	@echo ""
+	@echo "Build Modes:"
+	@echo "  make BUILD_MODE=debug       - Debug build"
+	@echo "  make BUILD_MODE=release     - Release build (default)"
+	@echo "  make pgo-generate           - PGO instrumented build"
+	@echo "  make pgo-optimize           - PGO optimized build"
+	@echo ""
+	@echo "Targets:"
+	@echo "  make all                    - Build kernel"
+	@echo "  make clean                  - Clean build artifacts"
+	@echo "  make test                   - Run tests"
+	@echo "  make benchmark              - Run benchmarks"
+	@echo "  make check-optimization     - Check optimization settings"
+	@echo "  make validate-build         - Validate build output"
+	@echo "========================================"
 
 help: info
 
@@ -347,4 +347,4 @@ help: info
 -include $(OBJS:.o=.d)
 
 %.d: %.c
-        @$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< -MF $@
+	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< -MF $@
