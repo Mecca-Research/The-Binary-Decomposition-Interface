@@ -417,10 +417,60 @@ NODISCARD math_error_t mbh_add_fast(mbh_number_t *result, const mbh_number_t *a,
             mbh_normalize(result);
             return MATH_SUCCESS;
         }
+        
+        /* Different signs - subtraction of magnitudes */
+        /* Determine which has larger magnitude */
+        int cmp = 0;
+        if (a->length != b->length) {
+            cmp = a->length > b->length ? 1 : -1;
+        } else {
+            for (int32_t i = a->length - 1; i >= 0; i--) {
+                if (a->digits[i] != b->digits[i]) {
+                    cmp = a->digits[i] > b->digits[i] ? 1 : -1;
+                    break;
+                }
+            }
+        }
+        
+        /* If equal magnitudes, result is zero */
+        if (cmp == 0) {
+            result->sign = 1;
+            result->length = 1;
+            result->digits[0] = 0;
+            return MATH_SUCCESS;
+        }
+        
+        /* Subtract smaller from larger */
+        const mbh_number_t *larger = (cmp > 0) ? a : b;
+        const mbh_number_t *smaller = (cmp > 0) ? b : a;
+        result->sign = (cmp > 0) ? a->sign : b->sign;
+        
+        int32_t borrow = 0;
+        for (uint32_t i = 0; i < larger->length; i++) {
+            int32_t diff = larger->digits[i] - borrow;
+            if (i < smaller->length) {
+                diff -= smaller->digits[i];
+            }
+            
+            if (diff < 0) {
+                diff += a->base;
+                borrow = 1;
+            } else {
+                borrow = 0;
+            }
+            
+            result->digits[i] = diff;
+            result->length = i + 1;
+        }
+        
+        mbh_normalize(result);
+        return MATH_SUCCESS;
     }
     
-    /* Fallback to generic addition */
-    return mbh_add(result, a, b);
+    /* For cases with decimal points or different bases, convert to double */
+    int64_t val_a = mbh_to_int(a);
+    int64_t val_b = mbh_to_int(b);
+    return mbh_from_int(result, val_a + val_b, a->base);
 }
 
 NODISCARD math_error_t mbh_mul_fast(mbh_number_t *result, const mbh_number_t *a, const mbh_number_t *b) {

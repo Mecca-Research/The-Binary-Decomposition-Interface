@@ -50,7 +50,7 @@ typedef struct precision {
 } precision_t;
 
 /* Structure size validation */
-MATH_STATIC_ASSERT(sizeof(precision_t) <= 2064, "precision_t size exceeds expected bounds");
+MATH_STATIC_ASSERT(sizeof(precision_t) <= 2080, "precision_t size exceeds expected bounds");
 
 /* ============================================================================
  * Rounding Modes
@@ -489,11 +489,92 @@ NODISCARD math_error_t precision_add(precision_t *result, const precision_t *a, 
         return MATH_SUCCESS;
     }
     
-    /* Different signs - subtraction */
-    precision_t b_neg;
-    precision_copy(&b_neg, b);
-    b_neg.sign = -b_neg.sign;
-    return precision_add(result, a, &b_neg);
+    /* Different signs - compute magnitude difference (subtraction) */
+    precision_init(result, MATH_MAX(a->scale, b->scale));
+    
+    /* Determine which has larger magnitude */
+    int cmp = 0;
+    if (a->integer_digits != b->integer_digits) {
+        cmp = a->integer_digits > b->integer_digits ? 1 : -1;
+    } else {
+        /* Compare integer digits from most significant */
+        for (int32_t i = a->integer_digits - 1; i >= 0; i--) {
+            if (a->digits[i] != b->digits[i]) {
+                cmp = a->digits[i] > b->digits[i] ? 1 : -1;
+                break;
+            }
+        }
+        /* If integer parts equal, compare fractional parts */
+        if (cmp == 0) {
+            uint32_t max_frac = MATH_MAX(a->fractional_digits, b->fractional_digits);
+            for (uint32_t i = 0; i < max_frac; i++) {
+                uint8_t digit_a = i < a->fractional_digits ? 
+                                 a->digits[a->integer_digits + i] : 0;
+                uint8_t digit_b = i < b->fractional_digits ? 
+                                 b->digits[b->integer_digits + i] : 0;
+                if (digit_a != digit_b) {
+                    cmp = digit_a > digit_b ? 1 : -1;
+                    break;
+                }
+            }
+        }
+    }
+    
+    /* If equal magnitudes, result is zero */
+    if (cmp == 0) {
+        result->sign = 1;
+        result->integer_digits = 1;
+        result->fractional_digits = 0;
+        result->digits[0] = 0;
+        return MATH_SUCCESS;
+    }
+    
+    /* Subtract smaller from larger */
+    const precision_t *larger = (cmp > 0) ? a : b;
+    const precision_t *smaller = (cmp > 0) ? b : a;
+    result->sign = (cmp > 0) ? a->sign : b->sign;
+    
+    uint32_t max_int = MATH_MAX(larger->integer_digits, smaller->integer_digits);
+    uint32_t max_frac = MATH_MAX(larger->fractional_digits, smaller->fractional_digits);
+    int32_t borrow = 0;
+    
+    /* Subtract fractional parts */
+    for (uint32_t i = 0; i < max_frac; i++) {
+        int32_t digit_larger = i < larger->fractional_digits ? 
+                              larger->digits[larger->integer_digits + i] : 0;
+        int32_t digit_smaller = i < smaller->fractional_digits ? 
+                               smaller->digits[smaller->integer_digits + i] : 0;
+        
+        int32_t diff = digit_larger - digit_smaller - borrow;
+        if (diff < 0) {
+            diff += 10;
+            borrow = 1;
+        } else {
+            borrow = 0;
+        }
+        result->digits[max_int + i] = diff;
+    }
+    
+    /* Subtract integer parts */
+    for (uint32_t i = 0; i < max_int; i++) {
+        int32_t digit_larger = i < larger->integer_digits ? larger->digits[i] : 0;
+        int32_t digit_smaller = i < smaller->integer_digits ? smaller->digits[i] : 0;
+        
+        int32_t diff = digit_larger - digit_smaller - borrow;
+        if (diff < 0) {
+            diff += 10;
+            borrow = 1;
+        } else {
+            borrow = 0;
+        }
+        result->digits[i] = diff;
+    }
+    
+    result->integer_digits = max_int;
+    result->fractional_digits = max_frac;
+    
+    precision_normalize(result);
+    return MATH_SUCCESS;
 }
 
 NODISCARD math_error_t precision_subtract(precision_t *result, const precision_t *a, const precision_t *b) {
