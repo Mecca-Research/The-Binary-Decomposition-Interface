@@ -3,6 +3,7 @@
 // DESC: xHCI Transfer Ring implementation for BDI Kernel
 //       Handles xHCI transfer rings for endpoint data transfers
 // ===================================================================
+// MODERNIZED: Phase 12 - C23 features (nullptr, [[nodiscard]], _Atomic)
 
 #include <stdint.h>
 #include <string.h>
@@ -101,7 +102,7 @@ void xhci_ring_cleanup(void);
 /**
  * Initialize transfer ring subsystem
  */
-int xhci_ring_init(void) {
+[[nodiscard]] int xhci_ring_init(void) {
     if (g_rings_initialized) {
         return 0;
     }
@@ -117,7 +118,7 @@ int xhci_ring_init(void) {
 /**
  * Create a transfer ring
  */
-int xhci_ring_create(uint32_t slot_id, uint32_t endpoint_id, uint32_t ring_size, 
+[[nodiscard]] int xhci_ring_create(uint32_t slot_id, uint32_t endpoint_id, uint32_t ring_size, 
                      void *ring_memory, void *doorbell_reg) {
     if (!g_rings_initialized || !ring_memory || ring_size == 0 || 
         ring_size > XHCI_RING_MAX_SIZE || slot_id == 0 || endpoint_id == 0) {
@@ -125,12 +126,12 @@ int xhci_ring_create(uint32_t slot_id, uint32_t endpoint_id, uint32_t ring_size,
     }
     
     // Check if ring already exists
-    if (xhci_ring_get(slot_id, endpoint_id) != NULL) {
+    if (xhci_ring_get(slot_id, endpoint_id) != nullptr) {
         return -1; // Ring already exists
     }
     
     // Find free ring slot
-    xhci_transfer_ring_t *ring = NULL;
+    xhci_transfer_ring_t *ring = nullptr;
     for (uint32_t i = 0; i < XHCI_MAX_TRANSFER_RINGS; i++) {
         if (!g_transfer_rings[i].active) {
             ring = &g_transfer_rings[i];
@@ -164,7 +165,7 @@ int xhci_ring_create(uint32_t slot_id, uint32_t endpoint_id, uint32_t ring_size,
 /**
  * Destroy a transfer ring
  */
-int xhci_ring_destroy(uint32_t slot_id, uint32_t endpoint_id) {
+[[nodiscard]] int xhci_ring_destroy(uint32_t slot_id, uint32_t endpoint_id) {
     if (!g_rings_initialized) {
         return -1;
     }
@@ -188,7 +189,7 @@ int xhci_ring_destroy(uint32_t slot_id, uint32_t endpoint_id) {
  */
 xhci_transfer_ring_t *xhci_ring_get(uint32_t slot_id, uint32_t endpoint_id) {
     if (!g_rings_initialized) {
-        return NULL;
+        return nullptr;
     }
     
     for (uint32_t i = 0; i < XHCI_MAX_TRANSFER_RINGS; i++) {
@@ -198,13 +199,13 @@ xhci_transfer_ring_t *xhci_ring_get(uint32_t slot_id, uint32_t endpoint_id) {
         }
     }
     
-    return NULL;
+    return nullptr;
 }
 
 /**
  * Enqueue TRB to transfer ring
  */
-int xhci_ring_enqueue_trb(xhci_transfer_ring_t *ring, xhci_trb_t *trb) {
+[[nodiscard]] int xhci_ring_enqueue_trb(xhci_transfer_ring_t *ring, xhci_trb_t *trb) {
     if (!ring || !trb || !ring->active) {
         return -1;
     }
@@ -236,7 +237,7 @@ int xhci_ring_enqueue_trb(xhci_transfer_ring_t *ring, xhci_trb_t *trb) {
 /**
  * Dequeue TRB from transfer ring
  */
-int xhci_ring_dequeue_trb(xhci_transfer_ring_t *ring, xhci_trb_t *trb) {
+[[nodiscard]] int xhci_ring_dequeue_trb(xhci_transfer_ring_t *ring, xhci_trb_t *trb) {
     if (!ring || !trb || !ring->active) {
         return -1;
     }
@@ -268,7 +269,7 @@ int xhci_ring_dequeue_trb(xhci_transfer_ring_t *ring, xhci_trb_t *trb) {
 /**
  * Queue a generic transfer
  */
-int xhci_ring_queue_transfer(uint32_t slot_id, uint32_t endpoint_id, 
+[[nodiscard]] int xhci_ring_queue_transfer(uint32_t slot_id, uint32_t endpoint_id, 
                             xhci_transfer_request_t *request) {
     if (!request) {
         return -1;
@@ -308,7 +309,7 @@ int xhci_ring_queue_transfer(uint32_t slot_id, uint32_t endpoint_id,
 /**
  * Queue a control transfer
  */
-int xhci_ring_queue_control_transfer(uint32_t slot_id, uint32_t endpoint_id,
+[[nodiscard]] int xhci_ring_queue_control_transfer(uint32_t slot_id, uint32_t endpoint_id,
                                     void *setup_packet, void *data_buffer, 
                                     uint32_t data_length, uint8_t direction) {
     xhci_transfer_ring_t *ring = xhci_ring_get(slot_id, endpoint_id);
@@ -366,7 +367,7 @@ int xhci_ring_queue_control_transfer(uint32_t slot_id, uint32_t endpoint_id,
 /**
  * Queue a bulk transfer
  */
-int xhci_ring_queue_bulk_transfer(uint32_t slot_id, uint32_t endpoint_id,
+[[nodiscard]] int xhci_ring_queue_bulk_transfer(uint32_t slot_id, uint32_t endpoint_id,
                                  void *data_buffer, uint32_t data_length, 
                                  uint8_t direction) {
     if (!data_buffer || data_length == 0) {
@@ -386,7 +387,7 @@ int xhci_ring_queue_bulk_transfer(uint32_t slot_id, uint32_t endpoint_id,
 /**
  * Queue an interrupt transfer
  */
-int xhci_ring_queue_interrupt_transfer(uint32_t slot_id, uint32_t endpoint_id,
+[[nodiscard]] int xhci_ring_queue_interrupt_transfer(uint32_t slot_id, uint32_t endpoint_id,
                                       void *data_buffer, uint32_t data_length, 
                                       uint8_t direction) {
     if (!data_buffer || data_length == 0) {
@@ -406,7 +407,7 @@ int xhci_ring_queue_interrupt_transfer(uint32_t slot_id, uint32_t endpoint_id,
 /**
  * Add Link TRB to ring
  */
-int xhci_ring_add_link_trb(xhci_transfer_ring_t *ring) {
+[[nodiscard]] int xhci_ring_add_link_trb(xhci_transfer_ring_t *ring) {
     if (!ring || !ring->active) {
         return -1;
     }
@@ -437,7 +438,7 @@ void xhci_ring_doorbell(xhci_transfer_ring_t *ring) {
 /**
  * Get ring statistics
  */
-int xhci_ring_get_stats(uint32_t slot_id, uint32_t endpoint_id, 
+[[nodiscard]] int xhci_ring_get_stats(uint32_t slot_id, uint32_t endpoint_id, 
                        uint32_t *enqueue, uint32_t *dequeue, uint8_t *cycle_state) {
     xhci_transfer_ring_t *ring = xhci_ring_get(slot_id, endpoint_id);
     if (!ring) {
@@ -460,7 +461,7 @@ int xhci_ring_get_stats(uint32_t slot_id, uint32_t endpoint_id,
 /**
  * Check if ring is empty
  */
-int xhci_ring_is_empty(uint32_t slot_id, uint32_t endpoint_id) {
+[[nodiscard]] int xhci_ring_is_empty(uint32_t slot_id, uint32_t endpoint_id) {
     xhci_transfer_ring_t *ring = xhci_ring_get(slot_id, endpoint_id);
     if (!ring) {
         return 1; // Consider non-existent ring as empty
@@ -472,7 +473,7 @@ int xhci_ring_is_empty(uint32_t slot_id, uint32_t endpoint_id) {
 /**
  * Check if ring is full
  */
-int xhci_ring_is_full(uint32_t slot_id, uint32_t endpoint_id) {
+[[nodiscard]] int xhci_ring_is_full(uint32_t slot_id, uint32_t endpoint_id) {
     xhci_transfer_ring_t *ring = xhci_ring_get(slot_id, endpoint_id);
     if (!ring) {
         return 0; // Non-existent ring is not full
@@ -485,7 +486,7 @@ int xhci_ring_is_full(uint32_t slot_id, uint32_t endpoint_id) {
 /**
  * Get number of active rings
  */
-uint32_t xhci_ring_get_count(void) {
+[[nodiscard]] uint32_t xhci_ring_get_count(void) {
     return g_ring_count;
 }
 

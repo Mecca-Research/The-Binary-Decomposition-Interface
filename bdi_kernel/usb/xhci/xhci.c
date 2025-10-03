@@ -3,6 +3,7 @@
 // DESC: xHCI (eXtensible Host Controller Interface) driver for BDI Kernel
 //       Main xHCI controller implementation
 // ===================================================================
+// MODERNIZED: Phase 12 - C23 features (nullptr, [[nodiscard]], _Atomic)
 
 #include <stdint.h>
 #include <string.h>
@@ -128,7 +129,7 @@ void xhci_cleanup(void);
 /**
  * Initialize xHCI controller
  */
-int xhci_init(void *mmio_base) {
+[[nodiscard]] int xhci_init(void *mmio_base) {
     if (!mmio_base || g_xhci_initialized) {
         return -1;
     }
@@ -183,7 +184,7 @@ int xhci_init(void *mmio_base) {
 /**
  * Reset xHCI controller
  */
-int xhci_reset_controller(void) {
+[[nodiscard]] int xhci_reset_controller(void) {
     // Stop controller if running
     xhci_write_op_reg(XHCI_OP_USBCMD, 0);
     
@@ -224,7 +225,7 @@ int xhci_reset_controller(void) {
 /**
  * Start xHCI controller
  */
-int xhci_start_controller(void) {
+[[nodiscard]] int xhci_start_controller(void) {
     // Enable interrupts and start controller
     uint32_t cmd = XHCI_CMD_RUN | XHCI_CMD_INTE;
     xhci_write_op_reg(XHCI_OP_USBCMD, cmd);
@@ -249,7 +250,7 @@ int xhci_start_controller(void) {
 /**
  * Stop xHCI controller
  */
-int xhci_stop_controller(void) {
+[[nodiscard]] int xhci_stop_controller(void) {
     // Stop controller
     xhci_write_op_reg(XHCI_OP_USBCMD, 0);
     
@@ -273,7 +274,7 @@ int xhci_stop_controller(void) {
 /**
  * Enable device slot
  */
-int xhci_enable_slot(uint32_t *slot_id) {
+[[nodiscard]] int xhci_enable_slot(uint32_t *slot_id) {
     if (!slot_id || !g_xhci_controller.running) {
         return -1;
     }
@@ -301,7 +302,7 @@ int xhci_enable_slot(uint32_t *slot_id) {
 /**
  * Disable device slot
  */
-int xhci_disable_slot(uint32_t slot_id) {
+[[nodiscard]] int xhci_disable_slot(uint32_t slot_id) {
     if (slot_id == 0 || slot_id > g_xhci_controller.max_slots) {
         return -1;
     }
@@ -325,7 +326,7 @@ int xhci_disable_slot(uint32_t slot_id) {
 /**
  * Address device
  */
-int xhci_address_device(uint32_t slot_id, uint32_t port_id) {
+[[nodiscard]] int xhci_address_device(uint32_t slot_id, uint32_t port_id) {
     if (slot_id == 0 || slot_id > g_xhci_controller.max_slots || 
         port_id == 0 || port_id > g_xhci_controller.max_ports) {
         return -1;
@@ -352,7 +353,7 @@ int xhci_address_device(uint32_t slot_id, uint32_t port_id) {
 /**
  * Configure endpoint
  */
-int xhci_configure_endpoint(uint32_t slot_id, void *input_context) {
+[[nodiscard]] int xhci_configure_endpoint(uint32_t slot_id, void *input_context) {
     if (slot_id == 0 || slot_id > g_xhci_controller.max_slots || !input_context) {
         return -1;
     }
@@ -376,7 +377,7 @@ int xhci_configure_endpoint(uint32_t slot_id, void *input_context) {
 /**
  * Read capability register
  */
-uint32_t xhci_read_cap_reg(uint32_t offset) {
+[[nodiscard]] uint32_t xhci_read_cap_reg(uint32_t offset) {
     if (!g_xhci_controller.cap_regs) {
         return 0;
     }
@@ -406,7 +407,7 @@ uint32_t xhci_read_cap_reg(uint32_t offset) {
 /**
  * Read operational register
  */
-uint32_t xhci_read_op_reg(uint32_t offset) {
+[[nodiscard]] uint32_t xhci_read_op_reg(uint32_t offset) {
     if (!g_xhci_controller.op_regs) {
         return 0;
     }
@@ -440,7 +441,7 @@ void xhci_write_op_reg(uint32_t offset, uint32_t value) {
 /**
  * Handle port status change
  */
-int xhci_handle_port_status_change(uint32_t port) {
+[[nodiscard]] int xhci_handle_port_status_change(uint32_t port) {
     if (port == 0 || port > g_xhci_controller.max_ports) {
         return -1;
     }
@@ -457,7 +458,7 @@ int xhci_handle_port_status_change(uint32_t port) {
 /**
  * Get controller information
  */
-int xhci_get_controller_info(uint32_t *max_slots, uint32_t *max_ports, uint8_t *context_size) {
+[[nodiscard]] int xhci_get_controller_info(uint32_t *max_slots, uint32_t *max_ports, uint8_t *context_size) {
     if (!g_xhci_initialized) {
         return -1;
     }
@@ -478,7 +479,7 @@ int xhci_get_controller_info(uint32_t *max_slots, uint32_t *max_ports, uint8_t *
 /**
  * Check if controller is running
  */
-int xhci_is_running(void) {
+[[nodiscard]] int xhci_is_running(void) {
     return g_xhci_controller.running;
 }
 
@@ -487,7 +488,7 @@ int xhci_is_running(void) {
  */
 xhci_device_slot_t *xhci_get_device_slot(uint32_t slot_id) {
     if (slot_id == 0 || slot_id > g_xhci_controller.max_slots) {
-        return NULL;
+        return nullptr;
     }
     
     return &g_device_slots[slot_id];

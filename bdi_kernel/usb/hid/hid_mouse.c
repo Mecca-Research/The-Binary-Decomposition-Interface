@@ -3,6 +3,7 @@
 // DESC: HID Mouse driver implementation for BDI Kernel
 //       Handles USB HID mouse devices and input events
 // ===================================================================
+// MODERNIZED: Phase 12 - C23 features (nullptr, [[nodiscard]], _Atomic)
 
 #include <stdint.h>
 #include <string.h>
@@ -55,7 +56,7 @@ typedef struct {
 static hid_mouse_device_t g_mouse_devices[HID_MOUSE_MAX_DEVICES];
 static uint32_t g_device_count = 0;
 static uint8_t g_mouse_initialized = 0;
-static void (*g_global_callback)(hid_mouse_event_t *event) = NULL;
+static void (*g_global_callback)(hid_mouse_event_t *event) = nullptr;
 
 // Function prototypes
 int hid_mouse_init(void);
@@ -73,7 +74,7 @@ void hid_mouse_cleanup(void);
 /**
  * Initialize HID mouse subsystem
  */
-int hid_mouse_init(void) {
+[[nodiscard]] int hid_mouse_init(void) {
     if (g_mouse_initialized) {
         return 0;
     }
@@ -81,7 +82,7 @@ int hid_mouse_init(void) {
     // Clear device array
     memset(g_mouse_devices, 0, sizeof(g_mouse_devices));
     g_device_count = 0;
-    g_global_callback = NULL;
+    g_global_callback = nullptr;
     g_mouse_initialized = 1;
     
     return 0;
@@ -90,7 +91,7 @@ int hid_mouse_init(void) {
 /**
  * Register a HID mouse device
  */
-int hid_mouse_register_device(uint32_t device_id, uint8_t interface, 
+[[nodiscard]] int hid_mouse_register_device(uint32_t device_id, uint8_t interface, 
                              uint8_t endpoint, uint16_t max_packet, uint16_t interval) {
     if (!g_mouse_initialized || g_device_count >= HID_MOUSE_MAX_DEVICES) {
         return -1;
@@ -104,7 +105,7 @@ int hid_mouse_register_device(uint32_t device_id, uint8_t interface,
     }
     
     // Find free slot
-    hid_mouse_device_t *device = NULL;
+    hid_mouse_device_t *device = nullptr;
     for (uint32_t i = 0; i < HID_MOUSE_MAX_DEVICES; i++) {
         if (!g_mouse_devices[i].active) {
             device = &g_mouse_devices[i];
@@ -123,7 +124,7 @@ int hid_mouse_register_device(uint32_t device_id, uint8_t interface,
     device->max_packet = max_packet;
     device->interval = interval;
     device->active = 1;
-    device->callback = NULL;
+    device->callback = nullptr;
     memset(&device->last_report, 0, sizeof(hid_mouse_report_t));
     
     g_device_count++;
@@ -133,7 +134,7 @@ int hid_mouse_register_device(uint32_t device_id, uint8_t interface,
 /**
  * Unregister a HID mouse device
  */
-int hid_mouse_unregister_device(uint32_t device_id) {
+[[nodiscard]] int hid_mouse_unregister_device(uint32_t device_id) {
     if (!g_mouse_initialized) {
         return -1;
     }
@@ -154,7 +155,7 @@ int hid_mouse_unregister_device(uint32_t device_id) {
 /**
  * Process HID mouse report
  */
-int hid_mouse_process_report(uint32_t device_id, const uint8_t *data, uint16_t length) {
+[[nodiscard]] int hid_mouse_process_report(uint32_t device_id, const uint8_t *data, uint16_t length) {
     if (!g_mouse_initialized || !data || length < HID_MOUSE_REPORT_SIZE) {
         return -1;
     }
@@ -233,7 +234,7 @@ int hid_mouse_set_global_callback(void (*callback)(hid_mouse_event_t *event)) {
  */
 hid_mouse_device_t *hid_mouse_get_device(uint32_t device_id) {
     if (!g_mouse_initialized) {
-        return NULL;
+        return nullptr;
     }
     
     for (uint32_t i = 0; i < HID_MOUSE_MAX_DEVICES; i++) {
@@ -242,20 +243,20 @@ hid_mouse_device_t *hid_mouse_get_device(uint32_t device_id) {
         }
     }
     
-    return NULL;
+    return nullptr;
 }
 
 /**
  * Get number of registered mouse devices
  */
-uint32_t hid_mouse_get_device_count(void) {
+[[nodiscard]] uint32_t hid_mouse_get_device_count(void) {
     return g_device_count;
 }
 
 /**
  * Get mouse button state
  */
-uint8_t hid_mouse_get_buttons(uint32_t device_id) {
+[[nodiscard]] uint8_t hid_mouse_get_buttons(uint32_t device_id) {
     hid_mouse_device_t *device = hid_mouse_get_device(device_id);
     if (!device) {
         return 0;
@@ -267,7 +268,7 @@ uint8_t hid_mouse_get_buttons(uint32_t device_id) {
 /**
  * Check if specific button is pressed
  */
-int hid_mouse_is_button_pressed(uint32_t device_id, uint8_t button) {
+[[nodiscard]] int hid_mouse_is_button_pressed(uint32_t device_id, uint8_t button) {
     hid_mouse_device_t *device = hid_mouse_get_device(device_id);
     if (!device) {
         return 0;
@@ -279,7 +280,7 @@ int hid_mouse_is_button_pressed(uint32_t device_id, uint8_t button) {
 /**
  * Get last mouse movement
  */
-int hid_mouse_get_movement(uint32_t device_id, int8_t *x, int8_t *y) {
+[[nodiscard]] int hid_mouse_get_movement(uint32_t device_id, int8_t *x, int8_t *y) {
     hid_mouse_device_t *device = hid_mouse_get_device(device_id);
     if (!device) {
         return -1;
@@ -369,6 +370,6 @@ void hid_mouse_cleanup(void) {
     // Clear all devices
     memset(g_mouse_devices, 0, sizeof(g_mouse_devices));
     g_device_count = 0;
-    g_global_callback = NULL;
+    g_global_callback = nullptr;
     g_mouse_initialized = 0;
 }

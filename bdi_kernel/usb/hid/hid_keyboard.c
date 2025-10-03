@@ -2,6 +2,7 @@
 // ===================================================================
 // DESC: HID Keyboard driver implementation
 // ===================================================================
+// MODERNIZED: Phase 12 - C23 features (nullptr, [[nodiscard]], _Atomic)
 
 #include "hid_keyboard.h"
 #include <string.h>
@@ -44,7 +45,7 @@ const uint8_t hid_scancode_to_ascii_shift[256] = {
 
 // --- Keyboard Management ---
 
-int hid_keyboard_init(hid_keyboard_t* kbd, uint8_t slot_id, uint8_t ep_id, uint8_t interface_num) {
+[[nodiscard]] int hid_keyboard_init(hid_keyboard_t* kbd, uint8_t slot_id, uint8_t ep_id, uint8_t interface_num) {
     memset(kbd, 0, sizeof(hid_keyboard_t));
     
     kbd->slot_id = slot_id;
@@ -62,7 +63,7 @@ int hid_keyboard_init(hid_keyboard_t* kbd, uint8_t slot_id, uint8_t ep_id, uint8
     return 0;
 }
 
-int hid_keyboard_shutdown(hid_keyboard_t* kbd) {
+[[nodiscard]] int hid_keyboard_shutdown(hid_keyboard_t* kbd) {
     if (!kbd->initialized) {
         return 0;
     }
@@ -93,7 +94,7 @@ static void hid_keyboard_add_event(hid_keyboard_t* kbd, uint8_t scancode, bool p
     kbd->event_count++;
 }
 
-int hid_keyboard_process_report(hid_keyboard_t* kbd, const uint8_t* report_data, uint32_t length) {
+[[nodiscard]] int hid_keyboard_process_report(hid_keyboard_t* kbd, const uint8_t* report_data, uint32_t length) {
     if (!kbd->initialized || length < HID_KEYBOARD_REPORT_SIZE) {
         return -1;
     }
@@ -172,7 +173,7 @@ int hid_keyboard_process_report(hid_keyboard_t* kbd, const uint8_t* report_data,
     return 0;
 }
 
-int hid_keyboard_get_event(hid_keyboard_t* kbd, hid_key_event_t* event) {
+[[nodiscard]] int hid_keyboard_get_event(hid_keyboard_t* kbd, hid_key_event_t* event) {
     if (!kbd->initialized || kbd->event_count == 0) {
         return -1;
     }
@@ -184,13 +185,13 @@ int hid_keyboard_get_event(hid_keyboard_t* kbd, hid_key_event_t* event) {
     return 0;
 }
 
-bool hid_keyboard_has_events(hid_keyboard_t* kbd) {
+[[nodiscard]] bool hid_keyboard_has_events(hid_keyboard_t* kbd) {
     return kbd->initialized && kbd->event_count > 0;
 }
 
 // --- LED Control ---
 
-int hid_keyboard_set_leds(hid_keyboard_t* kbd, uint8_t led_state) {
+[[nodiscard]] int hid_keyboard_set_leds(hid_keyboard_t* kbd, uint8_t led_state) {
     if (!kbd->initialized) {
         return -1;
     }
@@ -204,13 +205,13 @@ int hid_keyboard_set_leds(hid_keyboard_t* kbd, uint8_t led_state) {
     return 0;
 }
 
-uint8_t hid_keyboard_get_leds(hid_keyboard_t* kbd) {
+[[nodiscard]] uint8_t hid_keyboard_get_leds(hid_keyboard_t* kbd) {
     return kbd->initialized ? kbd->led_state : 0;
 }
 
 // --- Utility Functions ---
 
-uint8_t hid_scancode_to_ascii(uint8_t scancode, bool shift, bool caps_lock) {
+[[nodiscard]] uint8_t hid_scancode_to_ascii(uint8_t scancode, bool shift, bool caps_lock) {
     if (scancode >= 256) {
         return 0;
     }
@@ -232,7 +233,7 @@ uint8_t hid_scancode_to_ascii(uint8_t scancode, bool shift, bool caps_lock) {
     return ascii;
 }
 
-bool hid_is_modifier_key(uint8_t scancode) {
+[[nodiscard]] bool hid_is_modifier_key(uint8_t scancode) {
     return (scancode >= HID_KEY_LEFT_CTRL && scancode <= HID_KEY_RIGHT_GUI);
 }
 
