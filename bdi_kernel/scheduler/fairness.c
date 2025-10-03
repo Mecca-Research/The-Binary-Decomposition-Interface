@@ -326,8 +326,30 @@ void fair_scheduler_tick_cfs(void* cfs_ptr, uint64_t current_time) {
     
     cfs_scheduler_t* cfs = (cfs_scheduler_t*)cfs_ptr;
     
-    /* Temporary array to collect tasks that need requeueing */
-    node_sched_info_t* requeue_list[256];
+    /* Dynamically allocate requeue list based on actual task count */
+    /* This ensures we never drop tasks regardless of system size */
+    if (cfs->task_count == 0) return;
+    
+    node_sched_info_t** requeue_list = (node_sched_info_t**)malloc(
+        cfs->task_count * sizeof(node_sched_info_t*)
+    );
+    if (!requeue_list) {
+        /* Memory allocation failed - fall back to immediate requeueing */
+        /* This is slower but ensures correctness */
+        for (uint32_t i = 0; i < cfs->task_count; i++) {
+            node_sched_info_t* task = cfs->tasks[i];
+            if (task->is_running) {
+                cfs_update_vruntime(cfs, task, 1000000);
+                if (task->runtime >= 10000000) {
+                    task->is_running = false;
+                    task->runtime = 0;
+                    cfs_requeue_task(cfs, task);
+                }
+            }
+        }
+        return;
+    }
+    
     uint32_t requeue_count = 0;
     
     /* Update vruntime for running tasks and collect those needing requeue */
@@ -343,10 +365,8 @@ void fair_scheduler_tick_cfs(void* cfs_ptr, uint64_t current_time) {
                 task->is_running = false;
                 task->runtime = 0;
                 
-                /* Add to requeue list instead of requeueing immediately */
-                if (requeue_count < 256) {
-                    requeue_list[requeue_count++] = task;
-                }
+                /* Add to requeue list - no size limit check needed */
+                requeue_list[requeue_count++] = task;
             }
         }
     }
@@ -355,6 +375,9 @@ void fair_scheduler_tick_cfs(void* cfs_ptr, uint64_t current_time) {
     for (uint32_t i = 0; i < requeue_count; i++) {
         cfs_requeue_task(cfs, requeue_list[i]);
     }
+    
+    /* Free the dynamically allocated list */
+    free(requeue_list);
 }
 
 /* ===================================================================
