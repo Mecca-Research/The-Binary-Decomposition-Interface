@@ -79,6 +79,26 @@
 #define AHCI_PORT_SSTS_DET_ESTABLISHED 0x3 // Device detected and PHY communication established
 
 // --- Command List Entry (32 bytes) ---
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// AHCI Queue Sizes
+static const uint32_t AHCI_MAX_PORTS = 32;
+static const uint32_t AHCI_MAX_CMDS = 32;
+static const uint32_t AHCI_CMD_SLOT_SIZE = 32;
+
+// AHCI Timeouts
+static const uint32_t AHCI_CMD_TIMEOUT_MS = 5000;
+static const uint32_t AHCI_PORT_RESET_TIMEOUT_MS = 1000;
+
+// AHCI Transfer Sizes
+static const uint32_t AHCI_MAX_TRANSFER_SIZE = (1024 * 1024);
+static const uint32_t AHCI_ZERO_COPY_THRESHOLD = (64 * 1024);
+
+// Cache Line Size
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     uint8_t  cfl:5;         // Command FIS Length
     uint8_t  a:1;           // ATAPI
@@ -96,6 +116,26 @@ typedef struct {
 } __attribute__((packed)) ahci_cmd_header_t;
 
 // --- Physical Region Descriptor (16 bytes) ---
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// AHCI Queue Sizes
+static const uint32_t AHCI_MAX_PORTS = 32;
+static const uint32_t AHCI_MAX_CMDS = 32;
+static const uint32_t AHCI_CMD_SLOT_SIZE = 32;
+
+// AHCI Timeouts
+static const uint32_t AHCI_CMD_TIMEOUT_MS = 5000;
+static const uint32_t AHCI_PORT_RESET_TIMEOUT_MS = 1000;
+
+// AHCI Transfer Sizes
+static const uint32_t AHCI_MAX_TRANSFER_SIZE = (1024 * 1024);
+static const uint32_t AHCI_ZERO_COPY_THRESHOLD = (64 * 1024);
+
+// Cache Line Size
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     uint64_t dba;           // Data Base Address
     uint32_t reserved;
@@ -105,6 +145,26 @@ typedef struct {
 } __attribute__((packed)) ahci_prd_t;
 
 // --- Command Table (up to 256 PRDs) ---
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// AHCI Queue Sizes
+static const uint32_t AHCI_MAX_PORTS = 32;
+static const uint32_t AHCI_MAX_CMDS = 32;
+static const uint32_t AHCI_CMD_SLOT_SIZE = 32;
+
+// AHCI Timeouts
+static const uint32_t AHCI_CMD_TIMEOUT_MS = 5000;
+static const uint32_t AHCI_PORT_RESET_TIMEOUT_MS = 1000;
+
+// AHCI Transfer Sizes
+static const uint32_t AHCI_MAX_TRANSFER_SIZE = (1024 * 1024);
+static const uint32_t AHCI_ZERO_COPY_THRESHOLD = (64 * 1024);
+
+// Cache Line Size
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     uint8_t cfis[64];       // Command FIS
     uint8_t acmd[16];       // ATAPI Command
@@ -123,6 +183,26 @@ typedef struct {
 #define FIS_TYPE_DEV_BITS   0xA1    // Set Device Bits FIS - Device to Host
 
 // --- Register FIS - Host to Device ---
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// AHCI Queue Sizes
+static const uint32_t AHCI_MAX_PORTS = 32;
+static const uint32_t AHCI_MAX_CMDS = 32;
+static const uint32_t AHCI_CMD_SLOT_SIZE = 32;
+
+// AHCI Timeouts
+static const uint32_t AHCI_CMD_TIMEOUT_MS = 5000;
+static const uint32_t AHCI_PORT_RESET_TIMEOUT_MS = 1000;
+
+// AHCI Transfer Sizes
+static const uint32_t AHCI_MAX_TRANSFER_SIZE = (1024 * 1024);
+static const uint32_t AHCI_ZERO_COPY_THRESHOLD = (64 * 1024);
+
+// Cache Line Size
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     uint8_t fis_type;       // FIS_TYPE_REG_H2D
     uint8_t pmport:4;       // Port multiplier
@@ -152,6 +232,26 @@ typedef struct {
 #define ATA_CMD_FLUSH_CACHE_EXT 0xEA
 
 // --- Port Structure ---
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// AHCI Queue Sizes
+static const uint32_t AHCI_MAX_PORTS = 32;
+static const uint32_t AHCI_MAX_CMDS = 32;
+static const uint32_t AHCI_CMD_SLOT_SIZE = 32;
+
+// AHCI Timeouts
+static const uint32_t AHCI_CMD_TIMEOUT_MS = 5000;
+static const uint32_t AHCI_PORT_RESET_TIMEOUT_MS = 1000;
+
+// AHCI Transfer Sizes
+static const uint32_t AHCI_MAX_TRANSFER_SIZE = (1024 * 1024);
+static const uint32_t AHCI_ZERO_COPY_THRESHOLD = (64 * 1024);
+
+// Cache Line Size
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     uint32_t port_num;
     volatile uint8_t* port_base;
@@ -164,6 +264,26 @@ typedef struct {
 } ahci_port_t;
 
 // --- Controller Structure ---
+// ===================================================================
+// C23 Modernization - Constexpr Constants
+// ===================================================================
+
+// AHCI Queue Sizes
+static const uint32_t AHCI_MAX_PORTS = 32;
+static const uint32_t AHCI_MAX_CMDS = 32;
+static const uint32_t AHCI_CMD_SLOT_SIZE = 32;
+
+// AHCI Timeouts
+static const uint32_t AHCI_CMD_TIMEOUT_MS = 5000;
+static const uint32_t AHCI_PORT_RESET_TIMEOUT_MS = 1000;
+
+// AHCI Transfer Sizes
+static const uint32_t AHCI_MAX_TRANSFER_SIZE = (1024 * 1024);
+static const uint32_t AHCI_ZERO_COPY_THRESHOLD = (64 * 1024);
+
+// Cache Line Size
+static const uint32_t CACHE_LINE_SIZE = 64;
+
 typedef struct {
     volatile uint8_t* mmio_base;
     uint32_t ports_implemented;
@@ -175,25 +295,25 @@ typedef struct {
 // --- Function Declarations ---
 
 // Controller management
-int ahci_init_controller(ahci_controller_t* ctrl, volatile uint8_t* mmio_base);
-int ahci_shutdown_controller(ahci_controller_t* ctrl);
+[[nodiscard]] int ahci_init_controller(ahci_controller_t* ctrl, volatile uint8_t* mmio_base);
+[[nodiscard]] int ahci_shutdown_controller(ahci_controller_t* ctrl);
 
 // Port management
-int ahci_init_port(ahci_controller_t* ctrl, uint32_t port_num);
-int ahci_start_port(ahci_controller_t* ctrl, uint32_t port_num);
-int ahci_stop_port(ahci_controller_t* ctrl, uint32_t port_num);
-bool ahci_port_has_device(ahci_controller_t* ctrl, uint32_t port_num);
+[[nodiscard]] int ahci_init_port(ahci_controller_t* ctrl, uint32_t port_num);
+[[nodiscard]] int ahci_start_port(ahci_controller_t* ctrl, uint32_t port_num);
+[[nodiscard]] int ahci_stop_port(ahci_controller_t* ctrl, uint32_t port_num);
+[[nodiscard]] bool ahci_port_has_device(ahci_controller_t* ctrl, uint32_t port_num);
 
 // Command operations
-int ahci_identify_device(ahci_controller_t* ctrl, uint32_t port_num, void* buffer);
-int ahci_read_sectors(ahci_controller_t* ctrl, uint32_t port_num, uint64_t lba, uint32_t count, void* buffer);
-int ahci_write_sectors(ahci_controller_t* ctrl, uint32_t port_num, uint64_t lba, uint32_t count, const void* buffer);
-int ahci_flush_cache(ahci_controller_t* ctrl, uint32_t port_num);
+[[nodiscard]] int ahci_identify_device(ahci_controller_t* ctrl, uint32_t port_num, void* buffer);
+[[nodiscard]] int ahci_read_sectors(ahci_controller_t* ctrl, uint32_t port_num, uint64_t lba, uint32_t count, void* buffer);
+[[nodiscard]] int ahci_write_sectors(ahci_controller_t* ctrl, uint32_t port_num, uint64_t lba, uint32_t count, const void* buffer);
+[[nodiscard]] int ahci_flush_cache(ahci_controller_t* ctrl, uint32_t port_num);
 
 // Utility functions
-uint32_t ahci_read_reg32(ahci_controller_t* ctrl, uint32_t offset);
+[[nodiscard]] uint32_t ahci_read_reg32(ahci_controller_t* ctrl, uint32_t offset);
 void ahci_write_reg32(ahci_controller_t* ctrl, uint32_t offset, uint32_t value);
-uint32_t ahci_port_read_reg32(ahci_controller_t* ctrl, uint32_t port_num, uint32_t offset);
+[[nodiscard]] uint32_t ahci_port_read_reg32(ahci_controller_t* ctrl, uint32_t port_num, uint32_t offset);
 void ahci_port_write_reg32(ahci_controller_t* ctrl, uint32_t port_num, uint32_t offset, uint32_t value);
 
 // Error codes
