@@ -94,15 +94,27 @@ int ext2_read_inode(struct ext2_fs *fs, uint32_t ino, struct ext2_inode *inode) 
     uint32_t inode_size = (fs->sb.s_rev_level == 0) ? 128 : fs->sb.s_inode_size;
     uint64_t offset = inode_table_block * fs->block_size + index * inode_size;
     uint64_t sector = offset / 512;
+    uint32_t sector_offset = offset % 512;
     
-    /* Read inode */
-    uint8_t buf[512];
-    int ret = fs->read_blocks(fs->device, sector, buf, 1);
+    /* 
+     * BUG FIX: Read enough sectors to cover the entire inode.
+     * An inode can span sector boundaries, so we need to read multiple sectors
+     * if the inode starts near the end of a sector.
+     */
+    uint32_t sectors_needed = (sector_offset + inode_size + 511) / 512;
+    uint8_t buf[1024];  /* Buffer large enough for 2 sectors (max needed for 128-byte inode) */
+    
+    if (sectors_needed > 2) {
+        /* Sanity check: inode_size should never require more than 2 sectors */
+        return -EINVAL;
+    }
+    
+    int ret = fs->read_blocks(fs->device, sector, buf, sectors_needed);
     if (ret < 0) {
         return ret;
     }
     
-    memcpy(inode, buf + (offset % 512), sizeof(*inode));
+    memcpy(inode, buf + sector_offset, sizeof(*inode));
     return 0;
 }
 
