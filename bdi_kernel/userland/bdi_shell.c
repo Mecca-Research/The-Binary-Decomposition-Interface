@@ -1,492 +1,380 @@
 
-// ===================================================================
-// DESC: BDI Shell - Interactive command-line interface for BDI Kernel
-//       Provides user interaction with the BDI system
-// ===================================================================
-
-#include <stdint.h>
-#include <string.h>
-#include <stdlib.h>
+#include "bdi_shell.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <time.h>
 
-// Shell Constants
-#define BDI_SHELL_MAX_INPUT         1024
-#define BDI_SHELL_MAX_ARGS          64
-#define BDI_SHELL_MAX_COMMANDS      128
-#define BDI_SHELL_PROMPT            "bdi> "
-#define BDI_SHELL_VERSION           "1.0.0"
+// Helper macro for safe iteration bounds
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-// Command Return Codes
-#define BDI_SHELL_SUCCESS           0
-#define BDI_SHELL_ERROR             -1
-#define BDI_SHELL_EXIT              1
+ShellState shell_state = {0};
 
-// Built-in Command Structure
-typedef struct {
-    const char *name;           // Command name
-    const char *description;    // Command description
-    int (*handler)(int argc, char **argv); // Command handler function
-} bdi_shell_command_t;
-
-// Shell State Structure
-typedef struct {
-    char input_buffer[BDI_SHELL_MAX_INPUT];
-    char *args[BDI_SHELL_MAX_ARGS];
-    int argc;
-    int running;
-    int exit_code;
-    char current_directory[256];
-    char history[10][BDI_SHELL_MAX_INPUT];
-    int history_count;
-    int history_index;
-} bdi_shell_state_t;
-
-// Global shell state
-static bdi_shell_state_t g_shell_state;
-static int g_shell_initialized = 0;
-
-// Built-in command handlers
-int bdi_cmd_help(int argc, char **argv);
-int bdi_cmd_version(int argc, char **argv);
-int bdi_cmd_exit(int argc, char **argv);
-int bdi_cmd_clear(int argc, char **argv);
-int bdi_cmd_echo(int argc, char **argv);
-int bdi_cmd_pwd(int argc, char **argv);
-int bdi_cmd_cd(int argc, char **argv);
-int bdi_cmd_ls(int argc, char **argv);
-int bdi_cmd_cat(int argc, char **argv);
-int bdi_cmd_mkdir(int argc, char **argv);
-int bdi_cmd_rmdir(int argc, char **argv);
-int bdi_cmd_rm(int argc, char **argv);
-int bdi_cmd_cp(int argc, char **argv);
-int bdi_cmd_mv(int argc, char **argv);
-int bdi_cmd_ps(int argc, char **argv);
-int bdi_cmd_kill(int argc, char **argv);
-int bdi_cmd_mount(int argc, char **argv);
-int bdi_cmd_umount(int argc, char **argv);
-int bdi_cmd_df(int argc, char **argv);
-int bdi_cmd_free(int argc, char **argv);
-int bdi_cmd_uname(int argc, char **argv);
-int bdi_cmd_date(int argc, char **argv);
-int bdi_cmd_uptime(int argc, char **argv);
-int bdi_cmd_history(int argc, char **argv);
-
-// Built-in commands table
-static bdi_shell_command_t g_builtin_commands[] = {
-    {"help", "Display help information", bdi_cmd_help},
-    {"version", "Display BDI version information", bdi_cmd_version},
-    {"exit", "Exit the shell", bdi_cmd_exit},
-    {"quit", "Exit the shell", bdi_cmd_exit},
-    {"clear", "Clear the screen", bdi_cmd_clear},
-    {"echo", "Display text", bdi_cmd_echo},
-    {"pwd", "Print working directory", bdi_cmd_pwd},
-    {"cd", "Change directory", bdi_cmd_cd},
-    {"ls", "List directory contents", bdi_cmd_ls},
-    {"dir", "List directory contents", bdi_cmd_ls},
-    {"cat", "Display file contents", bdi_cmd_cat},
-    {"mkdir", "Create directory", bdi_cmd_mkdir},
-    {"rmdir", "Remove directory", bdi_cmd_rmdir},
-    {"rm", "Remove file", bdi_cmd_rm},
-    {"del", "Remove file", bdi_cmd_rm},
-    {"cp", "Copy file", bdi_cmd_cp},
-    {"copy", "Copy file", bdi_cmd_cp},
-    {"mv", "Move/rename file", bdi_cmd_mv},
-    {"move", "Move/rename file", bdi_cmd_mv},
-    {"ps", "List running processes", bdi_cmd_ps},
-    {"kill", "Terminate process", bdi_cmd_kill},
-    {"mount", "Mount filesystem", bdi_cmd_mount},
-    {"umount", "Unmount filesystem", bdi_cmd_umount},
-    {"df", "Display filesystem usage", bdi_cmd_df},
-    {"free", "Display memory usage", bdi_cmd_free},
-    {"uname", "Display system information", bdi_cmd_uname},
-    {"date", "Display current date and time", bdi_cmd_date},
-    {"uptime", "Display system uptime", bdi_cmd_uptime},
-    {"history", "Display command history", bdi_cmd_history},
-    {NULL, NULL, NULL} // Terminator
-};
-
-// Function prototypes
-int bdi_shell_init(void);
-int bdi_shell_run(void);
-void bdi_shell_cleanup(void);
-int bdi_shell_parse_input(const char *input);
-int bdi_shell_execute_command(int argc, char **argv);
-bdi_shell_command_t *bdi_shell_find_command(const char *name);
-void bdi_shell_add_to_history(const char *command);
-void bdi_shell_print_prompt(void);
-char *bdi_shell_read_line(void);
-void bdi_shell_print_banner(void);
-
-/**
- * Initialize BDI shell
- */
-int bdi_shell_init(void) {
-    if (g_shell_initialized) {
-        return BDI_SHELL_SUCCESS;
+// C23: Use nullptr instead of NULL
+int shell_init(void) {
+    memset(&shell_state, 0, sizeof(ShellState));
+    shell_state.running = true;
+    shell_state.history_count = 0;
+    shell_state.history_index = 0;
+    atomic_store(&shell_state.job_count, 0);
+    
+    // Set default prompt
+    snprintf(shell_state.prompt, sizeof(shell_state.prompt), "bdi> ");
+    
+    // Get current directory
+    if (getcwd(shell_state.current_dir, sizeof(shell_state.current_dir)) == NULL) {
+        strcpy(shell_state.current_dir, "/");
     }
     
-    // Initialize shell state
-    memset(&g_shell_state, 0, sizeof(bdi_shell_state_t));
-    g_shell_state.running = 1;
-    g_shell_state.exit_code = 0;
-    strcpy(g_shell_state.current_directory, "/");
-    g_shell_state.history_count = 0;
-    g_shell_state.history_index = 0;
+    printf("BDI Shell v1.0 - C23 Edition\n");
+    printf("Type 'help' for available commands\n\n");
     
-    g_shell_initialized = 1;
-    return BDI_SHELL_SUCCESS;
+    return 0;
 }
 
-/**
- * Run BDI shell main loop
- */
-int bdi_shell_run(void) {
-    if (!g_shell_initialized) {
-        if (bdi_shell_init() != BDI_SHELL_SUCCESS) {
-            return BDI_SHELL_ERROR;
-        }
-    }
+int shell_run(void) {
+    char input[SHELL_MAX_COMMAND_LENGTH];
     
-    // Print banner
-    bdi_shell_print_banner();
-    
-    // Main shell loop
-    while (g_shell_state.running) {
+    while (shell_state.running) {
         // Print prompt
-        bdi_shell_print_prompt();
+        printf("%s", shell_state.prompt);
+        fflush(stdout);
         
         // Read input
-        char *input = bdi_shell_read_line();
-        if (!input) {
+        if (fgets(input, sizeof(input), stdin) == NULL) {
             break;
         }
         
-        // Skip empty lines
+        // Remove newline
+        size_t len = strlen(input);
+        if (len > 0 && input[len - 1] == '\n') {
+            input[len - 1] = '\0';
+        }
+        
+        // Skip empty commands
         if (strlen(input) == 0) {
-            free(input);
             continue;
         }
         
         // Add to history
-        bdi_shell_add_to_history(input);
+        shell_add_history(input);
         
-        // Parse and execute command
-        int result = bdi_shell_parse_input(input);
-        if (result == BDI_SHELL_EXIT) {
-            g_shell_state.running = 0;
+        // Execute command
+        shell_execute_command(input);
+    }
+    
+    return 0;
+}
+
+void shell_cleanup(void) {
+    shell_state.running = false;
+    
+    // Kill all background jobs
+    uint32_t job_count = atomic_load(&shell_state.job_count);
+    for (uint32_t i = 0; i < MIN(job_count, SHELL_MAX_JOBS); i++) {
+        if (shell_state.jobs[i].is_running) {
+            kill(shell_state.jobs[i].pid, SIGTERM);
         }
-        
-        free(input);
     }
     
-    return g_shell_state.exit_code;
+    printf("\nBDI Shell terminated\n");
 }
 
-/**
- * Parse shell input
- */
-int bdi_shell_parse_input(const char *input) {
-    if (!input) {
-        return BDI_SHELL_ERROR;
+// Command history implementation
+void shell_add_history(const char* command) {
+    if (shell_state.history_count < SHELL_MAX_HISTORY) {
+        uint32_t idx = shell_state.history_count;
+        strncpy(shell_state.history[idx].command, command, SHELL_MAX_COMMAND_LENGTH - 1);
+        shell_state.history[idx].timestamp = (uint64_t)time(NULL);
+        shell_state.history_count++;
+    } else {
+        // Shift history
+        memmove(&shell_state.history[0], &shell_state.history[1], 
+                (SHELL_MAX_HISTORY - 1) * sizeof(ShellHistoryEntry));
+        strncpy(shell_state.history[SHELL_MAX_HISTORY - 1].command, command, 
+                SHELL_MAX_COMMAND_LENGTH - 1);
+        shell_state.history[SHELL_MAX_HISTORY - 1].timestamp = (uint64_t)time(NULL);
     }
-    
-    // Copy input to buffer
-    strncpy(g_shell_state.input_buffer, input, BDI_SHELL_MAX_INPUT - 1);
-    g_shell_state.input_buffer[BDI_SHELL_MAX_INPUT - 1] = '\0';
-    
-    // Tokenize input
-    g_shell_state.argc = 0;
-    char *token = strtok(g_shell_state.input_buffer, " \t\n");
-    
-    while (token && g_shell_state.argc < BDI_SHELL_MAX_ARGS - 1) {
-        g_shell_state.args[g_shell_state.argc] = token;
-        g_shell_state.argc++;
-        token = strtok(NULL, " \t\n");
-    }
-    
-    g_shell_state.args[g_shell_state.argc] = NULL;
-    
-    if (g_shell_state.argc == 0) {
-        return BDI_SHELL_SUCCESS;
-    }
-    
-    // Execute command
-    return bdi_shell_execute_command(g_shell_state.argc, g_shell_state.args);
+    shell_state.history_index = shell_state.history_count;
 }
 
-/**
- * Execute shell command
- */
-int bdi_shell_execute_command(int argc, char **argv) {
-    if (argc == 0 || !argv[0]) {
-        return BDI_SHELL_SUCCESS;
-    }
-    
-    // Find built-in command
-    bdi_shell_command_t *cmd = bdi_shell_find_command(argv[0]);
-    if (cmd) {
-        return cmd->handler(argc, argv);
-    }
-    
-    // Command not found
-    printf("bdi: command not found: %s\n", argv[0]);
-    printf("Type 'help' for a list of available commands.\n");
-    
-    return BDI_SHELL_ERROR;
-}
-
-/**
- * Find built-in command
- */
-bdi_shell_command_t *bdi_shell_find_command(const char *name) {
-    if (!name) {
+const char* shell_get_history(int offset) {
+    if (offset < 0 || offset >= (int)shell_state.history_count) {
         return NULL;
     }
-    
-    for (int i = 0; g_builtin_commands[i].name; i++) {
-        if (strcmp(g_builtin_commands[i].name, name) == 0) {
-            return &g_builtin_commands[i];
-        }
-    }
-    
+    return shell_state.history[offset].command;
+}
+
+void shell_clear_history(void) {
+    shell_state.history_count = 0;
+    shell_state.history_index = 0;
+}
+
+// Tab completion (basic implementation)
+char* shell_tab_complete(const char* partial) {
+    // TODO: Implement full tab completion
+    // For now, return NULL
     return NULL;
 }
 
-/**
- * Add command to history
- */
-void bdi_shell_add_to_history(const char *command) {
-    if (!command || strlen(command) == 0) {
+// Command parsing
+int shell_parse_command(const char* input, char** args) {
+    char* input_copy = strdup(input);
+    if (input_copy == NULL) {
+        return -1;
+    }
+    
+    int argc = 0;
+    char* token = strtok(input_copy, " \t");
+    
+    while (token != NULL && argc < SHELL_MAX_ARGS - 1) {
+        args[argc++] = strdup(token);
+        token = strtok(NULL, " \t");
+    }
+    
+    args[argc] = NULL;
+    free(input_copy);
+    
+    return argc;
+}
+
+// Job control implementation
+int shell_launch_job(char** args, bool background) {
+    pid_t pid = fork();
+    
+    if (pid == 0) {
+        // Child process
+        if (background) {
+            // Detach from terminal for background jobs
+            setsid();
+        }
+        
+        execvp(args[0], args);
+        
+        // If execvp returns, it failed
+        fprintf(stderr, "bdi: command not found: %s\n", args[0]);
+        exit(1);
+    } else if (pid > 0) {
+        // Parent process
+        if (background) {
+            // Add to job list - atomically reserve a slot
+            uint32_t slot = atomic_fetch_add(&shell_state.job_count, 1);
+            if (slot < SHELL_MAX_JOBS) {
+                // Slot is within bounds, use it
+                shell_state.jobs[slot].job_id = slot + 1;
+                shell_state.jobs[slot].pid = pid;
+                strncpy(shell_state.jobs[slot].command, args[0], 
+                        SHELL_MAX_COMMAND_LENGTH - 1);
+                shell_state.jobs[slot].is_background = true;
+                shell_state.jobs[slot].is_running = true;
+                shell_state.jobs[slot].is_stopped = false;
+                
+                printf("[%u] %d\n", shell_state.jobs[slot].job_id, pid);
+            } else {
+                // Slot exceeds array bounds, job cannot be tracked
+                fprintf(stderr, "bdi: warning: job limit reached, job %d not tracked\n", pid);
+            }
+        } else {
+            // Wait for foreground job
+            int status;
+            waitpid(pid, &status, 0);
+        }
+        
+        return 0;
+    } else {
+        perror("fork");
+        return -1;
+    }
+}
+
+int shell_fg(uint32_t job_id) {
+    // Find job
+    uint32_t job_count = atomic_load(&shell_state.job_count);
+    for (uint32_t i = 0; i < MIN(job_count, SHELL_MAX_JOBS); i++) {
+        if (shell_state.jobs[i].job_id == job_id) {
+            if (shell_state.jobs[i].is_stopped) {
+                // Resume stopped job
+                kill(shell_state.jobs[i].pid, SIGCONT);
+            }
+            
+            // Wait for job
+            int status;
+            waitpid(shell_state.jobs[i].pid, &status, 0);
+            
+            shell_state.jobs[i].is_running = false;
+            return 0;
+        }
+    }
+    
+    fprintf(stderr, "bdi: fg: %u: no such job\n", job_id);
+    return -1;
+}
+
+int shell_bg(uint32_t job_id) {
+    // Find job
+    uint32_t job_count = atomic_load(&shell_state.job_count);
+    for (uint32_t i = 0; i < MIN(job_count, SHELL_MAX_JOBS); i++) {
+        if (shell_state.jobs[i].job_id == job_id) {
+            if (shell_state.jobs[i].is_stopped) {
+                // Resume stopped job in background
+                kill(shell_state.jobs[i].pid, SIGCONT);
+                shell_state.jobs[i].is_stopped = false;
+                shell_state.jobs[i].is_running = true;
+                printf("[%u] %d continued\n", job_id, shell_state.jobs[i].pid);
+                return 0;
+            }
+        }
+    }
+    
+    fprintf(stderr, "bdi: bg: %u: no such job\n", job_id);
+    return -1;
+}
+
+void shell_list_jobs(void) {
+    uint32_t count = atomic_load(&shell_state.job_count);
+    uint32_t safe_count = MIN(count, SHELL_MAX_JOBS);
+    
+    if (safe_count == 0) {
+        printf("No jobs\n");
         return;
     }
     
-    int index = g_shell_state.history_count % 10;
-    strncpy(g_shell_state.history[index], command, BDI_SHELL_MAX_INPUT - 1);
-    g_shell_state.history[index][BDI_SHELL_MAX_INPUT - 1] = '\0';
-    
-    g_shell_state.history_count++;
-}
-
-/**
- * Print shell prompt
- */
-void bdi_shell_print_prompt(void) {
-    printf("%s", BDI_SHELL_PROMPT);
-    fflush(stdout);
-}
-
-/**
- * Read line from input
- */
-char *bdi_shell_read_line(void) {
-    char *line = malloc(BDI_SHELL_MAX_INPUT);
-    if (!line) {
-        return NULL;
-    }
-    
-    if (fgets(line, BDI_SHELL_MAX_INPUT, stdin) == NULL) {
-        free(line);
-        return NULL;
-    }
-    
-    // Remove newline
-    size_t len = strlen(line);
-    if (len > 0 && line[len - 1] == '\n') {
-        line[len - 1] = '\0';
-    }
-    
-    return line;
-}
-
-/**
- * Print shell banner
- */
-void bdi_shell_print_banner(void) {
-    printf("\n");
-    printf("╔══════════════════════════════════════════════════════════════╗\n");
-    printf("║                    BDI Shell v%s                         ║\n", BDI_SHELL_VERSION);
-    printf("║          Binary Decomposition Interface Kernel              ║\n");
-    printf("║                                                              ║\n");
-    printf("║  Type 'help' for available commands                         ║\n");
-    printf("║  Type 'exit' or 'quit' to exit the shell                    ║\n");
-    printf("╚══════════════════════════════════════════════════════════════╝\n");
-    printf("\n");
-}
-
-/**
- * Built-in command implementations
- */
-
-int bdi_cmd_help(int argc, char **argv) {
-    (void)argc; (void)argv;
-    
-    printf("BDI Shell - Available Commands:\n\n");
-    
-    for (int i = 0; g_builtin_commands[i].name; i++) {
-        printf("  %-12s - %s\n", g_builtin_commands[i].name, g_builtin_commands[i].description);
-    }
-    
-    printf("\nFor more information about BDI, visit the documentation.\n");
-    return BDI_SHELL_SUCCESS;
-}
-
-int bdi_cmd_version(int argc, char **argv) {
-    (void)argc; (void)argv;
-    
-    printf("BDI Shell version %s\n", BDI_SHELL_VERSION);
-    printf("Binary Decomposition Interface Kernel\n");
-    printf("Built on %s %s\n", __DATE__, __TIME__);
-    
-    return BDI_SHELL_SUCCESS;
-}
-
-int bdi_cmd_exit(int argc, char **argv) {
-    int exit_code = 0;
-    
-    if (argc > 1) {
-        exit_code = atoi(argv[1]);
-    }
-    
-    printf("Goodbye!\n");
-    g_shell_state.exit_code = exit_code;
-    
-    return BDI_SHELL_EXIT;
-}
-
-int bdi_cmd_clear(int argc, char **argv) {
-    (void)argc; (void)argv;
-    
-    // ANSI escape sequence to clear screen
-    printf("\033[2J\033[H");
-    fflush(stdout);
-    
-    return BDI_SHELL_SUCCESS;
-}
-
-int bdi_cmd_echo(int argc, char **argv) {
-    for (int i = 1; i < argc; i++) {
-        printf("%s", argv[i]);
-        if (i < argc - 1) {
-            printf(" ");
+    for (uint32_t i = 0; i < safe_count; i++) {
+        if (shell_state.jobs[i].is_running || shell_state.jobs[i].is_stopped) {
+            printf("[%u] %s %d %s\n",
+                   shell_state.jobs[i].job_id,
+                   shell_state.jobs[i].is_stopped ? "Stopped" : "Running",
+                   shell_state.jobs[i].pid,
+                   shell_state.jobs[i].command);
         }
     }
-    printf("\n");
-    
-    return BDI_SHELL_SUCCESS;
 }
 
-int bdi_cmd_pwd(int argc, char **argv) {
-    (void)argc; (void)argv;
+// Pipes and redirection
+int shell_execute_pipeline(char* commands[], int num_commands) {
+    int pipes[SHELL_MAX_PIPES][2];
+    pid_t pids[SHELL_MAX_PIPES + 1];
     
-    printf("%s\n", g_shell_state.current_directory);
-    return BDI_SHELL_SUCCESS;
-}
-
-int bdi_cmd_cd(int argc, char **argv) {
-    const char *path = (argc > 1) ? argv[1] : "/";
-    
-    // Simple path handling (in a real implementation, this would
-    // interact with the VFS layer)
-    if (strcmp(path, "..") == 0) {
-        // Go to parent directory
-        char *last_slash = strrchr(g_shell_state.current_directory, '/');
-        if (last_slash && last_slash != g_shell_state.current_directory) {
-            *last_slash = '\0';
-        } else {
-            strcpy(g_shell_state.current_directory, "/");
+    // Create pipes
+    for (int i = 0; i < num_commands - 1; i++) {
+        if (pipe(pipes[i]) < 0) {
+            perror("pipe");
+            return -1;
         }
-    } else if (path[0] == '/') {
-        // Absolute path
-        strncpy(g_shell_state.current_directory, path, sizeof(g_shell_state.current_directory) - 1);
-    } else {
-        // Relative path
-        if (strcmp(g_shell_state.current_directory, "/") != 0) {
-            strncat(g_shell_state.current_directory, "/", sizeof(g_shell_state.current_directory) - strlen(g_shell_state.current_directory) - 1);
-        }
-        strncat(g_shell_state.current_directory, path, sizeof(g_shell_state.current_directory) - strlen(g_shell_state.current_directory) - 1);
     }
     
-    return BDI_SHELL_SUCCESS;
-}
-
-int bdi_cmd_ls(int argc, char **argv) {
-    (void)argc; (void)argv;
-    
-    // Simulate directory listing
-    printf("total 8\n");
-    printf("drwxr-xr-x  2 root root 4096 Jan  1 12:00 .\n");
-    printf("drwxr-xr-x  3 root root 4096 Jan  1 12:00 ..\n");
-    printf("-rw-r--r--  1 root root  100 Jan  1 12:00 example.txt\n");
-    printf("drwxr-xr-x  2 root root 4096 Jan  1 12:00 subdir\n");
-    
-    return BDI_SHELL_SUCCESS;
-}
-
-int bdi_cmd_history(int argc, char **argv) {
-    (void)argc; (void)argv;
-    
-    printf("Command History:\n");
-    
-    int start = (g_shell_state.history_count > 10) ? g_shell_state.history_count - 10 : 0;
-    int count = (g_shell_state.history_count > 10) ? 10 : g_shell_state.history_count;
-    
-    for (int i = 0; i < count; i++) {
-        int index = (start + i) % 10;
-        printf("%3d  %s\n", start + i + 1, g_shell_state.history[index]);
+    // Execute commands
+    for (int i = 0; i < num_commands; i++) {
+        pids[i] = fork();
+        
+        if (pids[i] == 0) {
+            // Child process
+            
+            // Redirect input from previous pipe
+            if (i > 0) {
+                dup2(pipes[i - 1][0], STDIN_FILENO);
+            }
+            
+            // Redirect output to next pipe
+            if (i < num_commands - 1) {
+                dup2(pipes[i][1], STDOUT_FILENO);
+            }
+            
+            // Close all pipes
+            for (int j = 0; j < num_commands - 1; j++) {
+                close(pipes[j][0]);
+                close(pipes[j][1]);
+            }
+            
+            // Parse and execute command
+            char* args[SHELL_MAX_ARGS];
+            shell_parse_command(commands[i], args);
+            execvp(args[0], args);
+            
+            fprintf(stderr, "bdi: command not found: %s\n", args[0]);
+            exit(1);
+        }
     }
     
-    return BDI_SHELL_SUCCESS;
-}
-
-int bdi_cmd_uname(int argc, char **argv) {
-    (void)argc; (void)argv;
+    // Close all pipes in parent
+    for (int i = 0; i < num_commands - 1; i++) {
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+    }
     
-    printf("BDI %s x86_64 BDI-Kernel\n", BDI_SHELL_VERSION);
-    return BDI_SHELL_SUCCESS;
-}
-
-int bdi_cmd_date(int argc, char **argv) {
-    (void)argc; (void)argv;
+    // Wait for all children
+    for (int i = 0; i < num_commands; i++) {
+        int status;
+        waitpid(pids[i], &status, 0);
+    }
     
-    // Simulate current date (in a real implementation, this would
-    // get the actual system time)
-    printf("Mon Jan  1 12:00:00 UTC 2024\n");
-    return BDI_SHELL_SUCCESS;
+    return 0;
 }
 
-int bdi_cmd_uptime(int argc, char **argv) {
-    (void)argc; (void)argv;
+int shell_redirect_io(const char* input_file, const char* output_file, bool append) {
+    if (input_file != NULL) {
+        int fd = open(input_file, O_RDONLY);
+        if (fd < 0) {
+            perror("open");
+            return -1;
+        }
+        dup2(fd, STDIN_FILENO);
+        close(fd);
+    }
     
-    // Simulate uptime
-    printf(" 12:00:00 up 1 day,  2:30,  1 user,  load average: 0.15, 0.10, 0.05\n");
-    return BDI_SHELL_SUCCESS;
+    if (output_file != NULL) {
+        int flags = O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC);
+        int fd = open(output_file, flags, 0644);
+        if (fd < 0) {
+            perror("open");
+            return -1;
+        }
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+    }
+    
+    return 0;
 }
 
-// Placeholder implementations for other commands
-int bdi_cmd_cat(int argc, char **argv) { (void)argc; (void)argv; printf("cat: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_mkdir(int argc, char **argv) { (void)argc; (void)argv; printf("mkdir: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_rmdir(int argc, char **argv) { (void)argc; (void)argv; printf("rmdir: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_rm(int argc, char **argv) { (void)argc; (void)argv; printf("rm: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_cp(int argc, char **argv) { (void)argc; (void)argv; printf("cp: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_mv(int argc, char **argv) { (void)argc; (void)argv; printf("mv: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_ps(int argc, char **argv) { (void)argc; (void)argv; printf("ps: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_kill(int argc, char **argv) { (void)argc; (void)argv; printf("kill: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_mount(int argc, char **argv) { (void)argc; (void)argv; printf("mount: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_umount(int argc, char **argv) { (void)argc; (void)argv; printf("umount: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_df(int argc, char **argv) { (void)argc; (void)argv; printf("df: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-int bdi_cmd_free(int argc, char **argv) { (void)argc; (void)argv; printf("free: command not fully implemented\n"); return BDI_SHELL_SUCCESS; }
-
-/**
- * Cleanup shell resources
- */
-void bdi_shell_cleanup(void) {
-    memset(&g_shell_state, 0, sizeof(bdi_shell_state_t));
-    g_shell_initialized = 0;
-}
-
-/**
- * Main shell entry point (for testing)
- */
-int main(void) {
-    return bdi_shell_run();
+// Command execution (will be extended in shell_commands.c)
+int shell_execute_command(const char* command) {
+    char* args[SHELL_MAX_ARGS];
+    int argc = shell_parse_command(command, args);
+    
+    if (argc <= 0) {
+        return -1;
+    }
+    
+    // Check for background job
+    bool background = false;
+    if (strcmp(args[argc - 1], "&") == 0) {
+        background = true;
+        free(args[argc - 1]);
+        args[argc - 1] = NULL;
+        argc--;
+    }
+    
+    // Check for built-in commands
+    int result = shell_execute_builtin(args);
+    if (result >= 0) {
+        // Built-in command executed
+        for (int i = 0; i < argc; i++) {
+            free(args[i]);
+        }
+        return result;
+    }
+    
+    // Launch as external command
+    result = shell_launch_job(args, background);
+    
+    // Free args
+    for (int i = 0; i < argc; i++) {
+        free(args[i]);
+    }
+    
+    return result;
 }
