@@ -1,4 +1,5 @@
 
+
 /**
  * @file process.h
  * @brief Process Control Block (PCB) and Process Management
@@ -114,12 +115,20 @@ typedef struct {
 
 /**
  * @brief Memory region descriptor
+ * 
+ * Two-level refcounting for COW support:
+ * - ref_count: Tracks lifetime of this descriptor (process-local)
+ * - cow_ref_count: Tracks shared physical memory (shared between processes)
+ * 
+ * For non-COW regions, cow_ref_count is nullptr.
+ * For COW regions, multiple descriptors share the same cow_ref_count pointer.
  */
 typedef struct MemoryRegion {
     void *base;                         /* Base address */
     size_t size;                        /* Region size */
     uint32_t flags;                     /* Memory flags */
-    _Atomic uint32_t ref_count;         /* Reference count (for COW) */
+    _Atomic uint32_t ref_count;         /* Descriptor reference count */
+    _Atomic(int) *cow_ref_count;        /* Shared COW refcount (nullptr if not COW) */
     struct MemoryRegion *next;          /* Next region in list */
 } MemoryRegion;
 

@@ -1,4 +1,5 @@
 
+
 /**
  * @file process_lifecycle.c
  * @brief Process Lifecycle Management
@@ -35,10 +36,13 @@ extern uint32_t pcb_unref(ProcessControlBlock *pcb);
 /**
  * @brief Copy memory regions with COW support
  * 
- * For proper COW semantics, both parent and child must share the same
- * MemoryRegion objects (not copies) so they share the same atomic refcount.
- * This prevents use-after-free when one process exits while the other still
- * holds references to the shared memory.
+ * Two-level refcounting approach:
+ * - Each process gets its own MemoryRegion descriptor (for list management)
+ * - COW regions share a cow_ref_count pointer (for physical memory lifetime)
+ * 
+ * This allows:
+ * - Process-local list management (each process can add/remove regions independently)
+ * - Correct shared memory lifetime tracking (physical memory freed only when all processes done)
  */
 static int copy_memory_regions_cow(ProcessControlBlock *parent,
                                    ProcessControlBlock *child) {
@@ -46,27 +50,89 @@ static int copy_memory_regions_cow(ProcessControlBlock *parent,
         return -EINVAL;
     }
     
-    /* Share memory region list with COW - both processes reference the same regions */
     MemoryRegion *parent_region = parent->memory_regions;
     MemoryRegion *prev_child_region = nullptr;
     
     while (parent_region != nullptr) {
-        /* Share the same MemoryRegion object between parent and child */
-        /* Increment reference count for COW - both processes share this region */
-        atomic_fetch_add(&parent_region->ref_count, 1);
-        
-        /* Link the shared region into child's region list */
-        if (prev_child_region == nullptr) {
-            child->memory_regions = parent_region;
-        } else {
-            prev_child_region->next = parent_region;
+        /* Allocate NEW descriptor for child (own list node) */
+        MemoryRegion *child_region = ALLOC(MemoryRegion);
+        if (child_region == nullptr) {
+            fprintf(stderr, "PROCESS: Failed to allocate memory region\n");
+            return -ENOMEM;
         }
         
-        prev_child_region = parent_region;
+        /* Copy region metadata */
+        child_region->base = parent_region->base;
+        child_region->size = parent_region->size;
+        child_region->flags = parent_region->flags | MEM_FLAG_COW;
+        child_region->next = nullptr;
+        
+        /* Allocate shared refcount if not already allocated */
+        if (parent_region->cow_ref_count == nullptr) {
+            /* First fork - allocate shared refcount */
+            _Atomic(int) *shared_ref = ALLOC(_Atomic(int));
+            if (shared_ref == nullptr) {
+                FREE(child_region, MemoryRegion);
+                fprintf(stderr, "PROCESS: Failed to allocate shared refcount\n");
+                return -ENOMEM;
+            }
+            atomic_init(shared_ref, 2);  /* Parent + child */
+            parent_region->cow_ref_count = shared_ref;
+            child_region->cow_ref_count = shared_ref;
+        } else {
+            /* Already COW - increment existing shared refcount */
+            atomic_fetch_add(parent_region->cow_ref_count, 1);
+            child_region->cow_ref_count = parent_region->cow_ref_count;
+        }
+        
+        /* Initialize child's own refcount to 1 (for descriptor lifetime) */
+        atomic_init(&child_region->ref_count, 1);
+        
+        /* Link into child's region list */
+        if (prev_child_region == nullptr) {
+            child->memory_regions = child_region;
+        } else {
+            prev_child_region->next = child_region;
+        }
+        
+        prev_child_region = child_region;
         parent_region = parent_region->next;
     }
     
     return 0;
+}
+
+/**
+ * @brief Free a memory region with proper COW refcount handling
+ * 
+ * @param region Memory region to free
+ */
+static void free_memory_region(MemoryRegion *region) {
+    if (region == nullptr) {
+        return;
+    }
+    
+    /* Decrement shared refcount if COW */
+    if (region->cow_ref_count != nullptr) {
+        int old_count = atomic_fetch_sub(region->cow_ref_count, 1);
+        if (old_count == 1) {
+            /* Last reference - free the shared refcount and physical memory */
+            FREE(region->cow_ref_count, _Atomic(int));
+            free_memory(region->base, region->size);
+            printf("PROCESS: Freed COW physical memory at %p (last reference)\n", 
+                   region->base);
+        } else {
+            printf("PROCESS: Decremented COW refcount for %p (remaining: %d)\n",
+                   region->base, old_count - 1);
+        }
+    } else {
+        /* Not COW - free physical memory directly */
+        free_memory(region->base, region->size);
+        printf("PROCESS: Freed non-COW physical memory at %p\n", region->base);
+    }
+    
+    /* Always free the descriptor itself */
+    FREE(region, MemoryRegion);
 }
 
 /**
@@ -416,6 +482,15 @@ void process_exit(int exit_code) {
     
     /* Set exit time */
     pcb->exit_time = 0;  /* TODO: Get current timestamp */
+    
+    /* Free memory regions with proper COW handling */
+    MemoryRegion *region = pcb->memory_regions;
+    while (region != nullptr) {
+        MemoryRegion *next = region->next;
+        free_memory_region(region);
+        region = next;
+    }
+    pcb->memory_regions = nullptr;
     
     /* Close all file descriptors */
     if (pcb->fd_table != nullptr) {
