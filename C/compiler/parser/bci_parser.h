@@ -6,8 +6,8 @@
 #define BCI_PARSER_H
 
 #include "c23_compat.h"
-#include "bci_lexer.h"
-#include "bci_ast.h"
+#include "../lexer/bci_lexer.h"
+#include "../ast/bci_ast.h"
 
 // --- Parser Structure ---
 // Holds the state of the parser as it consumes tokens.

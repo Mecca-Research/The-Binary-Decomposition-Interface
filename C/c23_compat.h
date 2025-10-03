@@ -69,5 +69,16 @@
 #endif
 #endif
 
+// static_assert support
+#ifndef static_assert
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#include <assert.h>
+#elif defined(__GNUC__) || defined(__clang__)
+#define static_assert _Static_assert
+#else
+#define static_assert(expr, msg) typedef char static_assertion_##__LINE__[(expr)?1:-1]
+#endif
+#endif
+
 #endif // BDI_C23_COMPAT_H
 

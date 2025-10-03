@@ -127,13 +127,49 @@ target_link_libraries(benchmark_bci bci)
 add_executable(benchmark_btl tests/benchmark_btl.c)
 target_link_libraries(benchmark_btl btl)
 
+# Phase 3 Libraries
+add_library(bci_types_extended STATIC
+    compiler/types/bci_types_extended.c
+)
+target_include_directories(bci_types_extended PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(bci_types_extended bci)
+
+add_library(bci_parser_extended STATIC
+    compiler/parser/bci_parser_extended.c
+    compiler/ast/bci_ast_extended.c
+)
+target_include_directories(bci_parser_extended PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(bci_parser_extended bci bci_types_extended)
+
+add_library(bci_semantic_extended STATIC
+    compiler/semantic_analyzer/bci_type_inference.c
+    compiler/semantic_analyzer/bci_lifetime.c
+    compiler/semantic_analyzer/bci_escape.c
+    compiler/semantic_analyzer/bci_cfg.c
+)
+target_include_directories(bci_semantic_extended PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(bci_semantic_extended bci bci_types_extended bci_parser_extended)
+
+# Phase 3 Tests
+add_executable(test_phase3_types tests/test_phase3_types.c)
+target_link_libraries(test_phase3_types bci_types_extended)
+add_test(NAME Phase3_Types COMMAND test_phase3_types)
+
+add_executable(test_phase3_parser tests/test_phase3_parser.c)
+target_link_libraries(test_phase3_parser bci_parser_extended)
+add_test(NAME Phase3_Parser COMMAND test_phase3_parser)
+
+add_executable(test_phase3_semantic tests/test_phase3_semantic.c)
+target_link_libraries(test_phase3_semantic bci_semantic_extended)
+add_test(NAME Phase3_Semantic COMMAND test_phase3_semantic)
+
 # Installation
-install(TARGETS bci btl
+install(TARGETS bci btl bci_types_extended bci_parser_extended bci_semantic_extended
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
 )
 
-install(DIRECTORY bci/ btl/
+install(DIRECTORY bci/ btl/ compiler/
     DESTINATION include/bdi
     FILES_MATCHING PATTERN "*.h"
 )

@@ -7,8 +7,8 @@
 #define BCI_SYMBOL_H
 
 #include "c23_compat.h"
-#include "bci_types.h"
-#include "bci_token.h"
+#include "../types/bci_types.h"
+#include "../lexer/bci_token.h"
 
 // --- Symbol Structure ---
 // Stores information about a declared variable or function.

@@ -6,8 +6,8 @@
 #define BCI_ANALYZER_H
 
 #include "c23_compat.h"
-#include "bci_ast.h"
-#include "bci_symbol.h"
+#include "../ast/bci_ast.h"
+#include "../semantic_analyzer/bci_symbol.h"
 #include <stdbool.h>
 
 // --- Analyzer Structure ---
