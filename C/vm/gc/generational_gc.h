@@ -100,7 +100,7 @@ bool generational_gc_major_collect(GenerationalGC* gc, GCRootSet* roots);
 bool generational_gc_full_collect(GenerationalGC* gc, GCRootSet* roots);
 
 // Promotion
-bool generational_gc_promote(GenerationalGC* gc, GenObject* object, Generation target_gen);
+GenObject* generational_gc_promote(GenerationalGC* gc, GenObject* object, Generation target_gen);
 bool generational_gc_should_promote(const GenerationalGC* gc, const GenObject* object);
 
 // Remembered set management
