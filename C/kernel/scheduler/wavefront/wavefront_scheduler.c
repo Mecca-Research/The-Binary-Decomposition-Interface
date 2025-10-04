@@ -65,12 +65,20 @@ WavefrontScheduler* wavefront_scheduler_create(BdiGraph* graph, DeviceVTable** d
     sched->wavefront_capacity = 32;
     sched->wavefront_count = 0;
     sched->wavefronts = malloc(sizeof(Wavefront) * sched->wavefront_capacity);
-    atomic_init(&sched->running, false);
     
     if (!sched->wavefronts) {
         free(sched);
         return NULL;
     }
+    
+    sched->visited = calloc(graph->node_count, sizeof(bool));
+    if (!sched->visited) {
+        free(sched->wavefronts);
+        free(sched);
+        return NULL;
+    }
+    
+    atomic_init(&sched->running, false);
     
     return sched;
 }
@@ -83,6 +91,7 @@ void wavefront_scheduler_free(WavefrontScheduler* sched) {
     }
     
     free(sched->wavefronts);
+    free(sched->visited);
     free(sched);
 }
 
@@ -90,25 +99,22 @@ int scheduler_get_next_wavefront(WavefrontScheduler* sched, Wavefront** out_wave
     if (!sched || !out_wavefront) return -1;
     
     // Build dependency levels
-    bool* visited = calloc(sched->graph->node_count, sizeof(bool));
-    if (!visited) return -1;
     
     Wavefront* wf = wavefront_create((uint32_t)sched->wavefront_count);
     if (!wf) {
-        free(visited);
         return -1;
     }
     
     // Find nodes with no unvisited dependencies
     for (size_t i = 0; i < sched->graph->node_count; i++) {
-        if (visited[i]) continue;
+        if (sched->visited[i]) continue;
         
         const GraphNode* node = &sched->graph->nodes[i];
         bool all_deps_ready = true;
         
         for (size_t j = 0; j < node->input_count; j++) {
             NodeId input_id = node->inputs[j];
-            if (input_id < sched->graph->node_count && !visited[input_id]) {
+            if (input_id < sched->graph->node_count && !sched->visited[input_id]) {
                 all_deps_ready = false;
                 break;
             }
@@ -116,11 +122,10 @@ int scheduler_get_next_wavefront(WavefrontScheduler* sched, Wavefront** out_wave
         
         if (all_deps_ready) {
             wavefront_add_node(wf, node->id);
-            visited[i] = true;
+            sched->visited[i] = true;
         }
     }
     
-    free(visited);
     
     if (wf->ready_count == 0) {
         wavefront_free(wf);

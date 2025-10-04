@@ -95,7 +95,8 @@ int graph_merge_constants(BdiGraph* graph) {
                 }
                 
                 // Mark j as dead (will be removed by dead node elimination)
-                graph->nodes[j].opcode = OP_RET;  // Dummy opcode
+                graph->nodes[j].input_count = 0xFF;  // Sentinel: invalid node
+                graph->nodes[j].op = OP_CONST;  // Safe opcode that won't be treated as live
                 merged++;
             }
         }
@@ -109,7 +110,7 @@ bool is_node_dead(const BdiGraph* graph, NodeId node_id) {
     
     // A node is dead if it has no users and is not an output
     const GraphNode* node = &graph->nodes[node_id];
-    if (node->opcode == OP_RET) return false;
+    if (node->op == OP_RET) return false;
     
     // Check if any node uses this node
     for (size_t i = 0; i < graph->node_count; i++) {
@@ -148,7 +149,7 @@ Subgraph* identify_fusible_subgraph(const BdiGraph* graph, size_t* out_count) {
         const GraphNode* node = &graph->nodes[i];
         
         // Look for arithmetic chains
-        if (node->opcode == OP_ADD || node->opcode == OP_MUL) {
+        if (node->op == OP_ADD || node->op == OP_MUL) {
             Subgraph sg = {0};
             sg.nodes = malloc(sizeof(NodeId) * 8);
             sg.capacity = 8;
@@ -163,7 +164,7 @@ Subgraph* identify_fusible_subgraph(const BdiGraph* graph, size_t* out_count) {
                 NodeId input_id = node->inputs[j];
                 if (input_id < graph->node_count) {
                     const GraphNode* input_node = &graph->nodes[input_id];
-                    if (input_node->opcode == OP_ADD || input_node->opcode == OP_MUL) {
+                    if (input_node->op == OP_ADD || input_node->op == OP_MUL) {
                         if (sg.count >= sg.capacity) {
                             sg.capacity *= 2;
                             sg.nodes = realloc(sg.nodes, sizeof(NodeId) * sg.capacity);

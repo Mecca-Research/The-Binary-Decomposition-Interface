@@ -65,13 +65,13 @@ int cpu_lower(const GraphNode* node, void** out_kernel) {
     CpuKernel* kernel = malloc(sizeof(CpuKernel));
     if (!kernel) return -1;
     
-    kernel->opcode = node->opcode;
-    kernel->type = node->type;
+    kernel->opcode = node->op;
+    kernel->type = node->out_type;
     kernel->input_count = node->input_count;
     kernel->metadata = NULL;
     
     // Map opcode to kernel function
-    switch (node->opcode) {
+    switch (node->op) {
         case OP_ADD:
             kernel->execute = cpu_kernel_add;
             break;

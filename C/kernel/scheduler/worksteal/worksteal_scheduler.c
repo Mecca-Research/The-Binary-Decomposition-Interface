@@ -210,6 +210,9 @@ int worksteal_scheduler_run(WorkStealingScheduler* sched) {
         thrd_create(&sched->worker_threads[i], worker_thread, arg);
     }
     
+    // Signal workers to stop
+    atomic_store(&sched->running, false);
+
     // Wait for workers to finish
     for (size_t i = 0; i < sched->num_workers; i++) {
         thrd_join(sched->worker_threads[i], NULL);
