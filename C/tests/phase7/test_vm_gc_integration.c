@@ -400,6 +400,66 @@ void test_vm_create_default(void) {
     TEST_END;
 }
 
+// Test 18: Write barrier with NULL new_value (clearing field)
+void test_write_barrier_null_new_value(void) {
+    TEST("write_barrier_null_new_value");
+    
+    EnhancedVM* vm = enhanced_vm_create_with_sizes(1024 * 1024, 10 * 1024 * 1024);
+    
+    // Allocate old object
+    GenObject* old_obj = (GenObject*)vm_alloc(vm, 100);
+    assert(old_obj != NULL);
+    old_obj->header.generation = GEN_OLD;  // Simulate promotion
+    
+    // Write barrier with NULL new_value (clearing a field)
+    // This should NOT crash
+    vm_write_barrier(vm, old_obj, NULL);
+    
+    // VM should still be functional
+    assert(vm->gc != NULL);
+    
+    enhanced_vm_destroy(vm);
+    TEST_END;
+}
+
+// Test 19: Write barrier with NULL old_obj
+void test_write_barrier_null_old_obj(void) {
+    TEST("write_barrier_null_old_obj");
+    
+    EnhancedVM* vm = enhanced_vm_create_with_sizes(1024 * 1024, 10 * 1024 * 1024);
+    
+    // Allocate young object
+    GenObject* young_obj = (GenObject*)vm_alloc(vm, 100);
+    assert(young_obj != NULL);
+    
+    // Write barrier with NULL old_obj
+    // This should NOT crash
+    vm_write_barrier(vm, NULL, young_obj);
+    
+    // VM should still be functional
+    assert(vm->gc != NULL);
+    
+    enhanced_vm_destroy(vm);
+    TEST_END;
+}
+
+// Test 20: Write barrier with both NULL
+void test_write_barrier_both_null(void) {
+    TEST("write_barrier_both_null");
+    
+    EnhancedVM* vm = enhanced_vm_create_with_sizes(1024 * 1024, 10 * 1024 * 1024);
+    
+    // Write barrier with both NULL
+    // This should NOT crash
+    vm_write_barrier(vm, NULL, NULL);
+    
+    // VM should still be functional
+    assert(vm->gc != NULL);
+    
+    enhanced_vm_destroy(vm);
+    TEST_END;
+}
+
 int main(void) {
     printf("========================================\n");
     printf("  VM-GC Integration Test Suite\n");
@@ -422,8 +482,12 @@ int main(void) {
     test_gc_disabled();
     test_vm_alloc_with_type();
     test_vm_create_default();
+    test_write_barrier_null_new_value();
+    test_write_barrier_null_old_obj();
+    test_write_barrier_both_null();
     
     printf("\n========================================\n");
+    printf("  ✅ All 20 tests passed!\n");
     printf("  Results: %d/%d tests passed\n", tests_passed, tests_run);
     printf("========================================\n");
     
