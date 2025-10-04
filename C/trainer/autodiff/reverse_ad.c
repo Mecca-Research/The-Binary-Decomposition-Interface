@@ -47,22 +47,34 @@ void tape_clear(GradientTape* tape) {
 }
 
 int tape_resize(GradientTape* tape, size_t new_capacity) {
-    if (!tape || new_capacity <= tape->capacity) return 0;
+    if (tape->capacity >= new_capacity) {
+        return 0;
+    }
     
+    // Perform both reallocations first, storing results in temporary variables
     TapeEntry* new_entries = realloc(tape->entries, new_capacity * sizeof(TapeEntry));
     if (!new_entries) {
         fprintf(stderr, "Error: Failed to reallocate tape entries buffer\n");
-        return -1;
+        return -1;  // First realloc failed, no state changed
     }
+    
+    double* new_grads = NULL;
+    if (new_capacity > tape->grad_capacity) {
+        new_grads = realloc(tape->gradients, new_capacity * sizeof(double));
+        if (!new_grads) {
+            fprintf(stderr, "Error: Failed to reallocate tape gradients buffer\n");
+            // Second realloc failed - restore entries to prevent memory leak
+            // Keep the successfully reallocated entries buffer but don't update capacity
+            tape->entries = new_entries;
+            return -1;  // Return failure, tape remains in consistent state
+        }
+    }
+    
+    // Both reallocations succeeded - now atomically update all state
     tape->entries = new_entries;
     tape->capacity = new_capacity;
     
-    if (new_capacity > tape->grad_capacity) {
-        double* new_grads = realloc(tape->gradients, new_capacity * sizeof(double));
-        if (!new_grads) {
-            fprintf(stderr, "Error: Failed to reallocate tape gradients buffer\n");
-            return -1;
-        }
+    if (new_grads) {
         memset(new_grads + tape->grad_capacity, 0, 
                (new_capacity - tape->grad_capacity) * sizeof(double));
         tape->gradients = new_grads;
