@@ -180,6 +180,11 @@ void vm_gc_collect(EnhancedVM* vm) {
 void vm_write_barrier(EnhancedVM* vm, void* old_obj, void* new_value) {
     if (!vm || !vm->gc) return;
     
+    // Guard against NULL operands - legitimate cases include:
+    // - Clearing a field: obj->field = NULL
+    // - Holder is absent: NULL->field = obj
+    if (!old_obj || !new_value) return;
+    
     GenObject* old = (GenObject*)old_obj;
     GenObject* new = (GenObject*)new_value;
     
