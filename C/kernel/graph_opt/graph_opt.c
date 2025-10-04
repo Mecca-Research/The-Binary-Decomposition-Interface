@@ -31,7 +31,7 @@ int graph_remove_dead_nodes(BdiGraph* graph) {
     // Simple liveness: mark all nodes as live for M0
     // TODO: Implement proper reachability analysis
     for (size_t i = 0; i < graph->node_count; i++) {
-        if (graph->nodes[i].opcode == OP_RET) {
+        if (graph->nodes[i].op == OP_RET) {
             live[i] = true;
         }
     }
@@ -79,10 +79,10 @@ int graph_merge_constants(BdiGraph* graph) {
     
     // Find constant nodes
     for (size_t i = 0; i < graph->node_count; i++) {
-        if (graph->nodes[i].opcode != OP_CONST) continue;
+        if (graph->nodes[i].op != OP_CONST) continue;
         
         for (size_t j = i + 1; j < graph->node_count; j++) {
-            if (graph->nodes[j].opcode != OP_CONST) continue;
+            if (graph->nodes[j].op != OP_CONST) continue;
             
             if (can_merge_constants(&graph->nodes[i], &graph->nodes[j])) {
                 // Redirect all uses of j to i
@@ -193,7 +193,7 @@ int fuse_subgraph(BdiGraph* graph, const Subgraph* subgraph) {
     // Create a fused node
     GraphNode fused = {0};
     fused.id = graph->node_count;
-    fused.opcode = OP_SUBGRAPH_BEGIN;  // Mark as fused subgraph
+    fused.op = OP_SUBGRAPH_BEGIN;  // Mark as fused subgraph
     fused.input_count = 0;
     
     // Collect all external inputs
@@ -249,7 +249,7 @@ uint64_t compute_graph_checksum(const BdiGraph* graph) {
     // Simple checksum: XOR of all node IDs and opcodes
     for (size_t i = 0; i < graph->node_count; i++) {
         checksum ^= graph->nodes[i].id;
-        checksum ^= (uint64_t)graph->nodes[i].opcode << 32;
+        checksum ^= (uint64_t)graph->nodes[i].op << 32;
     }
     
     return checksum;
