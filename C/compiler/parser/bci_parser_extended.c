@@ -68,7 +68,7 @@ static void init_parse_rules(ParserExtended* parser) {
     parser->rules[3].precedence = PREC_TERM;
 }
 
-ParseRule* get_rule(ParserExtended* parser, TokenType type) {
+ParseRule* get_rule(ParserExtended* parser, TokenKind type) {
     if (type >= parser->rule_count) {
         return &parser->rules[0]; // Default rule
     }
@@ -85,27 +85,23 @@ void parser_error_at(ParserExtended* parser, Token* token, const char* message) 
     
     ParseError error;
     error.message = strdup(message);
-    error.file = token->file;
+    error.file = nullptr; // Token doesn't have file field in base implementation
     error.line = token->line;
     error.column = 0; // Could be enhanced
     
     bci_vec_push(&parser->error_recovery.errors, error);
     
-    fprintf(stderr, "[line %d] Error", token->line);
-    if (token->file) {
-        fprintf(stderr, " in %s", token->file);
-    }
-    fprintf(stderr, ": %s\n", message);
+    fprintf(stderr, "[line %d] Error: %s\n", token->line, message);
 }
 
 void parser_synchronize(ParserExtended* parser) {
     parser->error_recovery.in_panic_mode = false;
     
     // Skip tokens until we find a statement boundary
-    while (parser->base.current.type != TOKEN_EOF) {
-        if (parser->base.previous.type == TOKEN_SEMICOLON) return;
+    while (parser->base.current.kind != TOKEN_EOF) {
+        if (parser->base.previous.kind == TOKEN_SEMICOLON) return;
         
-        switch (parser->base.current.type) {
+        switch (parser->base.current.kind) {
             case TOKEN_IF:
             case TOKEN_WHILE:
             case TOKEN_FOR:
@@ -115,9 +111,9 @@ void parser_synchronize(ParserExtended* parser) {
                 ; // Continue
         }
         
-        // Advance to next token (simplified)
+        // Advance to next token - this is critical to avoid infinite loop
         parser->base.previous = parser->base.current;
-        // lexer_next_token would be called here
+        parser->base.current = lexer_scan_token(parser->base.lexer);
     }
 }
 
@@ -138,8 +134,8 @@ void parser_report_errors(ParserExtended* parser) {
 // --- Precedence Parsing ---
 
 AstNode* parse_precedence(ParserExtended* parser, Precedence precedence) {
-    // Get prefix rule
-    ParseRule* rule = get_rule(parser, parser->base.current.type);
+    // Get prefix rule for current token
+    ParseRule* rule = get_rule(parser, parser->base.current.kind);
     ParsePrefixFn prefix = rule->prefix;
     
     if (!prefix) {
@@ -147,13 +143,22 @@ AstNode* parse_precedence(ParserExtended* parser, Precedence precedence) {
         return nullptr;
     }
     
+    // Advance to consume the token before calling prefix function
+    // This is critical - without this, the parser never advances and loops forever
+    parser->base.previous = parser->base.current;
+    parser->base.current = lexer_scan_token(parser->base.lexer);
+    
     AstNode* left = prefix(&parser->base);
     
     // Parse infix operators with higher precedence
-    while (precedence <= get_rule(parser, parser->base.current.type)->precedence) {
-        rule = get_rule(parser, parser->base.current.type);
+    while (precedence <= get_rule(parser, parser->base.current.kind)->precedence) {
+        rule = get_rule(parser, parser->base.current.kind);
         ParseInfixFn infix = rule->infix;
         if (!infix) break;
+        
+        // Advance to consume the operator token before calling infix function
+        parser->base.previous = parser->base.current;
+        parser->base.current = lexer_scan_token(parser->base.lexer);
         
         left = infix(&parser->base, left);
     }
@@ -168,9 +173,16 @@ AstNode* parse_expression(ParserExtended* parser) {
 }
 
 static AstNode* parse_number(Parser* parser) {
-    (void)parser;
-    // Simplified implementation
-    return ast_new_literal_int(42);
+    // Consume the number token
+    Token number_token = parser->previous;
+    
+    // In the base parser, advance() is called before prefix functions
+    // But we need to ensure we've consumed the token for the extended parser
+    // The token is already in 'previous' from the precedence parser
+    
+    // Create AST node from the token value
+    long long value = strtoll(number_token.start, nullptr, 10);
+    return ast_new_literal_int(value);
 }
 
 static AstNode* parse_grouping(Parser* parser) {
@@ -243,7 +255,7 @@ AstNode* parser_extended_parse(ParserExtended* parser) {
     AstNode* program = ast_new_program();
     
     // Parse until EOF
-    while (parser->base.current.type != TOKEN_EOF) {
+    while (parser->base.current.kind != TOKEN_EOF) {
         AstNode* stmt = parse_expression(parser);
         if (stmt) {
             // Add to program (simplified)
