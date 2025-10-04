@@ -39,6 +39,11 @@ SsaConstructor::computeDominance(const ControlFlowGraph& cfg) {
     return dom_info;
 }
 
+// Forward declaration
+BasicBlockID findCommonDominator(
+    BasicBlockID b1, BasicBlockID b2,
+    const std::unordered_map<BasicBlockID, DominanceInfo>& dom_info);
+
 void SsaConstructor::computeImmediateDominators(
     const ControlFlowGraph& cfg,
     std::unordered_map<BasicBlockID, DominanceInfo>& dom_info) {

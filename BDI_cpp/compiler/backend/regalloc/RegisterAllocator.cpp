@@ -122,11 +122,13 @@ std::unordered_map<SsaVariableID, uint32_t>
 RegisterAllocator::colorGraph(InterferenceGraph& graph, uint32_t num_colors) {
     std::unordered_map<SsaVariableID, uint32_t> coloring;
     
+    // Save original graph before simplify destroys it
+    InterferenceGraph original_graph = graph;
+    
     // Simplify phase
     auto stack = simplify(graph, num_colors);
     
     // Select phase
-    InterferenceGraph original_graph = graph; // Save original for select phase
     bool success = select(stack, original_graph, coloring, num_colors);
     
     if (!success) {
