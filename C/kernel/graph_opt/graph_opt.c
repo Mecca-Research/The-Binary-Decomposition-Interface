@@ -96,7 +96,7 @@ int graph_merge_constants(BdiGraph* graph) {
                 
                 // Mark j as dead (will be removed by dead node elimination)
                 graph->nodes[j].input_count = 0;  // Mark as having no inputs (dead node)
-                graph->nodes[j].opcode = OP_CONST;  // Keep as CONST for safety that won't be treated as live
+                graph->nodes[j].op = OP_CONST;  // Keep as CONST for safety that won't be treated as live
                 merged++;
             }
         }

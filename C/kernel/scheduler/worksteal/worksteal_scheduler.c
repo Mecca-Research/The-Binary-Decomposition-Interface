@@ -219,11 +219,11 @@ int worksteal_scheduler_run(WorkStealingScheduler* sched) {
         
         // Check if any queue has work
         for (size_t i = 0; i < sched->num_workers; i++) {
-            NodeId dummy;
-            if (queue_pop(sched->remote_queues[i], &dummy)) {
-                // Found work, push it back and continue waiting
-                queue_push(sched->remote_queues[i], dummy);
-                all_done = false;
+            // Thread-safe non-destructive check: queue is NOT empty if head < tail
+            size_t head = atomic_load(&sched->remote_queues[i]->head);
+            size_t tail = atomic_load(&sched->remote_queues[i]->tail);
+            if (head < tail) {
+                all_done = false;  // Queue has work
                 break;
             }
         }
