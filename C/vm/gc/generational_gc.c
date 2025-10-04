@@ -149,26 +149,44 @@ static void mark_young_generation(GenerationalGC* gc, GCRootSet* roots) {
 static void evacuate_young_generation(GenerationalGC* gc) {
     GenerationSpace* young = &gc->generations[GEN_YOUNG];
     GenObject* current = (GenObject*)young->start;
+    GenObject* compact_ptr = (GenObject*)young->start;  // Compaction destination
     
     while ((uint8_t*)current < (uint8_t*)young->allocation_ptr) {
+        size_t total_size = current->header.base.size + sizeof(GenObjectHeader);
+        
         if (current->header.base.marked) {
             // Object survived, increment age
             current->header.age++;
             
             // Check if should promote
             if (generational_gc_should_promote(gc, current)) {
+                // Promote to old generation
                 generational_gc_promote(gc, current, GEN_OLD);
+                // Don't compact promoted objects - they're copied to old gen
+            } else {
+                // Object stays in nursery - compact it
+                if (current != compact_ptr) {
+                    // Move object to compacted position
+                    memmove(compact_ptr, current, total_size);
+                }
+                // Advance compaction pointer
+                compact_ptr = (GenObject*)((uint8_t*)compact_ptr + total_size);
             }
             
             current->header.base.marked = false;
         } else {
-            // Object is garbage
+            // Object is garbage - don't copy it, just account for freed space
             generational_gc_free(gc, current);
         }
         
-        size_t total_size = current->header.base.size + sizeof(GenObjectHeader);
         current = (GenObject*)((uint8_t*)current + total_size);
     }
+    
+    // Update allocation pointer to point after compacted survivors
+    young->allocation_ptr = compact_ptr;
+    
+    // Calculate actual used space (distance from start to compaction pointer)
+    young->used = (uint8_t*)compact_ptr - (uint8_t*)young->start;
 }
 
 bool generational_gc_minor_collect(GenerationalGC* gc, GCRootSet* roots) {
@@ -177,9 +195,10 @@ bool generational_gc_minor_collect(GenerationalGC* gc, GCRootSet* roots) {
     mark_young_generation(gc, roots);
     evacuate_young_generation(gc);
     
-    // Reset young generation allocation pointer
-    gc->generations[GEN_YOUNG].allocation_ptr = (GenObject*)gc->generations[GEN_YOUNG].start;
-    gc->generations[GEN_YOUNG].used = 0;
+    // BUG FIX (P0): Do NOT reset allocation_ptr and used here!
+    // evacuate_young_generation now properly compacts survivors and sets
+    // allocation_ptr to point after them, and used to reflect their space.
+    // Resetting here would overwrite live survivor objects on next allocation.
     
     gc->minor_collections++;
     gc->generations[GEN_YOUNG].collections++;

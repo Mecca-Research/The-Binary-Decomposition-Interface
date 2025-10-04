@@ -154,6 +154,12 @@ static void sweep_phase(MarkSweepGC* gc) {
 bool mark_sweep_collect(MarkSweepGC* gc, GCRootSet* roots) {
     if (!gc || !roots) return false;
     
+    // BUG FIX (P1): Clear free list before rebuilding it in sweep_phase
+    // Without this, sweep_phase appends to the existing list, causing
+    // duplicate entries and corrupted heap_used accounting on repeated GCs
+    gc->free_list = NULL;
+    gc->free_count = 0;
+    
     mark_phase(gc, roots);
     sweep_phase(gc);
     
