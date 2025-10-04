@@ -149,3 +149,52 @@ clean:
 	rm -f $(BCI_OBJS) $(BTL_OBJS) $(TYPES_EXT_OBJS) $(PARSER_EXT_OBJS) $(SEMANTIC_EXT_OBJS)
 	rm -f $(LIBBCI) $(LIBBTL) $(LIBTYPES_EXT) $(LIBPARSER_EXT) $(LIBSEMANTIC_EXT)
 	rm -f $(TESTS) $(PHASE3_TESTS) $(BENCHMARKS)
+
+# Phase 7: VM Enhancement with JIT & GC
+PHASE7_JIT_SOURCES = vm/jit/jit_compiler.c vm/jit/bytecode_compiler.c \
+                     vm/jit/hot_path.c vm/jit/tiered_compilation.c
+PHASE7_GC_SOURCES = vm/gc/mark_sweep.c vm/gc/generational_gc.c
+PHASE7_SOURCES = $(PHASE7_JIT_SOURCES) $(PHASE7_GC_SOURCES)
+PHASE7_OBJECTS = $(PHASE7_SOURCES:.c=.o)
+
+PHASE7_TEST_SOURCES = tests/phase7/test_jit_compiler.c \
+                      tests/phase7/test_mark_sweep.c \
+                      tests/phase7/test_generational_gc.c \
+                      tests/phase7/test_all_vm.c
+PHASE7_TEST_OBJECTS = $(PHASE7_TEST_SOURCES:.c=.o)
+PHASE7_TEST_BINS = tests/phase7/test_jit_compiler \
+                   tests/phase7/test_mark_sweep \
+                   tests/phase7/test_generational_gc \
+                   tests/phase7/test_all_vm
+
+# VM library with Phase 7 enhancements
+vm_lib: $(PHASE7_OBJECTS)
+	@echo "Building VM library with JIT and GC support..."
+	ar rcs libvm.a $(PHASE7_OBJECTS)
+	@echo "VM library built: libvm.a"
+
+# Phase 7 tests
+test_phase7: $(PHASE7_TEST_BINS)
+	@echo "Running Phase 7 tests..."
+	@./tests/phase7/test_jit_compiler
+	@./tests/phase7/test_mark_sweep
+	@./tests/phase7/test_generational_gc
+	@./tests/phase7/test_all_vm
+
+tests/phase7/test_jit_compiler: tests/phase7/test_jit_compiler.o $(PHASE7_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+tests/phase7/test_mark_sweep: tests/phase7/test_mark_sweep.o $(PHASE7_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+tests/phase7/test_generational_gc: tests/phase7/test_generational_gc.o $(PHASE7_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+tests/phase7/test_all_vm: tests/phase7/test_all_vm.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Clean Phase 7 artifacts
+clean_phase7:
+	rm -f $(PHASE7_OBJECTS) $(PHASE7_TEST_OBJECTS) $(PHASE7_TEST_BINS) libvm.a
+
+.PHONY: vm_lib test_phase7 clean_phase7

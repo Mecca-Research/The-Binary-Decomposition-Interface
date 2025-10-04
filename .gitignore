@@ -1,32 +1,34 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
+# Build artifacts
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
+*.a
 *.so
 *.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
 *.exe
 *.out
 *.app
+
+# Core dumps
+core
+core.*
+vgcore.*
+
+# Test executables
+C/tests/phase7/test_jit_compiler
+C/tests/phase7/test_mark_sweep
+C/tests/phase7/test_generational_gc
+C/tests/phase7/test_all_vm
+
+# LLVM intermediate files
+*.ll
+*.bc
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
