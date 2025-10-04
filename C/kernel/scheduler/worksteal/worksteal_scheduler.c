@@ -211,6 +211,31 @@ int worksteal_scheduler_run(WorkStealingScheduler* sched) {
     }
     
     // Signal workers to stop
+    // Wait for all work to complete
+    // Check if all queues are empty and no work is being processed
+    bool all_done = false;
+    while (!all_done) {
+        all_done = true;
+        
+        // Check if any queue has work
+        for (size_t i = 0; i < sched->num_workers; i++) {
+            // Thread-safe non-destructive check: queue is NOT empty if head < tail
+            size_t head = atomic_load(&sched->remote_queues[i]->head);
+            size_t tail = atomic_load(&sched->remote_queues[i]->tail);
+            if (head < tail) {
+                all_done = false;  // Queue has work
+                break;
+            }
+        }
+        
+        if (!all_done) {
+            thrd_yield();  // Give workers time to process
+        }
+    }
+    
+    // All work complete, signal workers to stop
+    atomic_store(&sched->running, false);
+
 
     // Wait for workers to finish
     for (size_t i = 0; i < sched->num_workers; i++) {
