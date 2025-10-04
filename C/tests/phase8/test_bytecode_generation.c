@@ -774,6 +774,218 @@ void test_error_invalid_operator(void) {
 }
 
 // ============================================================================
+// TEST 29: Short-circuit AND (&&) - False Left Operand
+// ============================================================================
+void test_shortcircuit_and_false(void) {
+    TEST("shortcircuit_and_false");
+    
+    CodeGenerator* codegen = codegen_create();
+    Chunk chunk;
+    chunk_init(&chunk);
+    
+    // Create AST: false && (anything)
+    // The right operand should NOT be evaluated
+    AstNode* left = create_literal_node(0.0);   // false
+    AstNode* right = create_literal_node(1.0);  // true (but shouldn't be evaluated)
+    AstNode* and_expr = create_binary_op_node("&&", left, right);
+    
+    bool success = codegen_generate(codegen, and_expr, &chunk);
+    ASSERT_TRUE(success, "Should generate code successfully");
+    ASSERT_FALSE(codegen->had_error, "Should not have errors");
+    
+    // Verify bytecode structure:
+    // CONSTANT 0 (left)
+    // JUMP_IF_FALSE +offset
+    // POP
+    // CONSTANT 1 (right) - should be skipped when left is false
+    // RETURN
+    ASSERT_TRUE(chunk.count >= 5, "Should have at least 5 instructions");
+    ASSERT_EQ(chunk.code[0], OPCODE_CONSTANT, "First instruction should be CONSTANT");
+    ASSERT_EQ(chunk.code[2], OPCODE_JUMP_IF_FALSE, "Should have JUMP_IF_FALSE after left operand");
+    ASSERT_EQ(chunk.code[5], OPCODE_POP, "Should have POP after jump");
+    ASSERT_EQ(chunk.code[6], OPCODE_CONSTANT, "Should have CONSTANT for right operand");
+    
+    free_ast_node(and_expr);
+    chunk_free(&chunk);
+    codegen_destroy(codegen);
+    TEST_END;
+}
+
+// ============================================================================
+// TEST 30: Short-circuit AND (&&) - True Left Operand
+// ============================================================================
+void test_shortcircuit_and_true(void) {
+    TEST("shortcircuit_and_true");
+    
+    CodeGenerator* codegen = codegen_create();
+    Chunk chunk;
+    chunk_init(&chunk);
+    
+    // Create AST: true && false
+    // Both operands should be evaluated, result should be false
+    AstNode* left = create_literal_node(1.0);   // true
+    AstNode* right = create_literal_node(0.0);  // false
+    AstNode* and_expr = create_binary_op_node("&&", left, right);
+    
+    bool success = codegen_generate(codegen, and_expr, &chunk);
+    ASSERT_TRUE(success, "Should generate code successfully");
+    ASSERT_FALSE(codegen->had_error, "Should not have errors");
+    
+    // Verify bytecode has both constants
+    ASSERT_TRUE(chunk.count >= 8, "Should have at least 8 instructions");
+    ASSERT_EQ(chunk.code[0], OPCODE_CONSTANT, "First instruction should be CONSTANT");
+    ASSERT_EQ(chunk.code[2], OPCODE_JUMP_IF_FALSE, "Should have JUMP_IF_FALSE");
+    ASSERT_EQ(chunk.code[5], OPCODE_POP, "Should have POP");
+    ASSERT_EQ(chunk.code[6], OPCODE_CONSTANT, "Should have second CONSTANT");
+    
+    free_ast_node(and_expr);
+    chunk_free(&chunk);
+    codegen_destroy(codegen);
+    TEST_END;
+}
+
+// ============================================================================
+// TEST 31: Short-circuit OR (||) - True Left Operand
+// ============================================================================
+void test_shortcircuit_or_true(void) {
+    TEST("shortcircuit_or_true");
+    
+    CodeGenerator* codegen = codegen_create();
+    Chunk chunk;
+    chunk_init(&chunk);
+    
+    // Create AST: true || (anything)
+    // The right operand should NOT be evaluated
+    AstNode* left = create_literal_node(1.0);   // true
+    AstNode* right = create_literal_node(0.0);  // false (but shouldn't be evaluated)
+    AstNode* or_expr = create_binary_op_node("||", left, right);
+    
+    bool success = codegen_generate(codegen, or_expr, &chunk);
+    ASSERT_TRUE(success, "Should generate code successfully");
+    ASSERT_FALSE(codegen->had_error, "Should not have errors");
+    
+    // Verify bytecode structure:
+    // CONSTANT 1 (left)
+    // JUMP_IF_TRUE +offset
+    // POP
+    // CONSTANT 0 (right) - should be skipped when left is true
+    // RETURN
+    ASSERT_TRUE(chunk.count >= 5, "Should have at least 5 instructions");
+    ASSERT_EQ(chunk.code[0], OPCODE_CONSTANT, "First instruction should be CONSTANT");
+    ASSERT_EQ(chunk.code[2], OPCODE_JUMP_IF_TRUE, "Should have JUMP_IF_TRUE after left operand");
+    ASSERT_EQ(chunk.code[5], OPCODE_POP, "Should have POP after jump");
+    ASSERT_EQ(chunk.code[6], OPCODE_CONSTANT, "Should have CONSTANT for right operand");
+    
+    free_ast_node(or_expr);
+    chunk_free(&chunk);
+    codegen_destroy(codegen);
+    TEST_END;
+}
+
+// ============================================================================
+// TEST 32: Short-circuit OR (||) - False Left Operand
+// ============================================================================
+void test_shortcircuit_or_false(void) {
+    TEST("shortcircuit_or_false");
+    
+    CodeGenerator* codegen = codegen_create();
+    Chunk chunk;
+    chunk_init(&chunk);
+    
+    // Create AST: false || true
+    // Both operands should be evaluated, result should be true
+    AstNode* left = create_literal_node(0.0);   // false
+    AstNode* right = create_literal_node(1.0);  // true
+    AstNode* or_expr = create_binary_op_node("||", left, right);
+    
+    bool success = codegen_generate(codegen, or_expr, &chunk);
+    ASSERT_TRUE(success, "Should generate code successfully");
+    ASSERT_FALSE(codegen->had_error, "Should not have errors");
+    
+    // Verify bytecode has both constants
+    ASSERT_TRUE(chunk.count >= 8, "Should have at least 8 instructions");
+    ASSERT_EQ(chunk.code[0], OPCODE_CONSTANT, "First instruction should be CONSTANT");
+    ASSERT_EQ(chunk.code[2], OPCODE_JUMP_IF_TRUE, "Should have JUMP_IF_TRUE");
+    ASSERT_EQ(chunk.code[5], OPCODE_POP, "Should have POP");
+    ASSERT_EQ(chunk.code[6], OPCODE_CONSTANT, "Should have second CONSTANT");
+    
+    free_ast_node(or_expr);
+    chunk_free(&chunk);
+    codegen_destroy(codegen);
+    TEST_END;
+}
+
+// ============================================================================
+// TEST 33: Peephole Optimization - Small Chunk (1 byte)
+// ============================================================================
+void test_peephole_small_chunk_1byte(void) {
+    TEST("peephole_small_chunk_1byte");
+    
+    Chunk chunk;
+    chunk_init(&chunk);
+    
+    // Create a 1-byte chunk
+    chunk_write(&chunk, OPCODE_RETURN, 0);
+    
+    // This should not crash
+    codegen_peephole_optimization(&chunk);
+    
+    ASSERT_EQ(chunk.count, 1, "Chunk size should remain 1");
+    ASSERT_EQ(chunk.code[0], OPCODE_RETURN, "Instruction should be unchanged");
+    
+    chunk_free(&chunk);
+    TEST_END;
+}
+
+// ============================================================================
+// TEST 34: Peephole Optimization - Small Chunk (2 bytes)
+// ============================================================================
+void test_peephole_small_chunk_2bytes(void) {
+    TEST("peephole_small_chunk_2bytes");
+    
+    Chunk chunk;
+    chunk_init(&chunk);
+    
+    // Create a 2-byte chunk: DUP, POP
+    chunk_write(&chunk, OPCODE_DUP, 0);
+    chunk_write(&chunk, OPCODE_POP, 0);
+    
+    // This should optimize DUP+POP to NOP+NOP
+    codegen_peephole_optimization(&chunk);
+    
+    ASSERT_EQ(chunk.count, 2, "Chunk size should remain 2");
+    ASSERT_EQ(chunk.code[0], OPCODE_NOP, "First instruction should be NOP");
+    ASSERT_EQ(chunk.code[1], OPCODE_NOP, "Second instruction should be NOP");
+    
+    chunk_free(&chunk);
+    TEST_END;
+}
+
+// ============================================================================
+// TEST 35: Peephole Optimization - Edge Case (CONSTANT at end)
+// ============================================================================
+void test_peephole_constant_at_end(void) {
+    TEST("peephole_constant_at_end");
+    
+    Chunk chunk;
+    chunk_init(&chunk);
+    
+    // Create chunk ending with CONSTANT (no POP after)
+    chunk_add_constant(&chunk, 42.0);
+    chunk_write(&chunk, OPCODE_CONSTANT, 0);
+    chunk_write(&chunk, 0, 0);  // constant index
+    
+    // This should not crash (no out-of-bounds access)
+    codegen_peephole_optimization(&chunk);
+    
+    ASSERT_EQ(chunk.count, 2, "Chunk size should remain 2");
+    ASSERT_EQ(chunk.code[0], OPCODE_CONSTANT, "CONSTANT should be unchanged");
+    
+    chunk_free(&chunk);
+    TEST_END;
+}
+
+// ============================================================================
 // Main Test Runner
 // ============================================================================
 int main(void) {
@@ -810,6 +1022,15 @@ int main(void) {
     test_dead_code_elimination();
     test_peephole_optimization();
     test_error_invalid_operator();
+    
+    // New tests for bug fixes
+    test_shortcircuit_and_false();
+    test_shortcircuit_and_true();
+    test_shortcircuit_or_true();
+    test_shortcircuit_or_false();
+    test_peephole_small_chunk_1byte();
+    test_peephole_small_chunk_2bytes();
+    test_peephole_constant_at_end();
     
     // Print summary
     printf("\n========================================\n");

@@ -328,7 +328,40 @@ void codegen_binary_op(CodeGenerator* codegen, AstNode* node) {
     
     AstBinaryOp* binop = &node->as.binary_op;
     
-    // Generate code for operands
+    // Handle short-circuit operators specially
+    if (strcmp(binop->op, "&&") == 0) {
+        // Short-circuit AND: left && right
+        // Evaluate left operand first
+        codegen_node(codegen, binop->left);
+        
+        // If left is false, skip right evaluation and keep false on stack
+        int end_jump = codegen_emit_jump(codegen, OPCODE_JUMP_IF_FALSE);
+        
+        // Left was true, pop it and evaluate right
+        codegen_emit_byte(codegen, OPCODE_POP);
+        codegen_node(codegen, binop->right);
+        
+        // Patch the jump to here (if left was false, we skip right and keep left's false value)
+        codegen_patch_jump(codegen, end_jump);
+        return;
+    } else if (strcmp(binop->op, "||") == 0) {
+        // Short-circuit OR: left || right
+        // Evaluate left operand first
+        codegen_node(codegen, binop->left);
+        
+        // If left is true, skip right evaluation and keep true on stack
+        int end_jump = codegen_emit_jump(codegen, OPCODE_JUMP_IF_TRUE);
+        
+        // Left was false, pop it and evaluate right
+        codegen_emit_byte(codegen, OPCODE_POP);
+        codegen_node(codegen, binop->right);
+        
+        // Patch the jump to here (if left was true, we skip right and keep left's true value)
+        codegen_patch_jump(codegen, end_jump);
+        return;
+    }
+    
+    // For all other operators, evaluate both operands
     codegen_node(codegen, binop->left);
     codegen_node(codegen, binop->right);
     
@@ -355,18 +388,6 @@ void codegen_binary_op(CodeGenerator* codegen, AstNode* node) {
         codegen_emit_byte(codegen, OPCODE_LESS);
     } else if (strcmp(binop->op, "<=") == 0) {
         codegen_emit_byte(codegen, OPCODE_LESS_EQUAL);
-    } else if (strcmp(binop->op, "&&") == 0) {
-        // Short-circuit AND: left && right
-        // If left is false, skip right evaluation
-        int end_jump = codegen_emit_jump(codegen, OPCODE_JUMP_IF_FALSE);
-        codegen_emit_byte(codegen, OPCODE_POP);  // Pop left value
-        codegen_patch_jump(codegen, end_jump);
-    } else if (strcmp(binop->op, "||") == 0) {
-        // Short-circuit OR: left || right
-        // If left is true, skip right evaluation
-        int end_jump = codegen_emit_jump(codegen, OPCODE_JUMP_IF_TRUE);
-        codegen_emit_byte(codegen, OPCODE_POP);  // Pop left value
-        codegen_patch_jump(codegen, end_jump);
     } else {
         codegen_error(codegen, "Unknown binary operator");
     }
@@ -544,10 +565,13 @@ void codegen_dead_code_elimination(Chunk* chunk) {
 
 // Optimization: peephole optimization
 void codegen_peephole_optimization(Chunk* chunk) {
+    // Need at least 2 bytes for DUP+POP pattern, 3 bytes for CONSTANT+arg+POP pattern
     for (int i = 0; i < chunk->count - 1; i++) {
-        // POP followed by POP -> keep both (can't optimize)
         // CONSTANT followed by POP -> remove both
-        if (chunk->code[i] == OPCODE_CONSTANT && chunk->code[i + 2] == OPCODE_POP) {
+        // Need to check i+2 is valid before accessing it
+        if (i + 2 < chunk->count && 
+            chunk->code[i] == OPCODE_CONSTANT && 
+            chunk->code[i + 2] == OPCODE_POP) {
             chunk->code[i] = OPCODE_NOP;
             chunk->code[i + 1] = OPCODE_NOP;
             chunk->code[i + 2] = OPCODE_NOP;
