@@ -46,29 +46,38 @@ void tape_clear(GradientTape* tape) {
     }
 }
 
-void tape_resize(GradientTape* tape, size_t new_capacity) {
-    if (!tape || new_capacity <= tape->capacity) return;
+int tape_resize(GradientTape* tape, size_t new_capacity) {
+    if (!tape || new_capacity <= tape->capacity) return 0;
     
     TapeEntry* new_entries = realloc(tape->entries, new_capacity * sizeof(TapeEntry));
-    if (new_entries) {
-        tape->entries = new_entries;
-        tape->capacity = new_capacity;
+    if (!new_entries) {
+        fprintf(stderr, "Error: Failed to reallocate tape entries buffer\n");
+        return -1;
     }
+    tape->entries = new_entries;
+    tape->capacity = new_capacity;
     
     if (new_capacity > tape->grad_capacity) {
         double* new_grads = realloc(tape->gradients, new_capacity * sizeof(double));
-        if (new_grads) {
-            memset(new_grads + tape->grad_capacity, 0, 
-                   (new_capacity - tape->grad_capacity) * sizeof(double));
-            tape->gradients = new_grads;
-            tape->grad_capacity = new_capacity;
+        if (!new_grads) {
+            fprintf(stderr, "Error: Failed to reallocate tape gradients buffer\n");
+            return -1;
         }
+        memset(new_grads + tape->grad_capacity, 0, 
+               (new_capacity - tape->grad_capacity) * sizeof(double));
+        tape->gradients = new_grads;
+        tape->grad_capacity = new_capacity;
     }
+    
+    return 0;
 }
 
 static size_t tape_add_entry(GradientTape* tape, TapeEntry entry) {
     if (tape->size >= tape->capacity) {
-        tape_resize(tape, tape->capacity * 2);
+        if (tape_resize(tape, tape->capacity * 2) != 0) {
+            fprintf(stderr, "Error: Failed to resize tape, cannot add entry\n");
+            return (size_t)-1;  // Return error indicator
+        }
     }
     
     size_t id = tape->size;
