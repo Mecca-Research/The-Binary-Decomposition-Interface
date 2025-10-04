@@ -31,7 +31,6 @@ typedef struct {
     size_t wavefront_capacity;
     bool* visited;  // Persistent visited state across wavefront calls
     atomic_bool running;
-    bool* visited;  // Persistent visited state across wavefront calls
 } WavefrontScheduler;
 
 // --- Wavefront Scheduler API ---
