@@ -66,7 +66,7 @@ void parser_extended_free(ParserExtended* parser);
 
 // Operator precedence parsing
 [[nodiscard]] AstNode* parse_precedence(ParserExtended* parser, Precedence precedence);
-[[nodiscard]] ParseRule* get_rule(ParserExtended* parser, TokenType type);
+[[nodiscard]] ParseRule* get_rule(ParserExtended* parser, TokenKind type);
 
 // Error recovery
 void parser_error_at(ParserExtended* parser, Token* token, const char* message);

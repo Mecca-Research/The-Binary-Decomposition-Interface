@@ -274,24 +274,60 @@ void bci_type_generic_add_param(BciTypeExt* generic_type, const char* param_name
     bci_vec_push(&generic_type->as.generic_type.type_params, param);
 }
 
+// Helper function to compare type argument arrays
+static bool type_args_equal(BciTypeExtVec a, BciTypeExtVec b) {
+    if (a.len != b.len) return false;
+    
+    for (size_t i = 0; i < a.len; i++) {
+        if (!bci_type_ext_equals(a.data[i], b.data[i])) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
 BciTypeExt* bci_type_generic_instantiate(BciTypeExt* generic_type, 
                                           BciTypeExtVec type_args) {
     assert(generic_type && generic_type->kind == BCI_TYPE_EXT_GENERIC);
     
-    // Check if already instantiated with these args
-    for (size_t i = 0; i < generic_type->as.generic_type.instantiations.len; i++) {
-        BciTypeExt* inst = generic_type->as.generic_type.instantiations.data[i];
-        // Simple check - could be more sophisticated
-        if (inst) {
-            return inst;
-        }
+    // Verify type argument count matches parameter count
+    if (type_args.len != generic_type->as.generic_type.type_params.len) {
+        return nullptr;
     }
     
-    // Create new instantiation (simplified)
+    // Check if already instantiated with these exact type args
+    // We need to store type args with each instantiation to compare properly
+    // For now, we'll do a linear search through cached instantiations
+    // A proper implementation would store type_args alongside each instantiation
+    for (size_t i = 0; i < generic_type->as.generic_type.instantiations.len; i++) {
+        BciTypeExt* inst = generic_type->as.generic_type.instantiations.data[i];
+        if (!inst) continue;
+        
+        // TODO: In a complete implementation, we would store the type_args
+        // used for each instantiation and compare them here.
+        // For now, we create a new instantiation each time to avoid
+        // returning incorrect cached values.
+        // This is safer than returning the wrong instantiation.
+    }
+    
+    // Create new instantiation
     BciTypeExt* inst = malloc(sizeof(BciTypeExt));
     if (!inst) return nullptr;
     
-    memcpy(inst, generic_type->as.generic_type.base_type, sizeof(BciTypeExt));
+    // Copy base type structure
+    if (generic_type->as.generic_type.base_type) {
+        memcpy(inst, generic_type->as.generic_type.base_type, sizeof(BciTypeExt));
+    } else {
+        // If no base type, create a new type structure
+        inst->kind = generic_type->kind;
+        inst->name = nullptr;
+        inst->size = 0;
+        inst->alignment = 0;
+        inst->is_complete = false;
+    }
+    
+    // Cache the instantiation
     bci_vec_push(&generic_type->as.generic_type.instantiations, inst);
     
     return inst;

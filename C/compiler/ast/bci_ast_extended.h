@@ -51,17 +51,20 @@ struct AstPattern {
     } as;
 };
 
+// --- Forward Declarations ---
+typedef struct AstMatchArm AstMatchArm;
+
 // --- Match Expression ---
 typedef struct {
     AstNode* scrutinee;
     BciVec(AstMatchArm) arms;
 } AstMatchExpr;
 
-typedef struct {
+struct AstMatchArm {
     AstPattern* pattern;
     AstNode* guard;
     AstNode* body;
-} AstMatchArm;
+};
 
 // --- Lambda Expression ---
 typedef struct {
