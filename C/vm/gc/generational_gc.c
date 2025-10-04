@@ -149,7 +149,7 @@ static void mark_young_generation(GenerationalGC* gc, GCRootSet* roots) {
 static void evacuate_young_generation(GenerationalGC* gc) {
     GenerationSpace* young = &gc->generations[GEN_YOUNG];
     GenObject* current = (GenObject*)young->start;
-    GenObject* compact_ptr = (GenObject*)young->start;  // Compaction destination
+    GenObject* last_survivor = NULL;  // Track the last survivor that stays in nursery
     
     while ((uint8_t*)current < (uint8_t*)young->allocation_ptr) {
         size_t total_size = current->header.base.size + sizeof(GenObjectHeader);
@@ -160,33 +160,43 @@ static void evacuate_young_generation(GenerationalGC* gc) {
             
             // Check if should promote
             if (generational_gc_should_promote(gc, current)) {
-                // Promote to old generation
+                // Promote to old generation (copies object to old gen)
                 generational_gc_promote(gc, current, GEN_OLD);
-                // Don't compact promoted objects - they're copied to old gen
             } else {
-                // Object stays in nursery - compact it
-                if (current != compact_ptr) {
-                    // Move object to compacted position
-                    memmove(compact_ptr, current, total_size);
-                }
-                // Advance compaction pointer
-                compact_ptr = (GenObject*)((uint8_t*)compact_ptr + total_size);
+                // Object stays in nursery - keep it in place (NO COMPACTION)
+                // 
+                // CRITICAL: We do NOT move this object because moving it would
+                // require updating ALL references pointing to it (from roots,
+                // remembered set, and other objects). Without reference updating,
+                // compaction creates dangling pointers that point to freed memory.
+                //
+                // This approach wastes space (fragmentation between survivors),
+                // but it's correct and safe. Future optimization can add proper
+                // compaction with full reference tracking and updating.
+                last_survivor = current;
             }
             
             current->header.base.marked = false;
         } else {
-            // Object is garbage - don't copy it, just account for freed space
+            // Object is garbage - free it
             generational_gc_free(gc, current);
         }
         
         current = (GenObject*)((uint8_t*)current + total_size);
     }
     
-    // Update allocation pointer to point after compacted survivors
-    young->allocation_ptr = compact_ptr;
-    
-    // Calculate actual used space (distance from start to compaction pointer)
-    young->used = (uint8_t*)compact_ptr - (uint8_t*)young->start;
+    // Set allocation pointer to the end of the last survivor
+    // This ensures we don't overwrite any surviving objects
+    if (last_survivor) {
+        size_t last_size = last_survivor->header.base.size + sizeof(GenObjectHeader);
+        young->allocation_ptr = (GenObject*)((uint8_t*)last_survivor + last_size);
+        young->used = (uint8_t*)young->allocation_ptr - (uint8_t*)young->start;
+    } else {
+        // No survivors remained in nursery (all promoted or garbage)
+        // Reset to start for fresh allocations
+        young->allocation_ptr = (GenObject*)young->start;
+        young->used = 0;
+    }
 }
 
 bool generational_gc_minor_collect(GenerationalGC* gc, GCRootSet* roots) {
