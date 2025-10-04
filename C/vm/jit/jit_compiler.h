@@ -70,7 +70,7 @@ void jit_compiler_destroy(JITCompiler* compiler);
 JITStatus jit_compiler_init(JITCompiler* compiler);
 JITStatus jit_compiler_compile_function(
     JITCompiler* compiler,
-    const BCIChunk* chunk,
+    const Chunk* chunk,
     uint32_t function_id,
     JITTier tier,
     CompiledCode** out_code
