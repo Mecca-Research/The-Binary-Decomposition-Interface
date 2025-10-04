@@ -50,7 +50,7 @@ typedef struct {
 GradientTape* tape_create(size_t initial_capacity);
 void tape_destroy(GradientTape* tape);
 void tape_clear(GradientTape* tape);
-void tape_resize(GradientTape* tape, size_t new_capacity);
+int tape_resize(GradientTape* tape, size_t new_capacity);  // Returns 0 on success, -1 on failure
 
 // Recording operations
 size_t tape_record_constant(GradientTape* tape, double value);
