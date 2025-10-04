@@ -98,6 +98,7 @@ int fpga_synthesize_subgraph(const BdiGraph* graph, const Subgraph* subgraph, Fp
         free(kernel);
         return -1;
     }
+    kernel->verilog_code[0] = '\0';  // Initialize buffer to empty string
     
     kernel->code_len = 0;
     kernel->latency_cycles = 0;
@@ -111,7 +112,7 @@ int fpga_synthesize_subgraph(const BdiGraph* graph, const Subgraph* subgraph, Fp
         const GraphNode* node = &graph->nodes[node_id];
         char* node_verilog = NULL;
         
-        switch (node->opcode) {
+        switch (node->op) {
             case OP_ADD:
                 node_verilog = generate_verilog_add(node);
                 kernel->latency_cycles += 1;
@@ -135,7 +136,13 @@ int fpga_synthesize_subgraph(const BdiGraph* graph, const Subgraph* subgraph, Fp
             size_t node_len = strlen(node_verilog);
             if (kernel->code_len + node_len + 1 > total_len) {
                 total_len *= 2;
-                kernel->verilog_code = realloc(kernel->verilog_code, total_len);
+                char* new_code = realloc(kernel->verilog_code, total_len);
+                if (!new_code) {
+                    free(kernel->verilog_code);
+                    free(kernel);
+                    return -1;
+                }
+                kernel->verilog_code = new_code;
             }
             
             strcat(kernel->verilog_code, node_verilog);
@@ -160,7 +167,7 @@ int fpga_lower(const GraphNode* node, void** out_kernel) {
     kernel->resource_usage = 0;
     
     // Generate Verilog for single node
-    switch (node->opcode) {
+    switch (node->op) {
         case OP_ADD:
             kernel->verilog_code = generate_verilog_add(node);
             kernel->latency_cycles = 1;

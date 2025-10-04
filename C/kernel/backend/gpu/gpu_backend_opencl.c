@@ -61,8 +61,8 @@ int gpu_lower(const GraphNode* node, void** out_kernel) {
     GpuKernel* kernel = malloc(sizeof(GpuKernel));
     if (!kernel) return -1;
     
-    kernel->opcode = node->opcode;
-    kernel->type = node->type;
+    kernel->opcode = node->op;
+    kernel->type = node->out_type;
     kernel->input_count = node->input_count;
     kernel->work_size = 1024;  // Default work size
     kernel->cl_kernel = NULL;
@@ -70,7 +70,7 @@ int gpu_lower(const GraphNode* node, void** out_kernel) {
     
     // Select kernel source based on opcode
     const char* kernel_source = NULL;
-    switch (node->opcode) {
+    switch (node->op) {
         case OP_ADD:
             kernel_source = opencl_add_kernel;
             break;
