@@ -211,7 +211,6 @@ int worksteal_scheduler_run(WorkStealingScheduler* sched) {
     }
     
     // Signal workers to stop
-    atomic_store(&sched->running, false);
 
     // Wait for workers to finish
     for (size_t i = 0; i < sched->num_workers; i++) {
