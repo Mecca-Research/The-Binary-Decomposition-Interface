@@ -406,3 +406,227 @@ clean: clean-tests coverage-clean
 	rm -f $(VM_OBJECTS) libvm.a
 	rm -f $(PHASE7_OBJECTS) $(PHASE7_TEST_OBJECTS) $(PHASE7_TEST_BINS)
 	rm -f $(PHASE8_GRAPH_OBJECTS) $(PHASE8_GRAPH_TEST_OBJECTS) $(PHASE8_GRAPH_TEST_BINS)
+
+# ============================================================================
+# Stress and Regression Test Targets
+# ============================================================================
+
+# Stress test sources
+STRESS_TEST_SOURCES = \
+	tests/stress/test_stress_memory.c \
+	tests/stress/test_stress_stack.c \
+	tests/stress/test_stress_cpu.c \
+	tests/stress/test_stress_concurrency.c \
+	tests/stress/stress_runner.c
+
+# Regression test sources
+REGRESSION_TEST_SOURCES = \
+	tests/regression/test_regression_vm.c \
+	tests/regression/test_regression_jit.c \
+	tests/regression/test_regression_graph.c \
+	tests/regression/test_regression_integration.c \
+	tests/regression/regression_runner.c
+
+# Test utilities
+TEST_UTILS_SOURCES = tests/test_utils.c
+TEST_UTILS_OBJECTS = $(TEST_UTILS_SOURCES:.c=.o)
+
+# Stress test objects and binaries
+STRESS_TEST_OBJECTS = $(STRESS_TEST_SOURCES:.c=.o)
+STRESS_TEST_BINS = \
+	tests/stress/test_stress_memory \
+	tests/stress/test_stress_stack \
+	tests/stress/test_stress_cpu \
+	tests/stress/test_stress_concurrency \
+	tests/stress/stress_runner
+
+# Regression test objects and binaries
+REGRESSION_TEST_OBJECTS = $(REGRESSION_TEST_SOURCES:.c=.o)
+REGRESSION_TEST_BINS = \
+	tests/regression/test_regression_vm \
+	tests/regression/test_regression_jit \
+	tests/regression/test_regression_graph \
+	tests/regression/test_regression_integration \
+	tests/regression/regression_runner
+
+# Test framework dependencies
+TEST_FRAMEWORK_DEPS = tests/framework/test_framework.o tests/framework/test_runner.o
+
+# Common test libraries
+TEST_LIBS = -lm -lpthread
+
+# ============================================================================
+# Build Targets
+# ============================================================================
+
+.PHONY: build-stress-tests build-regression-tests
+.PHONY: stress-test stress-memory stress-stack stress-cpu stress-concurrency
+.PHONY: regression-test regression-vm regression-jit regression-graph regression-integration
+.PHONY: test-all-new ci-test clean-stress-tests clean-regression-tests
+
+# Build test utilities
+$(TEST_UTILS_OBJECTS): $(TEST_UTILS_SOURCES)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Build stress tests
+build-stress-tests: $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) $(STRESS_TEST_BINS)
+
+tests/stress/test_stress_memory: tests/stress/test_stress_memory.o $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) vm_lib
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) libvm.a $(TEST_LIBS)
+
+tests/stress/test_stress_stack: tests/stress/test_stress_stack.o $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) vm_lib
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) libvm.a $(TEST_LIBS)
+
+tests/stress/test_stress_cpu: tests/stress/test_stress_cpu.o $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) vm_lib
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) libvm.a $(TEST_LIBS)
+
+tests/stress/test_stress_concurrency: tests/stress/test_stress_concurrency.o $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) vm_lib
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) libvm.a $(TEST_LIBS)
+
+tests/stress/stress_runner: tests/stress/stress_runner.o
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_LIBS)
+
+# Build regression tests
+build-regression-tests: $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) $(REGRESSION_TEST_BINS)
+
+tests/regression/test_regression_vm: tests/regression/test_regression_vm.o $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) vm_lib
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) libvm.a $(TEST_LIBS)
+
+tests/regression/test_regression_jit: tests/regression/test_regression_jit.o $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) vm_lib
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) libvm.a $(TEST_LIBS)
+
+tests/regression/test_regression_graph: tests/regression/test_regression_graph.o $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) vm_lib
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) libvm.a $(TEST_LIBS)
+
+tests/regression/test_regression_integration: tests/regression/test_regression_integration.o $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) vm_lib
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_UTILS_OBJECTS) $(TEST_FRAMEWORK_DEPS) libvm.a $(TEST_LIBS)
+
+tests/regression/regression_runner: tests/regression/regression_runner.o
+	$(CC) $(CFLAGS) -o $@ $< $(TEST_LIBS)
+
+# ============================================================================
+# Run Targets
+# ============================================================================
+
+# Run all stress tests
+stress-test: build-stress-tests
+	@echo "Running all stress tests..."
+	./tests/stress/stress_runner all
+
+# Run individual stress test suites
+stress-memory: build-stress-tests
+	@echo "Running memory stress tests..."
+	./tests/stress/stress_runner memory
+
+stress-stack: build-stress-tests
+	@echo "Running stack stress tests..."
+	./tests/stress/stress_runner stack
+
+stress-cpu: build-stress-tests
+	@echo "Running CPU stress tests..."
+	./tests/stress/stress_runner cpu
+
+stress-concurrency: build-stress-tests
+	@echo "Running concurrency stress tests..."
+	./tests/stress/stress_runner concurrency
+
+# Run all regression tests
+regression-test: build-regression-tests
+	@echo "Running all regression tests..."
+	./tests/regression/regression_runner all
+
+# Run individual regression test suites
+regression-vm: build-regression-tests
+	@echo "Running VM regression tests..."
+	./tests/regression/regression_runner vm
+
+regression-jit: build-regression-tests
+	@echo "Running JIT regression tests..."
+	./tests/regression/regression_runner jit
+
+regression-graph: build-regression-tests
+	@echo "Running graph regression tests..."
+	./tests/regression/regression_runner graph
+
+regression-integration: build-regression-tests
+	@echo "Running integration regression tests..."
+	./tests/regression/regression_runner integration
+
+# Run all tests (unit, integration, stress, regression)
+test-all-new: test-comprehensive stress-test regression-test
+	@echo "All tests completed!"
+
+# CI test target
+ci-test: test-ci stress-test regression-test
+	@echo "CI test suite completed!"
+
+# ============================================================================
+# Clean Targets
+# ============================================================================
+
+clean-stress-tests:
+	rm -f $(STRESS_TEST_OBJECTS) $(STRESS_TEST_BINS)
+	rm -f tests/stress/*.o
+
+clean-regression-tests:
+	rm -f $(REGRESSION_TEST_OBJECTS) $(REGRESSION_TEST_BINS)
+	rm -f tests/regression/*.o
+
+clean-test-utils:
+	rm -f $(TEST_UTILS_OBJECTS)
+
+# Enhanced clean to include new tests
+clean: clean-tests clean-stress-tests clean-regression-tests clean-test-utils coverage-clean
+	rm -f $(BCI_OBJS) $(BTL_OBJS) $(TYPES_EXT_OBJS) $(PARSER_EXT_OBJS) $(SEMANTIC_EXT_OBJS)
+	rm -f $(LIBBCI) $(LIBBTL) $(LIBTYPES_EXT) $(LIBPARSER_EXT) $(LIBSEMANTIC_EXT)
+	rm -f $(TESTS) $(PHASE3_TESTS) $(BENCHMARKS)
+	rm -f $(VM_OBJECTS) libvm.a
+	rm -f $(PHASE7_OBJECTS) $(PHASE7_TEST_OBJECTS) $(PHASE7_TEST_BINS)
+	rm -f $(PHASE8_GRAPH_OBJECTS) $(PHASE8_GRAPH_TEST_OBJECTS) $(PHASE8_GRAPH_TEST_BINS)
+
+
+# ============================================================================
+# Updated Run Targets (using shell runners)
+# ============================================================================
+
+# Override previous targets to use shell runners
+stress-test: build-stress-tests
+	@echo "Running all stress tests..."
+	./tests/stress/run_stress_tests.sh all
+
+stress-memory: build-stress-tests
+	@echo "Running memory stress tests..."
+	./tests/stress/run_stress_tests.sh memory
+
+stress-stack: build-stress-tests
+	@echo "Running stack stress tests..."
+	./tests/stress/run_stress_tests.sh stack
+
+stress-cpu: build-stress-tests
+	@echo "Running CPU stress tests..."
+	./tests/stress/run_stress_tests.sh cpu
+
+stress-concurrency: build-stress-tests
+	@echo "Running concurrency stress tests..."
+	./tests/stress/run_stress_tests.sh concurrency
+
+regression-test: build-regression-tests
+	@echo "Running all regression tests..."
+	./tests/regression/run_regression_tests.sh all
+
+regression-vm: build-regression-tests
+	@echo "Running VM regression tests..."
+	./tests/regression/run_regression_tests.sh vm
+
+regression-jit: build-regression-tests
+	@echo "Running JIT regression tests..."
+	./tests/regression/run_regression_tests.sh jit
+
+regression-graph: build-regression-tests
+	@echo "Running graph regression tests..."
+	./tests/regression/run_regression_tests.sh graph
+
+regression-integration: build-regression-tests
+	@echo "Running integration regression tests..."
+	./tests/regression/run_regression_tests.sh integration
+
