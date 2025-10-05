@@ -34,6 +34,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         }
     }
     
+    // Terminate bytecode with OP_RETURN to prevent reading uninitialized memory
+    chunk_write(&chunk, OP_RETURN, size);
+
     vm_interpret(&vm, &chunk);
     
     chunk_free(&chunk);
