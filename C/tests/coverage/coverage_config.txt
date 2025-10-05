@@ -1,0 +1,50 @@
+
+# BDI Kernel Code Coverage Configuration
+# =====================================
+
+# Coverage thresholds (percentages)
+LINE_COVERAGE_THRESHOLD=90
+BRANCH_COVERAGE_THRESHOLD=85
+FUNCTION_COVERAGE_THRESHOLD=95
+
+# Directories to include in coverage analysis
+COVERAGE_INCLUDE_DIRS="vm/ bci/ btl/ compiler/ tests/"
+
+# Directories to exclude from coverage analysis
+COVERAGE_EXCLUDE_DIRS="tests/framework/ external/ third_party/"
+
+# File patterns to exclude
+COVERAGE_EXCLUDE_PATTERNS="*_test.c *_benchmark.c *.h"
+
+# GCOV flags for compilation
+GCOV_COMPILE_FLAGS="-fprofile-arcs -ftest-coverage -fPIC"
+
+# GCOV flags for linking
+GCOV_LINK_FLAGS="-lgcov --coverage"
+
+# LCOV options
+LCOV_OPTIONS="--rc lcov_branch_coverage=1 --rc genhtml_branch_coverage=1"
+
+# Output directories
+COVERAGE_OUTPUT_DIR="coverage_reports"
+LCOV_OUTPUT_DIR="coverage_reports/lcov"
+HTML_OUTPUT_DIR="coverage_reports/html"
+
+# Report formats to generate
+GENERATE_HTML=true
+GENERATE_XML=true
+GENERATE_JSON=true
+GENERATE_TEXT=true
+
+# Performance settings
+PARALLEL_COVERAGE=true
+MAX_PARALLEL_JOBS=4
+
+# Quality gates
+FAIL_ON_COVERAGE_DECREASE=true
+COVERAGE_REGRESSION_THRESHOLD=2.0
+
+# Integration settings
+CI_INTEGRATION=true
+COVERAGE_BADGE_GENERATION=true
+TREND_ANALYSIS=true
