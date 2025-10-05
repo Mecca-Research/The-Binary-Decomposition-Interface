@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 199309L
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,18 +40,18 @@ static Chunk* create_large_computation_chunk(void) {
     chunk_init(chunk);
     
     // Large nested computation: ((((1+2)*3)+4)*5)+6)*7)+8)*9)+10
-    int const_idx = chunk_add_constant(chunk, 1.0);
+    int const1_idx = chunk_add_constant(chunk, 1.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
-    int const_idx = chunk_add_constant(chunk, 2.0);
+    chunk_write(chunk, const1_idx, 1);
+    int const2_idx = chunk_add_constant(chunk, 2.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
+    chunk_write(chunk, const2_idx, 1);
     chunk_write(chunk, OP_ADD, 1);
     
     for (int i = 3; i <= 10; i++) {
         int const_idx = chunk_add_constant(chunk, (double)i);
-    chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
+        chunk_write(chunk, OP_CONSTANT, 1);
+        chunk_write(chunk, const_idx, 1);
         if (i % 2 == 1) {
             chunk_write(chunk, OP_MULTIPLY, 1);
         } else {
@@ -67,14 +68,19 @@ static Chunk** create_multiple_chunks(int count) {
     Chunk** chunks = (Chunk**)malloc(count * sizeof(Chunk*));
     
     for (int i = 0; i < count; i++) {
-        chunks[i] = chunk_create();
+        chunks[i] = (Chunk*)malloc(sizeof(Chunk));
+        chunk_init(chunks[i]);
         
         // Create different expressions for each chunk
         double a = (double)(i + 1);
         double b = (double)(i + 2);
         
-        chunk_write_constant(chunks[i], a, 1);
-        chunk_write_constant(chunks[i], b, 1);
+        int const1_idx = chunk_add_constant(chunks[i], a);
+        chunk_write(chunks[i], OP_CONSTANT, 1);
+        chunk_write(chunks[i], const1_idx, 1);
+        int const2_idx = chunk_add_constant(chunks[i], b);
+        chunk_write(chunks[i], OP_CONSTANT, 1);
+        chunk_write(chunks[i], const2_idx, 1);
         
         switch (i % 4) {
             case 0: chunk_write(chunks[i], OP_ADD, 1); break;
@@ -300,7 +306,8 @@ static void* thread_execute_function(void* arg) {
         }
         
         // Small delay to increase contention
-        usleep(1);
+        struct timespec ts = {0, 1000}; // 1 microsecond
+        nanosleep(&ts, NULL);
     }
     
     return NULL;
@@ -459,3 +466,4 @@ int main(void) {
         return 1;
     }
 }
+
