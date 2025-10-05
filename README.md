@@ -245,15 +245,68 @@ BDI provides architectural support for intelligent systems:
 
 ### Building BDI
 
+BDI provides multiple build options depending on your needs:
+
+#### Option 1: Using the Root Makefile (Recommended for Full System)
+
+The root Makefile provides comprehensive build configurations with advanced optimizations:
+
 ```bash
 # Clone the repository
 git clone https://github.com/Mecca-Research/The-Binary-Decomposition-Interface.git
 cd The-Binary-Decomposition-Interface
 
-# Build the project
+# Build in release mode (default, with LTO and optimizations)
+make
+
+# Or specify build mode explicitly:
+# Debug build with sanitizers
+make BUILD_MODE=debug
+
+# Profile-guided optimization (two-step process)
+make BUILD_MODE=pgo-gen    # Generate profiling data
+# Run your workload here to collect profiles
+make BUILD_MODE=pgo-use    # Build optimized binary using profiles
+
+# Run tests
+make test
+```
+
+#### Option 2: Using CMake (For C/ Directory Components)
+
+For building specific components in the C/ directory:
+
+```bash
+# Navigate to C directory
+cd C
+
+# Create build directory
 mkdir build && cd build
+
+# Configure with CMake
 cmake ..
+
+# Build
 make -j$(nproc)
+
+# Run tests
+ctest
+```
+
+#### Option 3: Using C/ Makefile (Lightweight Build)
+
+For a simpler build of core libraries:
+
+```bash
+# Navigate to C directory
+cd C
+
+# Build all libraries and tests
+make
+
+# Build specific components
+make libbci.a      # Build BCI library only
+make libbtl.a      # Build BTL library only
 
 # Run tests
 make test
@@ -261,32 +314,57 @@ make test
 
 ### Quick Start Example
 
+Here's a simple example using the BDI Virtual Machine to execute bytecode:
+
 ```c
-// Example: Creating a simple BDI graph
-#include "C/bci/chimera_bci.h"
-#include "C/vm/bci_vm.h"
+#include <stdio.h>
+#include "vm/bci_vm.h"
+#include "vm/bci_chunk.h"
 
 int main() {
-    // Initialize BDI VM
-    BDIVM* vm = bdi_vm_create();
+    // Initialize the VM
+    VM vm;
+    vm_init(&vm);
     
-    // Create a simple computation graph
-    BDINode* add_node = bdi_node_create(BDI_OP_ADD);
-    bdi_node_set_input(add_node, 0, 10);
-    bdi_node_set_input(add_node, 1, 32);
+    // Create a bytecode chunk
+    Chunk chunk;
+    chunk_init(&chunk);
     
-    // Execute the graph
-    bdi_vm_execute(vm, add_node);
+    // Add constants to the chunk
+    int constant_idx = chunk_add_constant(&chunk, 42.0);
     
-    // Get result
-    int result = bdi_node_get_output(add_node, 0);
-    printf("Result: %d\n", result);
+    // Write bytecode instructions
+    // OP_CONSTANT: Load constant onto stack
+    chunk_write(&chunk, OP_CONSTANT, 1);
+    chunk_write(&chunk, constant_idx, 1);
+    
+    // OP_RETURN: Return from execution
+    chunk_write(&chunk, OP_RETURN, 1);
+    
+    // Execute the bytecode and capture result
+    BciVmResult result = vm_interpret_with_result(&vm, &chunk);
+    
+    if (result.status == INTERPRET_OK) {
+        printf("Execution successful! Result: %.2f\n", result.result_value);
+    } else {
+        printf("Execution failed with status: %d\n", result.status);
+    }
     
     // Cleanup
-    bdi_vm_destroy(vm);
+    chunk_free(&chunk);
+    vm_free(&vm);
+    
     return 0;
 }
 ```
+
+**Note**: This example demonstrates the current VM API. The higher-level graph-based API (BDINode, semantic graphs) is under active development. For now, you can work with:
+- **VM Layer**: Direct bytecode execution (`vm/bci_vm.h`, `vm/bci_chunk.h`)
+- **Enhanced VM**: JIT compilation and GC features (`vm/vm.h`)
+- **BCI Operations**: Low-level binary operations (`bci/bci_arithmetic.h`, `bci/bci_bitops.h`)
+- **Compiler**: Full compilation pipeline (`compiler/` directory)
+
+For more examples, see the `C/tests/` directory.
 
 ---
 
