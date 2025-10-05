@@ -1,0 +1,13 @@
+<map id="BciArrayType" name="BciArrayType">
+<area shape="rect" id="node1" title=" " alt="" coords="656,5,763,32"/>
+<area shape="rect" id="node2" href="$structBciTypeExt.html" title=" " alt="" coords="664,95,757,121"/>
+<area shape="rect" id="node4" href="$structBciStructField.html" title=" " alt="" coords="1438,200,1549,227"/>
+<area shape="rect" id="node5" href="$structBciUnionType.html" title=" " alt="" coords="585,291,695,317"/>
+<area shape="rect" id="node6" href="$structBciUnionVariant.html" title=" " alt="" coords="577,200,703,227"/>
+<area shape="rect" id="node7" href="$structBciEnumType.html" title=" " alt="" coords="77,200,187,227"/>
+<area shape="rect" id="node9" href="$structBciFunctionType.html" title=" " alt="" coords="299,200,426,227"/>
+<area shape="rect" id="node10" href="$structBciGenericType.html" title=" " alt="" coords="1040,291,1163,317"/>
+<area shape="rect" id="node11" href="$structBciGenericParam.html" title=" " alt="" coords="1035,200,1168,227"/>
+<area shape="rect" id="node3" href="$structBciStructType.html" title=" " alt="" coords="1302,291,1413,317"/>
+<area shape="rect" id="node8" href="$structBciEnumVariant.html" title=" " alt="" coords="5,95,131,121"/>
+</map>

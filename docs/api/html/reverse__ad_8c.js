@@ -1,0 +1,28 @@
+var reverse__ad_8c =
+[
+    [ "tape_backward", "reverse__ad_8c.html#a9ac1a0b15dbcdb5bbb20e0a08e6d6e55", null ],
+    [ "tape_clear", "reverse__ad_8c.html#a1f51af0703cf10e75f2aecaa823903aa", null ],
+    [ "tape_create", "reverse__ad_8c.html#a07422f0c566b2d49f267fede50e6b32a", null ],
+    [ "tape_destroy", "reverse__ad_8c.html#ae1ac0a9e97d751a9c469d14aac5f15d4", null ],
+    [ "tape_get_gradient", "reverse__ad_8c.html#af6283e5fb85ddd34dc2784f0a4fd56a8", null ],
+    [ "tape_print", "reverse__ad_8c.html#a91ae0c0de1ebf92d01dd627167cbf1cc", null ],
+    [ "tape_record_abs", "reverse__ad_8c.html#ae0d124b30d1bdb8b2ae43f5c90d8b355", null ],
+    [ "tape_record_add", "reverse__ad_8c.html#ac1c9e906d07bb267ec5381e4f202a39a", null ],
+    [ "tape_record_constant", "reverse__ad_8c.html#aff320912e3e75861b3b794d7c90bcc19", null ],
+    [ "tape_record_cos", "reverse__ad_8c.html#a9d6d893b672def673e4842708d7d5898", null ],
+    [ "tape_record_div", "reverse__ad_8c.html#adc0b07cdf8ca2299b3fe60fc27de4fbf", null ],
+    [ "tape_record_exp", "reverse__ad_8c.html#af52b435a480e8f467a36e9d0ce398106", null ],
+    [ "tape_record_log", "reverse__ad_8c.html#adaafd1326003aeef53378568478379df", null ],
+    [ "tape_record_mul", "reverse__ad_8c.html#a065634279ec01d2186a7d39774d4b9cb", null ],
+    [ "tape_record_neg", "reverse__ad_8c.html#ad3a0795991268f399739385d474cd54c", null ],
+    [ "tape_record_pow", "reverse__ad_8c.html#a4bd5dd43098d8b6004e29c497945b027", null ],
+    [ "tape_record_relu", "reverse__ad_8c.html#a00876e024043e61b74418d03ccb7eadf", null ],
+    [ "tape_record_sigmoid", "reverse__ad_8c.html#aa235f131dd39ca2a6e0e5874164e6806", null ],
+    [ "tape_record_sin", "reverse__ad_8c.html#a88f5d5b65598fe3a7b928fb032d3916d", null ],
+    [ "tape_record_sqrt", "reverse__ad_8c.html#a81405a204454fa70199602332c2dcec8", null ],
+    [ "tape_record_sub", "reverse__ad_8c.html#a7f46f0e6b5d56467cbf093bf77174c05", null ],
+    [ "tape_record_tan", "reverse__ad_8c.html#a3f47915298fb3f12ff816d611f54bf24", null ],
+    [ "tape_record_tanh", "reverse__ad_8c.html#a71a95cc493774e9064f40693f4b736cb", null ],
+    [ "tape_record_variable", "reverse__ad_8c.html#a9d9e396692b4ff5e449e0d0ff3893552", null ],
+    [ "tape_resize", "reverse__ad_8c.html#a28904cbf64ac51e56e539cd97860041b", null ]
+];

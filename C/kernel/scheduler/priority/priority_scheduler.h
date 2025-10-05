@@ -3,6 +3,17 @@
 // Phase 5.3: Priority Scheduler
 // DESC: Priority-based scheduling with deadlines
 // ===================================================================
+/**
+ * @file priority_scheduler.h
+ * @brief Task Scheduling System
+ * @details This file provides the priority scheduler functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_PRIORITY_SCHEDULER_H
 #define AEON_PRIORITY_SCHEDULER_H
 

@@ -2,6 +2,17 @@
 // DESC: Defines the structures and interface for Hierarchical
 //       Access Memory (HAM). M0 includes two tiers: CRITICAL & ACTIVE.
 // ===================================================================
+/**
+ * @file ham.h
+ * @brief Ham API
+ * @details This file provides the ham functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_HAM_H
 #define AEON_HAM_H
 

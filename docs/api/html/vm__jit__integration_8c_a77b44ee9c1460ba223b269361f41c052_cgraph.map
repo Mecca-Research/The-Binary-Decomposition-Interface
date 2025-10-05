@@ -1,0 +1,22 @@
+<map id="jit_vm_create" name="jit_vm_create">
+<area shape="rect" id="node1" title=" " alt="" coords="5,543,116,569"/>
+<area shape="rect" id="node2" href="$vm__jit__integration_8c.html#a072004572176187ce56d97ff2bfcf64d" title=" " alt="" coords="164,419,311,461"/>
+<area shape="rect" id="node18" href="$vm__jit__integration_8c.html#ad7bd0d0126712b62a4624c3b119d44d7" title=" " alt="" coords="371,685,534,712"/>
+<area shape="rect" id="node3" href="$vm_8c.html#a244373fd4c66ef7a1a3828b3ef8ae815" title=" " alt="" coords="372,103,533,129"/>
+<area shape="rect" id="node9" href="$vm_8c.html#aaad6628f13d19015c121a4928aaa279e" title=" " alt="" coords="368,183,537,209"/>
+<area shape="rect" id="node12" href="$hot__path_8c.html#a3f7dddbd5d530dc81c72e1d0279e7037" title=" " alt="" coords="359,233,547,260"/>
+<area shape="rect" id="node13" href="$hot__path_8c.html#a6a0a7f96a08ed298a5f6d9c29df3284c" title=" " alt="" coords="369,285,536,326"/>
+<area shape="rect" id="node14" href="$vm__jit__integration_8c.html#a69eb62cf1319aed370c309492ee94f36" title=" " alt="" coords="369,351,536,377"/>
+<area shape="rect" id="node15" href="$jit__compiler_8c.html#a4e7f4ed09d0d45eb7da8bbd8a473d0d4" title=" " alt="" coords="379,401,526,428"/>
+<area shape="rect" id="node16" href="$jit__compiler_8c.html#a6bfb9184706f78095224e63fd53aea9d" title=" " alt="" coords="375,452,530,479"/>
+<area shape="rect" id="node17" href="$jit__compiler_8c.html#aeac8bc4d8345cfa89134e4fe6decee17" title=" " alt="" coords="389,503,516,529"/>
+<area shape="rect" id="node19" href="$tiered__compilation_8c.html#aa53df27bc9dbc598852b0b17461d8a73" title=" " alt="" coords="381,554,525,595"/>
+<area shape="rect" id="node20" href="$tiered__compilation_8c.html#a0ec7bb06749bfb61cf48718178625ec2" title=" " alt="" coords="381,619,525,661"/>
+<area shape="rect" id="node4" href="$vm_8c.html#af6f9a24e0820aea9f378b25504fd3f1d" title=" " alt="" coords="595,91,756,133"/>
+<area shape="rect" id="node5" href="$mark__sweep_8c.html#a54233150500889904e88fe9256a1c91f" title=" " alt="" coords="823,5,968,32"/>
+<area shape="rect" id="node6" href="$generational__gc_8c.html#a12658675f5cd2c64825b706594105915" title=" " alt="" coords="808,56,983,83"/>
+<area shape="rect" id="node7" href="$generational__gc_8c.html#a4e22451156b4f8e7bc77ccb635c92ee5" title=" " alt="" coords="804,157,987,184"/>
+<area shape="rect" id="node8" href="$bci__vm_8c.html#a67d5459e325768797a02ef3cad46f37a" title=" " alt="" coords="860,107,931,133"/>
+<area shape="rect" id="node10" href="$mark__sweep_8c.html#ab19d491fa982dcc4cfcd0eb7b1d84be9" title=" " alt="" coords="599,208,752,235"/>
+<area shape="rect" id="node11" href="$bci__vm_8c.html#ac3319c7904bff23a4f535c851a85ca8a" title=" " alt="" coords="637,259,713,285"/>
+</map>

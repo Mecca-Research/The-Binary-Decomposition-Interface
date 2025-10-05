@@ -1,0 +1,25 @@
+var searchData=
+[
+  ['v_0',['v',['../structAdamOptimizer.html#a24b374eec9f5203ba66a2d2c28136c53',1,'AdamOptimizer']]],
+  ['v_5fmax_1',['v_max',['../structAdamOptimizer.html#aff1af97994bc8714588ff492577d08d8',1,'AdamOptimizer']]],
+  ['val_5flosses_2',['val_losses',['../structTrainingHistory.html#add46b628282ae7032987565da18d91c9',1,'TrainingHistory']]],
+  ['val_5fmetrics_3',['val_metrics',['../structTrainingHistory.html#a4cbf29d85421fe163019268bdb0fa8f4',1,'TrainingHistory']]],
+  ['validate_5fon_5fbuild_4',['validate_on_build',['../structGraphBuilderConfig.html#a015e80925eee3cc54a05186aa2ec1542',1,'GraphBuilderConfig']]],
+  ['validation_5fsplit_5',['validation_split',['../structTrainingConfig.html#ad78c926cf776333225d7162b02cd2fda',1,'TrainingConfig']]],
+  ['value_6',['value',['../structAstLiteral.html#a7057c44abf1ddfdfa855c7a76745863d',1,'AstLiteral::value()'],['../structAstPattern.html#a3d70437b40f006cb653863b0ec0b8d7c',1,'AstPattern::value()'],['../structBciEnumVariant.html#a003d96d7d8b926d5c24ad3103dbc41f8',1,'BciEnumVariant::value()'],['../structDual.html#af68b3a6960b1bfc4d291417f846f7e3a',1,'Dual::value()']]],
+  ['values_7',['values',['../structGradientArray.html#a7dfa586f9f7c7f9979cf3485051df0a7',1,'GradientArray::values()'],['../structTapeEntry.html#a56171598705637d306dc17e6a123a5b6',1,'TapeEntry::values()']]],
+  ['var_5fdecl_8',['var_decl',['../structAstNode.html#a290a25215882219d12edbb895c92b916',1,'AstNode']]],
+  ['var_5fid_9',['var_id',['../structBTL__LiveInterval.html#ae5f7a45b6f1676e159f35195607fbdb4',1,'BTL_LiveInterval']]],
+  ['var_5fname_10',['var_name',['../structLifetime.html#af1603318db714dcab39edc2f05d99fcc',1,'Lifetime::var_name()'],['../structEscapeInfo.html#a62f985b9b46c4509f9fae526ab8da5d8',1,'EscapeInfo::var_name()']]],
+  ['variable_5fcapacity_11',['variable_capacity',['../structGraphExprBuilder.html#aa26ad0bf3c3decbc13553e6a87f0c89e',1,'GraphExprBuilder']]],
+  ['variable_5fcount_12',['variable_count',['../structGraphExprBuilder.html#ab64212476c1e3aacbcb43e83a2b13f8d',1,'GraphExprBuilder']]],
+  ['variables_13',['variables',['../structGraphExprBuilder.html#a45a948ca6234988f6e9450015765cf18',1,'GraphExprBuilder']]],
+  ['variants_14',['variants',['../structBciUnionType.html#af2e9e76e860882d0a241d684d5cb16ae',1,'BciUnionType::variants()'],['../structBciEnumType.html#a5c509ddaf50faea2da36ba999686fe9c',1,'BciEnumType::variants()']]],
+  ['vector_5flen_15',['vector_len',['../structBdiType.html#a238471dd81d236aa53453ec41bbd3648',1,'BdiType']]],
+  ['velocity_16',['velocity',['../structSGDOptimizer.html#ab3ddb0c4f823a0ee57da377802cb7702',1,'SGDOptimizer']]],
+  ['verbose_17',['verbose',['../structPipelineConfig.html#a251546df19c347908684debe00ae1aae',1,'PipelineConfig::verbose()'],['../structTrainingConfig.html#a8e9e37e2ad948aade1bd2e79beacb50f',1,'TrainingConfig::verbose()']]],
+  ['verilog_5fcode_18',['verilog_code',['../structFpgaKernel.html#a8a3c39428916366b8139bbda2fce4eba',1,'FpgaKernel']]],
+  ['version_19',['version',['../structGraphHeader.html#ad9041d9e3f79d4f685bbbd83277eb088',1,'GraphHeader']]],
+  ['visited_20',['visited',['../structCfgNode.html#ab387bd013f54e96b212c88911635d436',1,'CfgNode::visited()'],['../structWavefrontScheduler.html#ab38836914f2bf5721e68c1a8751b1243',1,'WavefrontScheduler::visited()']]],
+  ['vm_21',['vm',['../structPipelineContext.html#a9e86751e2c042e495a972486a199bbbb',1,'PipelineContext']]]
+];

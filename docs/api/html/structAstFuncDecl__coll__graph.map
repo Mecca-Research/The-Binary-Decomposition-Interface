@@ -1,0 +1,9 @@
+<map id="AstFuncDecl" name="AstFuncDecl">
+<area shape="rect" id="node1" title=" " alt="" coords="452,95,554,121"/>
+<area shape="rect" id="node4" href="$structAstNode.html" title=" " alt="" coords="203,184,280,211"/>
+<area shape="rect" id="node2" href="$structAstVarDecl.html" title=" " alt="" coords="435,288,528,315"/>
+<area shape="rect" id="node3" href="$structBciType.html" title=" " alt="" coords="422,5,494,32"/>
+<area shape="rect" id="node5" href="$structAstLiteral.html" title=" " alt="" coords="344,95,428,121"/>
+<area shape="rect" id="node6" href="$structAstBinaryOp.html" title=" " alt="" coords="9,288,112,315"/>
+<area shape="rect" id="node7" href="$structAstBlock.html" title=" " alt="" coords="202,288,281,315"/>
+</map>

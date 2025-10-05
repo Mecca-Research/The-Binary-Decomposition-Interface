@@ -1,0 +1,11 @@
+<map id="C/compiler/semantic_analyzer/bci_analyzer.h" name="C/compiler/semantic_analyzer/bci_analyzer.h">
+<area shape="rect" id="node1" title="Bci Analyzer API." alt="" coords="106,5,288,47"/>
+<area shape="rect" id="node2" href="$c23__compat_8h.html" title="C23 Compat API." alt="" coords="60,259,174,285"/>
+<area shape="rect" id="node3" href="$bci__ast_8h.html" title="Abstract Syntax Tree." alt="" coords="220,102,336,129"/>
+<area shape="rect" id="node6" title=" " alt="" coords="406,259,489,285"/>
+<area shape="rect" id="node8" href="$bci__symbol_8h.html" title="Bci Symbol API." alt="" coords="38,95,196,136"/>
+<area shape="rect" id="node4" href="$compiler_2types_2bci__types_8h.html" title="Bci Types API." alt="" coords="264,184,412,211"/>
+<area shape="rect" id="node5" title=" " alt="" coords="208,259,279,285"/>
+<area shape="rect" id="node7" title=" " alt="" coords="304,259,378,285"/>
+<area shape="rect" id="node9" href="$bci__token_8h.html" title="Bci Token API." alt="" coords="45,184,189,211"/>
+</map>

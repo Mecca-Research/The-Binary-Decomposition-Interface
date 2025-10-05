@@ -1,4 +1,15 @@
 
+/**
+ * @file vm.h
+ * @brief Virtual Machine Core API
+ * @details This file provides the vm functionality for the BDI virtual machine execution environment.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_VM_ENHANCED_H
 #define BCI_VM_ENHANCED_H
 

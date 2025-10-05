@@ -1,0 +1,6 @@
+<map id="AITrainer" name="AITrainer">
+<area shape="rect" id="node1" title=" " alt="" coords="19,303,98,329"/>
+<area shape="rect" id="node2" href="$structTrainingTable.html" title=" " alt="" coords="5,213,112,240"/>
+<area shape="rect" id="node3" href="$structTrainingRule.html" title=" " alt="" coords="7,124,110,151"/>
+<area shape="rect" id="node4" href="$structValue.html" title=" " alt="" coords="29,5,88,32"/>
+</map>

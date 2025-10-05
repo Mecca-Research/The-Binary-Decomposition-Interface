@@ -3,6 +3,17 @@
 // DESC: Control Flow Graph for Phase 3.3
 //       Builds CFG for control flow analysis and optimization
 // ===================================================================
+/**
+ * @file bci_cfg.h
+ * @brief Bci Cfg API
+ * @details This file provides the bci cfg functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_CFG_H
 #define BCI_CFG_H
 

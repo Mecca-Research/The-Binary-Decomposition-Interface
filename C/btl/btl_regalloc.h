@@ -1,5 +1,16 @@
 
 // BTL Register Allocator - Linear scan register allocation
+/**
+ * @file btl_regalloc.h
+ * @brief Btl Regalloc API
+ * @details This file provides the btl regalloc functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BTL_REGALLOC_H
 #define BTL_REGALLOC_H
 

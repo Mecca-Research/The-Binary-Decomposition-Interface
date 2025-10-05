@@ -1,0 +1,9 @@
+<map id="GenerationalGC" name="GenerationalGC">
+<area shape="rect" id="node1" title=" " alt="" coords="87,377,212,404"/>
+<area shape="rect" id="node2" href="$structGenerationSpace.html" title=" " alt="" coords="5,288,139,315"/>
+<area shape="rect" id="node3" href="$structGenObject.html" title=" " alt="" coords="104,184,195,211"/>
+<area shape="rect" id="node7" href="$structRememberedSet.html" title=" " alt="" coords="163,288,293,315"/>
+<area shape="rect" id="node4" href="$structGenObjectHeader.html" title=" " alt="" coords="81,95,218,121"/>
+<area shape="rect" id="node5" href="$structGCObjectHeader.html" title=" " alt="" coords="151,5,281,32"/>
+<area shape="rect" id="node6" href="$structGCObject.html" title=" " alt="" coords="248,95,331,121"/>
+</map>

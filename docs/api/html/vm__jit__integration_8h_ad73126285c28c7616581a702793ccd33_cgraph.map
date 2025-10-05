@@ -1,0 +1,6 @@
+<map id="jit_vm_reset_stats" name="jit_vm_reset_stats">
+<area shape="rect" id="node1" title=" " alt="" coords="5,78,148,105"/>
+<area shape="rect" id="node2" href="$hot__path_8c.html#aa1d7f49bcb2575f09ab9f843086ad9d1" title=" " alt="" coords="196,5,376,47"/>
+<area shape="rect" id="node3" href="$jit__compiler_8c.html#ab24bf45b5caa653d777278c5c58442b9" title=" " alt="" coords="217,71,355,112"/>
+<area shape="rect" id="node4" href="$tiered__compilation_8c.html#a7292c1506997b6be2bb117b5e5ddd999" title=" " alt="" coords="214,136,358,177"/>
+</map>

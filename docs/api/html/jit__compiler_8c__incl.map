@@ -1,0 +1,13 @@
+<map id="C/vm/jit/jit_compiler.c" name="C/vm/jit/jit_compiler.c">
+<area shape="rect" id="node1" title=" " alt="" coords="267,5,431,32"/>
+<area shape="rect" id="node2" href="$jit__compiler_8h.html" title="JIT Compiler API." alt="" coords="132,80,243,107"/>
+<area shape="rect" id="node9" title=" " alt="" coords="267,80,337,107"/>
+<area shape="rect" id="node10" title=" " alt="" coords="361,80,432,107"/>
+<area shape="rect" id="node11" title=" " alt="" coords="457,80,521,107"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5,304,76,331"/>
+<area shape="rect" id="node4" title=" " alt="" coords="337,304,419,331"/>
+<area shape="rect" id="node5" href="$bci__chunk_8h.html" title="Bytecode Chunk Management." alt="" coords="132,155,243,181"/>
+<area shape="rect" id="node6" href="$vm_2c23__compat_8h.html" title="C23 Compat API." alt="" coords="100,304,213,331"/>
+<area shape="rect" id="node7" href="$vm_2bci__types_8h.html" title="Bci Types API." alt="" coords="194,229,290,256"/>
+<area shape="rect" id="node8" title=" " alt="" coords="238,304,313,331"/>
+</map>

@@ -2,6 +2,17 @@
 // DESC: Defines the Parser, which consumes a stream of tokens from
 //       the Lexer to build an Abstract Syntax Tree (AST).
 // ===================================================================
+/**
+ * @file bci_parser.h
+ * @brief Parser Implementation
+ * @details This file provides the bci parser functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_PARSER_H
 #define BCI_PARSER_H
 

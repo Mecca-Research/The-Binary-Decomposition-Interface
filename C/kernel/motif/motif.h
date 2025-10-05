@@ -3,6 +3,17 @@
 //       is a unique, deduplicated data pattern stored once and
 //       referenced multiple times.
 // ===================================================================
+/**
+ * @file motif.h
+ * @brief Motif API
+ * @details This file provides the motif functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_MOTIF_H
 #define AEON_MOTIF_H
 

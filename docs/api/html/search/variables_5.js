@@ -1,0 +1,28 @@
+var searchData=
+[
+  ['f1_5fscore_0',['f1_score',['../structClassificationMetrics.html#ad198b50419d5ff280e3b9ca2831415ea',1,'ClassificationMetrics']]],
+  ['f32_1',['f32',['../structGraphValue.html#affdf2de6e7797da9184b1c7b1e614bc6',1,'GraphValue']]],
+  ['f64_2',['f64',['../structAstLiteral.html#ad81b8d45ed81375f5f1de0aff0ea989c',1,'AstLiteral::f64()'],['../structGraphValue.html#a7df5122859a5fbec73ab88f5a7a9b995',1,'GraphValue::f64()']]],
+  ['failed_5fexecutions_3',['failed_executions',['../structGraphExecutor.html#a700c790abfa2a6f158c51a8bbe449dba',1,'GraphExecutor::failed_executions()'],['../structGraphExecutorStats.html#a6b0476430615b56cabd44c88a274a176',1,'GraphExecutorStats::failed_executions()']]],
+  ['false_5fnegatives_4',['false_negatives',['../structClassificationMetrics.html#ae0e4442e69db5df0ba0bf21d5b849379',1,'ClassificationMetrics']]],
+  ['false_5fpositives_5',['false_positives',['../structClassificationMetrics.html#aa7ace03b95f432c01ea4238a57541e41',1,'ClassificationMetrics']]],
+  ['field_5fname_6',['field_name',['../structTypeConstraint.html#aa89cb5d8edc273ce5eacd2396b27bd7b',1,'TypeConstraint']]],
+  ['fields_7',['fields',['../structBciStructType.html#a1d09ddd8242d0c0b100d5b13e1fda9e8',1,'BciStructType::fields()'],['../structAstPattern.html#a97f38f5d6ce4a1d520c027ae74f93f4a',1,'AstPattern::fields()']]],
+  ['file_8',['file',['../structAstNode.html#acb245a5b87f7d76c305b25079050a2b9',1,'AstNode::file()'],['../structParseError.html#aab309e08f691dc43fb38a8646af03bfe',1,'ParseError::file()']]],
+  ['flags_9',['flags',['../structGraphNode.html#a8d646ee943ec2255f6a50eaa00c6c0ba',1,'GraphNode']]],
+  ['forward_10',['forward',['../structModel.html#a1b6777766cc295b46d8cac88c5330600',1,'Model']]],
+  ['fp_11',['fp',['../structBdiType.html#a60d901d08e39f6db77d860270f8e6031',1,'BdiType']]],
+  ['fpga_5fdevice_5fimpl_12',['FPGA_DEVICE_IMPL',['../kernel_2main_8c.html#a85dd9971f30793bd4f40c14c75d0f49e',1,'FPGA_DEVICE_IMPL():&#160;device.c'],['../device_8c.html#a85dd9971f30793bd4f40c14c75d0f49e',1,'FPGA_DEVICE_IMPL():&#160;device.c']]],
+  ['fpga_5fdevice_5fvtable_13',['fpga_device_vtable',['../fpga__verilog_8h.html#ac09dc7dc6d993d8fcaf6f20e58d9a43f',1,'fpga_device_vtable():&#160;fpga_verilog.c'],['../fpga__verilog_8c.html#ac09dc7dc6d993d8fcaf6f20e58d9a43f',1,'fpga_device_vtable():&#160;fpga_verilog.c']]],
+  ['free_14',['free',['../structHamVTable.html#a76f08e4614d87f3a666fde5541229b23',1,'HamVTable']]],
+  ['free_5fcount_15',['free_count',['../structMarkSweepGC.html#a58cb9d2c2c8e78e36edfc48c8159e057',1,'MarkSweepGC']]],
+  ['free_5flist_16',['free_list',['../structMarkSweepGC.html#a37f16aae91ebb906acc06eec9ed929d4',1,'MarkSweepGC']]],
+  ['func_5fdecl_17',['func_decl',['../structAstNode.html#aa587166131f659b75241f75fe5e25454',1,'AstNode']]],
+  ['function_18',['function',['../structCustomOptimizationPass.html#ae349b8e5f04727056929b9f7b2484ca4',1,'CustomOptimizationPass::function()'],['../structCompilationResult.html#a6b29995c8a3d1d6acf296ce1ed319dbd',1,'CompilationResult::function()'],['../structOptimizationPass.html#aa2ec2764d13b309b8eae33ee6364e32b',1,'OptimizationPass::function()']]],
+  ['function_5fexecutions_19',['function_executions',['../structJITIntegratedVM.html#acae35a2b71469f722bf6578462a667fa',1,'JITIntegratedVM']]],
+  ['function_5fid_20',['function_id',['../structHotPathInfo.html#a277505ea0abbc3e28c2b08545cc7c671',1,'HotPathInfo::function_id()'],['../structCompiledCode.html#abc501ed1d0573cf93ad52fd2b5d14c5d',1,'CompiledCode::function_id()'],['../structCompilationDecision.html#af183e72843a87df3b1e05bbfd2b16a7c',1,'CompilationDecision::function_id()'],['../structGraphCacheEntry.html#a3027233c2b1777f743bdcf426aa2b872',1,'GraphCacheEntry::function_id()'],['../structGraphVMFunctionProfile.html#a588089900e04709ef4b86e4a2d33c17a',1,'GraphVMFunctionProfile::function_id()'],['../structJITCacheEntry.html#a77e25aa7da5a2932a63c26c892139fb4',1,'JITCacheEntry::function_id()'],['../structHotPathEntry.html#ae45f2036a60cbb76362610049d5e3494',1,'HotPathEntry::function_id()']]],
+  ['function_5ftype_21',['function_type',['../structBciTypeExt.html#afd653d8d5da5011294c64de68d1f745d',1,'BciTypeExt']]],
+  ['functions_5fcompiled_22',['functions_compiled',['../structJITCompiler.html#ab2ae521edc8712bb3c92a22a489055f6',1,'JITCompiler']]],
+  ['functions_5fconverted_5fto_5fgraph_23',['functions_converted_to_graph',['../structGraphIntegratedVM.html#aedc67f46292f84a02e6aa69d4d4086cc',1,'GraphIntegratedVM']]],
+  ['fusion_5fscore_24',['fusion_score',['../structSubgraph.html#a31330efa69f8f43f9710e4e7ca3a5b84',1,'Subgraph']]]
+];

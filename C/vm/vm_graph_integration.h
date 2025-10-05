@@ -1,4 +1,15 @@
 
+/**
+ * @file vm_graph_integration.h
+ * @brief Graph Optimization and Execution
+ * @details This file provides the vm graph integration functionality for the BDI virtual machine execution environment.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef VM_GRAPH_INTEGRATION_H
 #define VM_GRAPH_INTEGRATION_H
 

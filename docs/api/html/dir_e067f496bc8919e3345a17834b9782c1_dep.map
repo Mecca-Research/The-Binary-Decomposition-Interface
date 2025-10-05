@@ -1,0 +1,16 @@
+<map id="C/kernel/scheduler" name="C/kernel/scheduler">
+<area shape="rect" id="node1" href="dir_0a12885bcbf0dd65e09fdbd0b52dbc69.html" title="graph" alt="" coords="267,159,339,207"/>
+<area shape="rect" id="node2" href="dir_acff8c83f652c141e012537952706f80.html" title="device" alt="" coords="163,159,235,207"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000035_000012.html" title="4" alt="" coords="156,133,165,148"/>
+<area shape="rect" id="node4" href="dir_7e4f2ea0ac396c4066418d391b881f48.html" title="priority" alt="" coords="371,63,443,111"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000033_000019.html" title="1" alt="" coords="343,145,352,160"/>
+<area shape="rect" id="edge3-headlabel" href="dir_000033_000012.html" title="1" alt="" coords="250,160,259,175"/>
+<area shape="rect" id="node5" href="dir_c803be267ec4d78c3e8ea1765bdedc32.html" title="wavefront" alt="" coords="259,63,347,111"/>
+<area shape="rect" id="edge4-headlabel" href="dir_000043_000019.html" title="1" alt="" coords="306,133,316,148"/>
+<area shape="rect" id="edge5-headlabel" href="dir_000043_000012.html" title="1" alt="" coords="239,145,248,160"/>
+<area shape="rect" id="node6" href="dir_4482bb6d8c299f545154867757f33893.html" title="worksteal" alt="" coords="147,63,234,111"/>
+<area shape="rect" id="edge6-headlabel" href="dir_000044_000019.html" title="1" alt="" coords="262,133,271,148"/>
+<area shape="rect" id="edge7-headlabel" href="dir_000044_000012.html" title="1" alt="" coords="199,132,208,147"/>
+<area shape="rect" id="clust2" href="dir_e067f496bc8919e3345a17834b9782c1.html" alt="" coords="27,52,453,121"/>
+<area shape="rect" id="clust1" href="dir_1502684852a0f39f17ad8abfc62a99c1.html" title="kernel" alt="" coords="16,16,464,217"/>
+</map>

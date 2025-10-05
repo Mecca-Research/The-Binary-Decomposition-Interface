@@ -3,6 +3,17 @@
 // DESC: Type Inference Engine for Phase 3.3
 //       Implements Hindley-Milner style type inference with constraints
 // ===================================================================
+/**
+ * @file bci_type_inference.h
+ * @brief Bci Type Inference API
+ * @details This file provides the bci type inference functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_TYPE_INFERENCE_H
 #define BCI_TYPE_INFERENCE_H
 

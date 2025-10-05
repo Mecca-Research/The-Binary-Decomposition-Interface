@@ -1,4 +1,15 @@
 
+/**
+ * @file forward_ad.h
+ * @brief Forward Ad API
+ * @details This file provides the forward ad functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BDI_FORWARD_AD_H
 #define BDI_FORWARD_AD_H
 

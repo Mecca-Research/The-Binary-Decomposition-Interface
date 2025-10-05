@@ -1,5 +1,16 @@
 
 // BTL Peephole Optimizer - Pattern matching and optimization
+/**
+ * @file btl_peephole.h
+ * @brief Btl Peephole API
+ * @details This file provides the btl peephole functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BTL_PEEPHOLE_H
 #define BTL_PEEPHOLE_H
 

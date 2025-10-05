@@ -2,6 +2,28 @@
 // DESC: Core data types, enums, and dynamic data structures for the
 //       BCI (Binary C Interface) compiler. Pure C (C99/C11).
 // ===================================================================
+/**
+ * @file bci_types.h
+ * @brief Bci Types API
+ * @details This file provides the bci types functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
+/**
+ * @file bci_types.h
+ * @brief Bci Types API
+ * @details This file provides the bci types functionality for the BDI virtual machine execution environment.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_TYPES_H
 #define BCI_TYPES_H
 

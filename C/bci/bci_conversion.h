@@ -1,5 +1,16 @@
 
 // BCI Conversion Utilities - Binary/Decimal/Hex conversions
+/**
+ * @file bci_conversion.h
+ * @brief Bci Conversion API
+ * @details This file provides the bci conversion functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_CONVERSION_H
 #define BCI_CONVERSION_H
 

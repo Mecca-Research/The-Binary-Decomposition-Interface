@@ -1,0 +1,9 @@
+<map id="graph_vm_destroy" name="graph_vm_destroy">
+<area shape="rect" id="node1" title=" " alt="" coords="5,81,148,108"/>
+<area shape="rect" id="node2" href="$vm__graph__integration_8c.html#ad5bdd32d4bd149d885775342137c73dd" title=" " alt="" coords="208,5,368,32"/>
+<area shape="rect" id="node4" href="$graph__executor_8c.html#a8af63bb429b43f5b02e7dfae388eb975" title=" " alt="" coords="199,56,377,83"/>
+<area shape="rect" id="node6" href="$jit__stub_8c.html#a7adb7a4622c56302991f2b9534ac3349" title=" " alt="" coords="461,107,580,133"/>
+<area shape="rect" id="node7" href="$graph__optimizer_8c.html#a9bcdaf2a0c3fa73e394e1ec96e3fb847" title=" " alt="" coords="196,157,380,184"/>
+<area shape="rect" id="node3" href="$vm_2graph_2graph_8c.html#a0587b1cdbfee591e41793bef7f8e0c87" title=" " alt="" coords="463,5,578,32"/>
+<area shape="rect" id="node5" href="$graph__executor_8c.html#ac79e568b40678608633e0992b2bfbb84" title=" " alt="" coords="428,56,613,83"/>
+</map>

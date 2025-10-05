@@ -1,0 +1,26 @@
+var forward__ad_8c =
+[
+    [ "dual_abs", "forward__ad_8c.html#af73c76135759a6feee2083e194b5a087", null ],
+    [ "dual_add", "forward__ad_8c.html#ab5070e1a9bfbaa00ca5c6d445a06e9fc", null ],
+    [ "dual_constant", "forward__ad_8c.html#a8e3d92ab9c1c542404ae835de701a56b", null ],
+    [ "dual_cos", "forward__ad_8c.html#a179dc5c85612864c03006dd74e347eb7", null ],
+    [ "dual_create", "forward__ad_8c.html#a2c45ca6ab37931b84c3338ffc47379a1", null ],
+    [ "dual_div", "forward__ad_8c.html#a84472fdca2417b0e82ddaa2b7066a792", null ],
+    [ "dual_eq", "forward__ad_8c.html#a3292d4db76a48d65f633018f1ffc761c", null ],
+    [ "dual_exp", "forward__ad_8c.html#a013fe8714ff794c27c16177425dbce48", null ],
+    [ "dual_gt", "forward__ad_8c.html#af365e031798e5738c90ccd05df486138", null ],
+    [ "dual_log", "forward__ad_8c.html#a012b4cb44928125cdcc07cae2830ca0f", null ],
+    [ "dual_lt", "forward__ad_8c.html#a33218cbc058280059aa6d45154e42cc3", null ],
+    [ "dual_mul", "forward__ad_8c.html#aa3031fb5c32a55bec343e7e4b2d5b301", null ],
+    [ "dual_neg", "forward__ad_8c.html#ab9e9b1054a0b050f2b38d2608040dafe", null ],
+    [ "dual_pow", "forward__ad_8c.html#a712b5d1fd27c0c6cec97a9555469f567", null ],
+    [ "dual_print", "forward__ad_8c.html#a818c13ffa5465e2320b8fea6f8cf7fdd", null ],
+    [ "dual_relu", "forward__ad_8c.html#a4650827ec02e0dc98cdf4142da59475c", null ],
+    [ "dual_sigmoid", "forward__ad_8c.html#ac9711d5525febaceafd1dcfc2d867505", null ],
+    [ "dual_sin", "forward__ad_8c.html#a902e8c77f3db1031f3ff711095dc4ea2", null ],
+    [ "dual_sqrt", "forward__ad_8c.html#a3d7eb4af77c3a8d1a3e80b629e2fc730", null ],
+    [ "dual_sub", "forward__ad_8c.html#ac0eec59d8bc3392c7bb97425b1969436", null ],
+    [ "dual_tan", "forward__ad_8c.html#ab6beae41e63c6a512be26d89f529aa9e", null ],
+    [ "dual_tanh", "forward__ad_8c.html#a9ed1947b876382b713a018800fa3367d", null ],
+    [ "dual_variable", "forward__ad_8c.html#a26104a45344ab15ebc69fcdde4898e8a", null ]
+];

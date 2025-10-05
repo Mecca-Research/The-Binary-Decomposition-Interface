@@ -3,6 +3,17 @@
 //       the Semantic Analyzer to track declared identifiers like
 //       variables and functions.
 // ===================================================================
+/**
+ * @file bci_symbol.h
+ * @brief Bci Symbol API
+ * @details This file provides the bci symbol functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_SYMBOL_H
 #define BCI_SYMBOL_H
 

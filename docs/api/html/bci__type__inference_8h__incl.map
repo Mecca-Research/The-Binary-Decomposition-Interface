@@ -1,0 +1,11 @@
+<map id="C/compiler/semantic_analyzer/bci_type_inference.h" name="C/compiler/semantic_analyzer/bci_type_inference.h">
+<area shape="rect" id="node1" title="Bci Type Inference API." alt="" coords="12,5,236,47"/>
+<area shape="rect" id="node2" href="$c23__compat_8h.html" title="C23 Compat API." alt="" coords="22,333,136,360"/>
+<area shape="rect" id="node3" href="$bci__types__extended_8h.html" title="Bci Types Extended API." alt="" coords="207,169,343,211"/>
+<area shape="rect" id="node8" href="$bci__ast__extended_8h.html" title="Abstract Syntax Tree." alt="" coords="32,95,216,121"/>
+<area shape="rect" id="node4" href="$compiler_2types_2bci__types_8h.html" title="Bci Types API." alt="" coords="168,259,316,285"/>
+<area shape="rect" id="node5" title=" " alt="" coords="208,333,278,360"/>
+<area shape="rect" id="node6" title=" " alt="" coords="307,333,390,360"/>
+<area shape="rect" id="node7" title=" " alt="" coords="416,333,491,360"/>
+<area shape="rect" id="node9" href="$bci__ast_8h.html" title="Abstract Syntax Tree." alt="" coords="66,177,182,203"/>
+</map>

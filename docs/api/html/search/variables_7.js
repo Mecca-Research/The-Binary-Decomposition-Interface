@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['had_5ferror_0',['had_error',['../structParser.html#abf6b227ad7e6061a4b4d3d23d56c8721',1,'Parser::had_error()'],['../structAnalyzer.html#ae6940bf3443254ebd32ad7b06ee34533',1,'Analyzer::had_error()'],['../structCodeGenerator.html#a839006ae363cf28070f8728b40eeb9b1',1,'CodeGenerator::had_error()']]],
+  ['ham_5fdefault_5fimpl_1',['HAM_DEFAULT_IMPL',['../test__1_8c.html#a6d81527481bb42bcec4cb3bbae8187cc',1,'HAM_DEFAULT_IMPL():&#160;test_1.c'],['../kernel_2main_8c.html#a6d81527481bb42bcec4cb3bbae8187cc',1,'HAM_DEFAULT_IMPL():&#160;main.c']]],
+  ['has_5faliasing_2',['has_aliasing',['../structGraphMemoryInfo.html#ae6c1d4f079de0cbb6b144acb9945f377',1,'GraphMemoryInfo']]],
+  ['has_5fcalls_3',['has_calls',['../structCompilationResult.html#a449b1524cf0a4e9e46e41355f404602e',1,'CompilationResult']]],
+  ['has_5ferror_4',['has_error',['../structGraphBuilder.html#a10e2b011279659199ced33545c7ade10',1,'GraphBuilder']]],
+  ['has_5floops_5',['has_loops',['../structCompilationResult.html#a67e0858923e1f8bc903e3ac0e62eec51',1,'CompilationResult']]],
+  ['has_5fside_5feffects_6',['has_side_effects',['../structGraphNodeHints.html#a8e2186e4f6abdb5221827300688cf063',1,'GraphNodeHints::has_side_effects()'],['../structGraphMemoryInfo.html#a6746310fac56542fd5b97f2e3b62cdd9',1,'GraphMemoryInfo::has_side_effects()']]],
+  ['hash_7',['hash',['../structMotif.html#af5e479b6bd7bd213251d31aa55142453',1,'Motif::hash()'],['../structNodeMeta.html#a9048e9741dad13dd2d7616fd7930a073',1,'NodeMeta::hash()']]],
+  ['head_8',['head',['../structLockFreeQueue.html#a2e672b8abab7179a4725d59cd9de9d93',1,'LockFreeQueue']]],
+  ['header_9',['header',['../structGCObject.html#a1c803dd5971a67def6c47d6a88a05025',1,'GCObject::header()'],['../structGenObject.html#aa5da4197c2ea9681ad7179d061692a57',1,'GenObject::header()']]],
+  ['header_5fcount_10',['header_count',['../structGraphLoop.html#aa82b19a471f781328e560ffc4bfc795c',1,'GraphLoop']]],
+  ['header_5fnodes_11',['header_nodes',['../structGraphLoop.html#a50b5d937195c6ccac81dc97c8de12534',1,'GraphLoop']]],
+  ['heap_5fend_12',['heap_end',['../structMarkSweepGC.html#ae220d6cac896a57389e6d1d5bd559c6e',1,'MarkSweepGC']]],
+  ['heap_5fsize_13',['heap_size',['../structMarkSweepGC.html#af030ffb5557548eb80a64cc6f800dd95',1,'MarkSweepGC']]],
+  ['heap_5fstart_14',['heap_start',['../structMarkSweepGC.html#a143b634107b88c5e6ec804c529498a5d',1,'MarkSweepGC']]],
+  ['heap_5fused_15',['heap_used',['../structMarkSweepGC.html#a4bb4cf19bf58e54b77dbc5e9aef1d3c7',1,'MarkSweepGC']]],
+  ['history_5fcapacity_16',['history_capacity',['../structAccessPattern.html#a866d84a558529cbbf9e6fe4f823f775d',1,'AccessPattern']]],
+  ['history_5fsize_17',['history_size',['../structAccessPattern.html#af36e17d5b24799ff966692746afd0a51',1,'AccessPattern']]],
+  ['hot_5ffunction_5fcount_18',['hot_function_count',['../structGraphVMHotspotAnalysis.html#ae484ec66d966e98432864a20a0ef09c0',1,'GraphVMHotspotAnalysis']]],
+  ['hot_5ffunctions_19',['hot_functions',['../structGraphVMHotspotAnalysis.html#a08a036bd00bc89b04b737c174fa3eb86',1,'GraphVMHotspotAnalysis']]],
+  ['hot_5fpath_5fdetector_20',['hot_path_detector',['../structTieredCompilationManager.html#a01ef1ca2a26c8a3d160c2cd09b5e21dc',1,'TieredCompilationManager::hot_path_detector()'],['../structEnhancedVM.html#ab9369606088dcd1a99bac26fc728622f',1,'EnhancedVM::hot_path_detector()'],['../structJITIntegratedVM.html#a9353a87f78a09d303951d5219acf11e1',1,'JITIntegratedVM::hot_path_detector()']]],
+  ['hot_5fpath_5fhits_21',['hot_path_hits',['../structHotPathDetector.html#ae9a7ef0c94f3de747e64e8b04a1ca6b3',1,'HotPathDetector']]],
+  ['hotness_5fscore_22',['hotness_score',['../structGraphNodeProfile.html#ad81d06a7685be48fe5d1daae1de538ea',1,'GraphNodeProfile::hotness_score()'],['../structHotPathInfo.html#ab8fcb8496b0d67904fb4895e84e24548',1,'HotPathInfo::hotness_score()']]],
+  ['hybrid_5fexecutions_23',['hybrid_executions',['../structGraphIntegratedVM.html#a11dc85a5d0de6ae6ac52b6c09f07e19b',1,'GraphIntegratedVM::hybrid_executions()'],['../structGraphVMStats.html#a227ed9c6dbb6bfd7f4ba2401a98cdb02',1,'GraphVMStats::hybrid_executions()']]]
+];

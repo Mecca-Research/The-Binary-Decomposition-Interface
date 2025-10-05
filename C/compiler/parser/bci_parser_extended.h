@@ -3,6 +3,17 @@
 // DESC: Extended Parser for Phase 3 - Enhanced AST and Error Recovery
 //       Adds operator precedence, pattern matching, lambda expressions
 // ===================================================================
+/**
+ * @file bci_parser_extended.h
+ * @brief Parser Implementation
+ * @details This file provides the bci parser extended functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_PARSER_EXTENDED_H
 #define BCI_PARSER_EXTENDED_H
 

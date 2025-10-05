@@ -3,6 +3,17 @@
 //       that the Lexer can produce.
 // ===================================================================
 #include "c23_compat.h"
+/**
+ * @file bci_token.h
+ * @brief Bci Token API
+ * @details This file provides the bci token functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_TOKEN_H
 #define BCI_TOKEN_H
 

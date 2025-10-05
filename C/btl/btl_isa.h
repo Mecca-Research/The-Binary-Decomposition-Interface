@@ -1,5 +1,16 @@
 
 // BTL ISA Support - Multi-architecture instruction set support
+/**
+ * @file btl_isa.h
+ * @brief Btl Isa API
+ * @details This file provides the btl isa functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BTL_ISA_H
 #define BTL_ISA_H
 

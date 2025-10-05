@@ -1,0 +1,11 @@
+<map id="C/compiler/semantic_analyzer/bci_lifetime.h" name="C/compiler/semantic_analyzer/bci_lifetime.h">
+<area shape="rect" id="node1" title="Bci Lifetime API." alt="" coords="5,5,184,47"/>
+<area shape="rect" id="node2" href="$c23__compat_8h.html" title="C23 Compat API." alt="" coords="75,333,189,360"/>
+<area shape="rect" id="node3" href="$bci__ast__extended_8h.html" title="Abstract Syntax Tree." alt="" coords="76,95,260,121"/>
+<area shape="rect" id="node4" href="$bci__ast_8h.html" title="Abstract Syntax Tree." alt="" coords="119,177,235,203"/>
+<area shape="rect" id="node9" href="$bci__types__extended_8h.html" title="Bci Types Extended API." alt="" coords="299,169,435,211"/>
+<area shape="rect" id="node5" href="$compiler_2types_2bci__types_8h.html" title="Bci Types API." alt="" coords="221,259,369,285"/>
+<area shape="rect" id="node6" title=" " alt="" coords="261,333,331,360"/>
+<area shape="rect" id="node7" title=" " alt="" coords="360,333,443,360"/>
+<area shape="rect" id="node8" title=" " alt="" coords="469,333,544,360"/>
+</map>

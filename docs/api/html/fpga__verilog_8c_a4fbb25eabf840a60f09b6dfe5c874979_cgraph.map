@@ -1,0 +1,6 @@
+<map id="fpga_synthesize_subgraph" name="fpga_synthesize_subgraph">
+<area shape="rect" id="node1" title=" " alt="" coords="5,56,200,83"/>
+<area shape="rect" id="node2" href="$fpga__verilog_8c.html#a5e7750f589a9728751157d205677117b" title=" " alt="" coords="249,5,411,32"/>
+<area shape="rect" id="node3" href="$fpga__verilog_8c.html#a0a9f0c33f783b70b8ce03d97e0a85714" title=" " alt="" coords="248,56,412,83"/>
+<area shape="rect" id="node4" href="$fpga__verilog_8c.html#a3e81f9dbdfd31005c38770d1e5646b03" title=" " alt="" coords="248,107,412,133"/>
+</map>

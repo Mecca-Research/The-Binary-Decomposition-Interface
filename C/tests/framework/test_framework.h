@@ -1,4 +1,15 @@
 
+/**
+ * @file test_framework.h
+ * @brief Test Framework API
+ * @details This file provides the test framework functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef TEST_FRAMEWORK_H
 #define TEST_FRAMEWORK_H
 

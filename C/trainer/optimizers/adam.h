@@ -1,4 +1,15 @@
 
+/**
+ * @file adam.h
+ * @brief Adam API
+ * @details This file provides the adam functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BDI_ADAM_H
 #define BDI_ADAM_H
 

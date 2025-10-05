@@ -1,4 +1,15 @@
 
+/**
+ * @file metrics.h
+ * @brief Metrics API
+ * @details This file provides the metrics functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BDI_METRICS_H
 #define BDI_METRICS_H
 

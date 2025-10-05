@@ -1,0 +1,8 @@
+<map id="enhanced_vm_create" name="enhanced_vm_create">
+<area shape="rect" id="node1" title=" " alt="" coords="5,81,167,108"/>
+<area shape="rect" id="node2" href="$vm_8c.html#af6f9a24e0820aea9f378b25504fd3f1d" title=" " alt="" coords="215,74,376,115"/>
+<area shape="rect" id="node3" href="$mark__sweep_8c.html#a54233150500889904e88fe9256a1c91f" title=" " alt="" coords="443,5,588,32"/>
+<area shape="rect" id="node4" href="$generational__gc_8c.html#a12658675f5cd2c64825b706594105915" title=" " alt="" coords="428,56,603,83"/>
+<area shape="rect" id="node5" href="$generational__gc_8c.html#a4e22451156b4f8e7bc77ccb635c92ee5" title=" " alt="" coords="424,107,607,133"/>
+<area shape="rect" id="node6" href="$bci__vm_8c.html#a67d5459e325768797a02ef3cad46f37a" title=" " alt="" coords="480,157,551,184"/>
+</map>

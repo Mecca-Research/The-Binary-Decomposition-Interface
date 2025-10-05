@@ -3,6 +3,17 @@
 // Phase 5.2: GPU Backend (OpenCL) Implementation
 // DESC: GPU kernel execution using OpenCL
 // ===================================================================
+/**
+ * @file gpu_backend_opencl.h
+ * @brief Backend Code Generation
+ * @details This file provides the gpu backend opencl functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_GPU_BACKEND_OPENCL_H
 #define AEON_GPU_BACKEND_OPENCL_H
 

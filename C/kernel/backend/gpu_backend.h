@@ -3,6 +3,17 @@
 //       interacting with a GPU, conceptually wrapping a framework
 //       like CUDA or ROCm.
 // ===================================================================
+/**
+ * @file gpu_backend.h
+ * @brief Backend Code Generation
+ * @details This file provides the gpu backend functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_GPU_BACKEND_H
 #define AEON_GPU_BACKEND_H
 

@@ -1,0 +1,7 @@
+<map id="NumaManager" name="NumaManager">
+<area shape="rect" id="node1" title=" " alt="" coords="45,184,164,211"/>
+<area shape="rect" id="node2" href="$structNumaAffinity.html" title=" " alt="" coords="5,95,113,121"/>
+<area shape="rect" id="node3" href="$structHamRegion.html" title=" " alt="" coords="138,95,237,121"/>
+<area shape="rect" id="node4" href="$structHamStats.html" title=" " alt="" coords="96,5,183,32"/>
+<area shape="rect" id="node5" href="$structMotif.html" title=" " alt="" coords="207,5,263,32"/>
+</map>

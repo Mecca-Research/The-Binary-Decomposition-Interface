@@ -1,0 +1,11 @@
+<map id="C/vm/jit/tiered_compilation.h" name="C/vm/jit/tiered_compilation.h">
+<area shape="rect" id="node1" title="Tiered Compilation Manager." alt="" coords="37,5,247,32"/>
+<area shape="rect" id="node2" title=" " alt="" coords="5,304,76,331"/>
+<area shape="rect" id="node3" title=" " alt="" coords="338,304,421,331"/>
+<area shape="rect" id="node4" href="$jit__compiler_8h.html" title="JIT Compiler API." alt="" coords="137,80,248,107"/>
+<area shape="rect" id="node9" href="$hot__path_8h.html" title="Hot Path Detection System." alt="" coords="79,229,170,256"/>
+<area shape="rect" id="node5" href="$bci__chunk_8h.html" title="Bytecode Chunk Management." alt="" coords="187,155,297,181"/>
+<area shape="rect" id="node6" href="$vm_2c23__compat_8h.html" title="C23 Compat API." alt="" coords="200,304,313,331"/>
+<area shape="rect" id="node7" href="$vm_2bci__types_8h.html" title="Bci Types API." alt="" coords="194,229,290,256"/>
+<area shape="rect" id="node8" title=" " alt="" coords="101,304,175,331"/>
+</map>

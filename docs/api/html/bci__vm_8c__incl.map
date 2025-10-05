@@ -1,0 +1,11 @@
+<map id="C/vm/bci_vm.c" name="C/vm/bci_vm.c">
+<area shape="rect" id="node1" title=" " alt="" coords="31,5,149,32"/>
+<area shape="rect" id="node2" href="$vm_2c23__compat_8h.html" title="C23 Compat API." alt="" coords="5,304,119,331"/>
+<area shape="rect" id="node3" href="$bci__vm_8h.html" title="BCI Virtual Machine Implementation." alt="" coords="49,80,131,107"/>
+<area shape="rect" id="node9" title=" " alt="" coords="155,80,222,107"/>
+<area shape="rect" id="node4" href="$bci__chunk_8h.html" title="Bytecode Chunk Management." alt="" coords="99,155,198,181"/>
+<area shape="rect" id="node5" href="$vm_2bci__types_8h.html" title="Bci Types API." alt="" coords="150,229,246,256"/>
+<area shape="rect" id="node6" title=" " alt="" coords="143,304,213,331"/>
+<area shape="rect" id="node7" title=" " alt="" coords="238,304,321,331"/>
+<area shape="rect" id="node8" title=" " alt="" coords="345,304,419,331"/>
+</map>

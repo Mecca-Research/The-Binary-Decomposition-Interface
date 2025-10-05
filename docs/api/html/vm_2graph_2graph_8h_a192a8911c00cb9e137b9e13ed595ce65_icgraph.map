@@ -1,0 +1,9 @@
+<map id="graph_remove_edge" name="graph_remove_edge">
+<area shape="rect" id="node1" title=" " alt="" coords="872,35,1027,61"/>
+<area shape="rect" id="node2" href="$graph__builder_8c.html#ac91efce65f37c0bf977077c12108c76c" title=" " alt="" coords="636,5,824,32"/>
+<area shape="rect" id="node3" href="$graph__optimizer_8c.html#a2d5641e7507e64608b0023fc4d5c66df" title=" " alt="" coords="655,57,805,98"/>
+<area shape="rect" id="node4" href="$graph__optimizer_8c.html#ad6f68ee518c92034ac207fc7df9a9f1f" title=" " alt="" coords="412,57,588,98"/>
+<area shape="rect" id="node5" href="$graph__optimizer_8c.html#ad92ec2b7cc298f1ba948319032d0532c" title=" " alt="" coords="188,35,364,61"/>
+<area shape="rect" id="node6" href="$vm__graph__integration_8c.html#aa34e61f807b9a1b21fc43a50da8396e9" title=" " alt="" coords="191,86,361,127"/>
+<area shape="rect" id="node7" href="$vm__graph__integration_8c.html#a18c6845d0902f9a72c06bfe9954255fd" title=" " alt="" coords="5,93,140,120"/>
+</map>

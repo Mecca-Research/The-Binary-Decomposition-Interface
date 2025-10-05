@@ -1,4 +1,15 @@
 
+/**
+ * @file bytecode_compiler.h
+ * @brief Compiler Infrastructure
+ * @details This file provides the bytecode compiler functionality for just-in-time compilation and optimization.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BYTECODE_COMPILER_H
 #define BYTECODE_COMPILER_H
 

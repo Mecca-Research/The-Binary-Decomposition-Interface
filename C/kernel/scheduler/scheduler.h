@@ -2,6 +2,17 @@
 // DESC: Defines the Scheduler and its policy gate for
 //       secure execution.
 // ===================================================================
+/**
+ * @file scheduler.h
+ * @brief Task Scheduling System
+ * @details This file provides the scheduler functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_SCHEDULER_H
 #define AEON_SCHEDULER_H
 

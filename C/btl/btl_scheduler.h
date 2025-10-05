@@ -1,5 +1,16 @@
 
 // BTL Instruction Scheduler - Dependency graph and scheduling
+/**
+ * @file btl_scheduler.h
+ * @brief Task Scheduling System
+ * @details This file provides the btl scheduler functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BTL_SCHEDULER_H
 #define BTL_SCHEDULER_H
 

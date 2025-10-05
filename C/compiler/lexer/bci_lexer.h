@@ -2,6 +2,17 @@
 // DESC: Defines the Lexer, which is responsible for scanning source
 //       code and converting it into a stream of tokens.
 // ===================================================================
+/**
+ * @file bci_lexer.h
+ * @brief Lexical Analysis
+ * @details This file provides the bci lexer functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_LEXER_H
 #define BCI_LEXER_H
 

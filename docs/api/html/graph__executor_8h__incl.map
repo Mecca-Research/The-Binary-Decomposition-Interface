@@ -1,0 +1,18 @@
+<map id="C/vm/graph/graph_executor.h" name="C/vm/graph/graph_executor.h">
+<area shape="rect" id="node1" title="Graph Optimization and Execution." alt="" coords="511,5,723,32"/>
+<area shape="rect" id="node2" href="$vm_2graph_2graph_8h.html" title="Graph Optimization and Execution." alt="" coords="682,379,753,405"/>
+<area shape="rect" id="node8" href="$vm__jit__integration_8h.html" title="Vm Jit Integration API." alt="" coords="397,80,563,107"/>
+<area shape="rect" id="node3" href="$vm_2c23__compat_8h.html" title="C23 Compat API." alt="" coords="841,528,967,555"/>
+<area shape="rect" id="node4" href="$vm_2bci__types_8h.html" title="Bci Types API." alt="" coords="733,453,841,480"/>
+<area shape="rect" id="node5" title=" " alt="" coords="145,528,215,555"/>
+<area shape="rect" id="node6" title=" " alt="" coords="501,528,584,555"/>
+<area shape="rect" id="node7" title=" " alt="" coords="403,528,477,555"/>
+<area shape="rect" id="node9" href="$vm_8h.html" title="Virtual Machine Core API." alt="" coords="387,155,442,181"/>
+<area shape="rect" id="node12" href="$jit__compiler_8h.html" title="JIT Compiler API." alt="" coords="559,304,686,331"/>
+<area shape="rect" id="node13" href="$hot__path_8h.html" title="Hot Path Detection System." alt="" coords="34,453,142,480"/>
+<area shape="rect" id="node14" href="$tiered__compilation_8h.html" title="Tiered Compilation Manager." alt="" coords="361,229,535,256"/>
+<area shape="rect" id="node10" href="$bci__vm_8h.html" title="BCI Virtual Machine Implementation." alt="" coords="786,304,867,331"/>
+<area shape="rect" id="node15" href="$mark__sweep_8h.html" title="Mark Sweep API." alt="" coords="268,453,404,480"/>
+<area shape="rect" id="node16" href="$generational__gc_8h.html" title="Garbage Collection System." alt="" coords="269,379,427,405"/>
+<area shape="rect" id="node11" href="$bci__chunk_8h.html" title="Bytecode Chunk Management." alt="" coords="777,379,876,405"/>
+</map>

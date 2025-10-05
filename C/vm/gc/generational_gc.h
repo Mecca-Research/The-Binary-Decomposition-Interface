@@ -1,4 +1,15 @@
 
+/**
+ * @file generational_gc.h
+ * @brief Garbage Collection System
+ * @details This file provides the generational gc functionality for automatic memory management and garbage collection.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef GENERATIONAL_GC_H
 #define GENERATIONAL_GC_H
 

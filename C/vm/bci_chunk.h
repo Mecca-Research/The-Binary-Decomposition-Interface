@@ -2,6 +2,17 @@
 // DESC: Defines the "Chunk," which is a container for bytecode,
 //       and the Opcodes for the virtual machine.
 // ===================================================================
+/**
+ * @file bci_chunk.h
+ * @brief Bytecode Chunk Management
+ * @details This file provides the bci chunk functionality for the BDI virtual machine execution environment.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_CHUNK_H
 #define BCI_CHUNK_H
 

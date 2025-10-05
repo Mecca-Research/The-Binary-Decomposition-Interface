@@ -1,0 +1,7 @@
+<map id="GraphOptimizationPattern" name="GraphOptimizationPattern">
+<area shape="rect" id="node1" title=" " alt="" coords="5,215,196,241"/>
+<area shape="rect" id="node2" href="$structGraphNode.html" title=" " alt="" coords="141,109,236,136"/>
+<area shape="rect" id="node4" href="$structGraphEdge.html" title=" " alt="" coords="221,215,314,241"/>
+<area shape="rect" id="node3" href="$structBdiType.html" title=" " alt="" coords="97,5,171,32"/>
+<area shape="rect" id="node5" href="$structGraphValue.html" title=" " alt="" coords="195,5,292,32"/>
+</map>

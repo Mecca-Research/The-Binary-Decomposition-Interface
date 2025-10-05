@@ -1,0 +1,19 @@
+<map id="C/compiler/codegen/codegen.c" name="C/compiler/codegen/codegen.c">
+<area shape="rect" id="node1" title=" " alt="" coords="428,5,579,47"/>
+<area shape="rect" id="node2" href="$codegen_8h.html" title="Codegen API." alt="" coords="263,95,352,121"/>
+<area shape="rect" id="node14" title=" " alt="" coords="377,95,443,121"/>
+<area shape="rect" id="node15" title=" " alt="" coords="468,95,539,121"/>
+<area shape="rect" id="node16" title=" " alt="" coords="563,95,633,121"/>
+<area shape="rect" id="node17" title=" " alt="" coords="658,95,733,121"/>
+<area shape="rect" id="node3" href="$bci__chunk_8h.html" title="Bytecode Chunk Management." alt="" coords="71,177,219,203"/>
+<area shape="rect" id="node6" title=" " alt="" coords="243,333,313,360"/>
+<area shape="rect" id="node7" title=" " alt="" coords="338,333,421,360"/>
+<area shape="rect" id="node9" href="$bci__ast_8h.html" title="Abstract Syntax Tree." alt="" coords="361,177,477,203"/>
+<area shape="rect" id="node12" href="$bci__symbol_8h.html" title="Bci Symbol API." alt="" coords="531,169,689,211"/>
+<area shape="rect" id="node4" href="$vm_2c23__compat_8h.html" title="C23 Compat API." alt="" coords="5,333,119,360"/>
+<area shape="rect" id="node5" href="$vm_2bci__types_8h.html" title="Bci Types API." alt="" coords="123,259,219,285"/>
+<area shape="rect" id="node8" title=" " alt="" coords="143,333,218,360"/>
+<area shape="rect" id="node10" href="$c23__compat_8h.html" title="C23 Compat API." alt="" coords="529,333,643,360"/>
+<area shape="rect" id="node11" href="$compiler_2types_2bci__types_8h.html" title="Bci Types API." alt="" coords="345,259,493,285"/>
+<area shape="rect" id="node13" href="$bci__token_8h.html" title="Bci Token API." alt="" coords="569,259,713,285"/>
+</map>

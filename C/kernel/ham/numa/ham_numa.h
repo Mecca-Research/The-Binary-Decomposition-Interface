@@ -3,6 +3,17 @@
 // Phase 5.4: HAM NUMA Awareness
 // DESC: NUMA-aware memory allocation and migration
 // ===================================================================
+/**
+ * @file ham_numa.h
+ * @brief Ham Numa API
+ * @details This file provides the ham numa functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_HAM_NUMA_H
 #define AEON_HAM_NUMA_H
 
