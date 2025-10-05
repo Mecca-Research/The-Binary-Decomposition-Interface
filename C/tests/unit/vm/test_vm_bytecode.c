@@ -10,10 +10,21 @@ static bool test_bytecode_chunk_creation(void) {
     Chunk chunk;
     chunk_init(&chunk);
     
+    // Test initial state - lazy initialization means pointers start as NULL
     TEST_ASSERT_EQ(0, chunk.count, "New chunk should be empty");
+    TEST_ASSERT_EQ(0, chunk.capacity, "New chunk should have zero capacity");
     TEST_ASSERT_EQ(0, chunk.constants.len, "New chunk should have no constants");
-    TEST_ASSERT_NOT_NULL(chunk.code, "Chunk code array should be initialized");
-    TEST_ASSERT_NOT_NULL(chunk.lines, "Chunk lines array should be initialized");
+    TEST_ASSERT_NULL(chunk.code, "Chunk code array should be NULL until first write (lazy initialization)");
+    TEST_ASSERT_NULL(chunk.lines, "Chunk lines array should be NULL until first write (lazy initialization)");
+    
+    // Test lazy initialization - memory allocated on first write
+    chunk_write(&chunk, OP_RETURN, 1);
+    TEST_ASSERT_NOT_NULL(chunk.code, "Chunk code array should be allocated after first write");
+    TEST_ASSERT_NOT_NULL(chunk.lines, "Chunk lines array should be allocated after first write");
+    TEST_ASSERT_EQ(1, chunk.count, "Chunk should contain one byte after write");
+    TEST_ASSERT(chunk.capacity >= 1, "Chunk capacity should be at least 1 after write");
+    TEST_ASSERT_EQ(OP_RETURN, chunk.code[0], "Written byte should be stored correctly");
+    TEST_ASSERT_EQ(1, chunk.lines[0], "Line number should be stored correctly");
     
     chunk_free(&chunk);
     TEST_MEMORY_VERIFY("Chunk creation should not leak memory");
@@ -248,15 +259,23 @@ static bool test_chunk_capacity_growth(void) {
     Chunk chunk;
     chunk_init(&chunk);
     
-    int initial_capacity = chunk.capacity;
+    int initial_capacity = chunk.capacity; // This is 0 due to lazy initialization
+    TEST_ASSERT_EQ(0, initial_capacity, "Initial capacity should be 0 (lazy initialization)");
     
-    // Write many instructions to trigger capacity growth
-    for (int i = 0; i < initial_capacity + 10; i++) {
+    // Write enough instructions to trigger multiple capacity growths
+    // First write triggers initial allocation (capacity becomes 8)
+    // Then we write more to trigger growth
+    int instructions_to_write = 20; // This will trigger multiple growths
+    for (int i = 0; i < instructions_to_write; i++) {
         chunk_write(&chunk, OP_RETURN, i + 1);
     }
     
-    TEST_ASSERT(chunk.capacity > initial_capacity, "Chunk capacity should grow");
-    TEST_ASSERT_EQ(initial_capacity + 10, chunk.count, "All instructions should be written");
+    TEST_ASSERT(chunk.capacity > initial_capacity, "Chunk capacity should grow from initial 0");
+    TEST_ASSERT(chunk.capacity >= instructions_to_write, "Capacity should accommodate all instructions");
+    TEST_ASSERT_EQ(instructions_to_write, chunk.count, "All instructions should be written");
+    
+    // Verify that capacity growth follows the expected pattern (starts at 8, then doubles)
+    TEST_ASSERT(chunk.capacity >= 8, "Minimum capacity should be at least 8 after first allocation");
     
     chunk_free(&chunk);
     TEST_MEMORY_VERIFY("Chunk capacity growth should not leak memory");
@@ -271,15 +290,23 @@ static bool test_constant_pool_growth(void) {
     Chunk chunk;
     chunk_init(&chunk);
     
-    int initial_capacity = chunk.constants.capacity;
+    int initial_capacity = chunk.constants.capacity; // This is 0 due to lazy initialization
+    TEST_ASSERT_EQ(0, initial_capacity, "Initial constants capacity should be 0 (lazy initialization)");
     
-    // Add many constants to trigger capacity growth
-    for (int i = 0; i < initial_capacity + 5; i++) {
+    // Add enough constants to trigger multiple capacity growths
+    // First addition triggers initial allocation (capacity becomes 8)
+    // Then we add more to trigger growth
+    int constants_to_add = 20; // This will trigger multiple growths
+    for (int i = 0; i < constants_to_add; i++) {
         chunk_add_constant(&chunk, (double)i);
     }
     
-    TEST_ASSERT(chunk.constants.capacity > initial_capacity, "Constants capacity should grow");
-    TEST_ASSERT_EQ(initial_capacity + 5, chunk.constants.len, "All constants should be added");
+    TEST_ASSERT(chunk.constants.capacity > initial_capacity, "Constants capacity should grow from initial 0");
+    TEST_ASSERT(chunk.constants.capacity >= constants_to_add, "Capacity should accommodate all constants");
+    TEST_ASSERT_EQ(constants_to_add, chunk.constants.len, "All constants should be added");
+    
+    // Verify that capacity growth follows the expected pattern (starts at 8, then doubles)
+    TEST_ASSERT(chunk.constants.capacity >= 8, "Minimum capacity should be at least 8 after first allocation");
     
     // Verify all constants are correct
     for (int i = 0; i < chunk.constants.len; i++) {
