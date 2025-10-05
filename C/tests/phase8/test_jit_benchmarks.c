@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 199309L
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,30 +60,30 @@ static Chunk* create_arithmetic_benchmark_chunk(void) {
     // Where a=10, b=20, c=3, d=100, e=4, f=5
     // Result: ((10+20)*3) - ((100/4)+5) = (30*3) - (25+5) = 90 - 30 = 60
     
-    int const_idx = chunk_add_constant(chunk, 10.0);
+    int const1_idx = chunk_add_constant(chunk, 10.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
-    int const_idx = chunk_add_constant(chunk, 20.0);
+    chunk_write(chunk, const1_idx, 1);
+    int const2_idx = chunk_add_constant(chunk, 20.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
+    chunk_write(chunk, const2_idx, 1);
     chunk_write(chunk, OP_ADD, 1);
     
-    int const_idx = chunk_add_constant(chunk, 3.0);
+    int const3_idx = chunk_add_constant(chunk, 3.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
+    chunk_write(chunk, const3_idx, 1);
     chunk_write(chunk, OP_MULTIPLY, 1);
     
-    int const_idx = chunk_add_constant(chunk, 100.0);
+    int const4_idx = chunk_add_constant(chunk, 100.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
-    int const_idx = chunk_add_constant(chunk, 4.0);
+    chunk_write(chunk, const4_idx, 1);
+    int const5_idx = chunk_add_constant(chunk, 4.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
+    chunk_write(chunk, const5_idx, 1);
     chunk_write(chunk, OP_DIVIDE, 1);
     
-    int const_idx = chunk_add_constant(chunk, 5.0);
+    int const6_idx = chunk_add_constant(chunk, 5.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
+    chunk_write(chunk, const6_idx, 1);
     chunk_write(chunk, OP_ADD, 1);
     
     chunk_write(chunk, OP_SUBTRACT, 1);
@@ -99,8 +100,8 @@ static Chunk* create_nested_benchmark_chunk(void) {
     // Deeply nested computation
     for (int i = 1; i <= 8; i++) {
         int const_idx = chunk_add_constant(chunk, (double)i);
-    chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
+        chunk_write(chunk, OP_CONSTANT, 1);
+        chunk_write(chunk, const_idx, 1);
         if (i > 1) {
             if (i % 2 == 0) {
                 chunk_write(chunk, OP_ADD, 1);
@@ -181,12 +182,12 @@ void benchmark_simple_arithmetic(void) {
     
     Chunk* chunk = (Chunk*)malloc(sizeof(Chunk));
     chunk_init(chunk);
-    int const_idx = chunk_add_constant(chunk, 42.0);
+    int const1_idx = chunk_add_constant(chunk, 42.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
-    int const_idx = chunk_add_constant(chunk, 13.0);
+    chunk_write(chunk, const1_idx, 1);
+    int const2_idx = chunk_add_constant(chunk, 13.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
+    chunk_write(chunk, const2_idx, 1);
     chunk_write(chunk, OP_ADD, 1);
     chunk_write(chunk, OP_RETURN, 1);
     
@@ -387,8 +388,11 @@ void benchmark_hot_path_detection(void) {
     ASSERT(vm != NULL);
     
     Chunk* hot_chunk = create_arithmetic_benchmark_chunk();
-    Chunk* cold_chunk = chunk_create();
-    chunk_write_constant(cold_chunk, 1.0, 1);
+    Chunk* cold_chunk = (Chunk*)malloc(sizeof(Chunk));
+    chunk_init(cold_chunk);
+    int const_idx = chunk_add_constant(cold_chunk, 1.0);
+    chunk_write(cold_chunk, OP_CONSTANT, 1);
+    chunk_write(cold_chunk, const_idx, 1);
     chunk_write(cold_chunk, OP_RETURN, 1);
     
     const int hot_executions = 1000;
@@ -497,3 +501,4 @@ int main(void) {
         return 1;
     }
 }
+

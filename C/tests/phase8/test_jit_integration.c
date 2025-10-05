@@ -1,4 +1,5 @@
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,12 +40,12 @@ static Chunk* create_simple_chunk(void) {
     Chunk* chunk = (Chunk*)malloc(sizeof(Chunk));
     chunk_init(chunk);
     
-    int const_idx = chunk_add_constant(chunk, 10.0);
+    int const1_idx = chunk_add_constant(chunk, 10.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
-    int const_idx = chunk_add_constant(chunk, 5.0);
+    chunk_write(chunk, const1_idx, 1);
+    int const2_idx = chunk_add_constant(chunk, 5.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const_idx, 1);
+    chunk_write(chunk, const2_idx, 1);
     chunk_write(chunk, OP_ADD, 1);
     chunk_write(chunk, OP_RETURN, 1);
     
@@ -437,3 +438,4 @@ int main(void) {
         return 1;
     }
 }
+
