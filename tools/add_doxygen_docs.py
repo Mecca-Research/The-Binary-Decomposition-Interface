@@ -316,7 +316,10 @@ class DoxygenDocGenerator:
 
 def main():
     """Main entry point."""
-    repo_path = Path('/home/ubuntu/github_repos/The-Binary-Decomposition-Interface')
+    # Dynamically resolve repository root based on script location
+    # This script is in tools/ subdirectory, so parents[1] gives us the repo root
+    # This makes the script portable and work in any checkout location
+    repo_path = Path(__file__).resolve().parents[1]
     
     if not repo_path.exists():
         print(f"Error: Repository not found at {repo_path}")
