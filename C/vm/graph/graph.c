@@ -123,29 +123,65 @@ Graph* graph_clone(const Graph* graph) {
     Graph* clone = graph_create(graph->name);
     if (!clone) return NULL;
     
-    // Clone nodes
+    // Create mapping from original node IDs to cloned node IDs
+    uint32_t* id_mapping = (uint32_t*)malloc(graph->node_count * sizeof(uint32_t));
+    if (!id_mapping) {
+        graph_destroy(clone);
+        return NULL;
+    }
+    
+    // Clone nodes and build ID mapping
     for (uint32_t i = 0; i < graph->node_count; i++) {
         GraphNode* original = graph->nodes[i];
         GraphNode* node = graph_add_node(clone, original->type, original->name);
         if (!node) {
+            free(id_mapping);
             graph_destroy(clone);
             return NULL;
         }
+        
+        // Store the mapping from original ID to cloned ID
+        id_mapping[i] = node->id;
+        
+        // Copy node data
         node->constant_value = original->constant_value;
         if (original->custom_data && original->custom_data_size > 0) {
             node->custom_data = malloc(original->custom_data_size);
-            memcpy(node->custom_data, original->custom_data, original->custom_data_size);
-            node->custom_data_size = original->custom_data_size;
+            if (node->custom_data) {
+                memcpy(node->custom_data, original->custom_data, original->custom_data_size);
+                node->custom_data_size = original->custom_data_size;
+            }
         }
     }
     
-    // Clone edges
+    // Clone edges using the ID mapping
     for (uint32_t i = 0; i < graph->edge_count; i++) {
         GraphEdge* original = graph->edges[i];
-        graph_add_edge(clone, original->source->id, original->source_output,
-                      original->target->id, original->target_input);
+        
+        // Find the indices of source and target nodes in the original graph
+        uint32_t source_idx = UINT32_MAX;
+        uint32_t target_idx = UINT32_MAX;
+        
+        for (uint32_t j = 0; j < graph->node_count; j++) {
+            if (graph->nodes[j]->id == original->source->id) {
+                source_idx = j;
+            }
+            if (graph->nodes[j]->id == original->target->id) {
+                target_idx = j;
+            }
+        }
+        
+        // Use the mapped IDs to create edges in the cloned graph
+        if (source_idx != UINT32_MAX && target_idx != UINT32_MAX) {
+            uint32_t cloned_source_id = id_mapping[source_idx];
+            uint32_t cloned_target_id = id_mapping[target_idx];
+            
+            graph_add_edge(clone, cloned_source_id, original->source_output,
+                          cloned_target_id, original->target_input);
+        }
     }
     
+    free(id_mapping);
     return clone;
 }
 

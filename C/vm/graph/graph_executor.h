@@ -30,6 +30,7 @@ typedef struct {
 
 // Execution context
 typedef struct {
+    Graph* graph;  // Reference to the graph being executed
     GraphValue* input_values;
     uint32_t input_count;
     GraphValue* output_values;
