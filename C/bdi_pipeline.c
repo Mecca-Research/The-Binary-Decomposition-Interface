@@ -208,16 +208,10 @@ bool pipeline_execute(PipelineContext* ctx) {
     // Execute bytecode
     BciVmResult vm_result;
     if (ctx->enhanced_vm) {
-        // Enhanced VM doesn't use BciVmResult yet, use legacy path
-        InterpretResult legacy_result = enhanced_vm_execute(ctx->enhanced_vm, ctx->chunk) ? 
-                                        INTERPRET_OK : INTERPRET_RUNTIME_ERROR;
-        vm_result.status = legacy_result;
-        // For enhanced VM, try to get result from stack if available
-        if (ctx->vm->stack_top > ctx->vm->stack) {
-            vm_result.result_value = ctx->vm->stack[0];
-        } else {
-            vm_result.result_value = 0.0;
-        }
+        // Use enhanced VM with result capture
+        EnhancedVmResult enhanced_result = enhanced_vm_execute_with_result(ctx->enhanced_vm, ctx->chunk);
+        vm_result.status = enhanced_result.success ? INTERPRET_OK : INTERPRET_RUNTIME_ERROR;
+        vm_result.result_value = enhanced_result.result_value;
     } else {
         // Use new result-capturing VM function
         vm_result = vm_interpret_with_result(ctx->vm, ctx->chunk);

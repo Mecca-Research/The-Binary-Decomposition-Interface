@@ -284,6 +284,28 @@ bool enhanced_vm_execute(EnhancedVM* vm, const Chunk* chunk) {
     return result == INTERPRET_OK;
 }
 
+// Enhanced VM execution with result capture
+EnhancedVmResult enhanced_vm_execute_with_result(EnhancedVM* vm, const Chunk* chunk) {
+    EnhancedVmResult result = {0};
+    
+    if (!vm || !vm->base_vm) {
+        result.success = false;
+        result.result_value = 0.0;
+        return result;
+    }
+    
+    vm->total_executions++;
+    vm->interpreter_executions++;
+    
+    // Use the result-capturing VM function to get both status and value
+    BciVmResult vm_result = vm_interpret_with_result(vm->base_vm, (Chunk*)chunk);
+    
+    result.success = (vm_result.status == INTERPRET_OK);
+    result.result_value = vm_result.result_value;
+    
+    return result;
+}
+
 bool enhanced_vm_execute_function(EnhancedVM* vm, uint32_t function_id) {
     if (!vm) return false;
     

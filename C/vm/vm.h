@@ -47,6 +47,14 @@ void enhanced_vm_destroy(EnhancedVM* vm);
 bool enhanced_vm_execute(EnhancedVM* vm, const Chunk* chunk);
 bool enhanced_vm_execute_function(EnhancedVM* vm, uint32_t function_id);
 
+// Enhanced VM execution with result capture (mirrors BciVmResult)
+typedef struct {
+    bool success;
+    double result_value;
+} EnhancedVmResult;
+
+EnhancedVmResult enhanced_vm_execute_with_result(EnhancedVM* vm, const Chunk* chunk);
+
 // Configuration
 void enhanced_vm_enable_jit(EnhancedVM* vm, bool enable);
 void enhanced_vm_enable_gc(EnhancedVM* vm, bool enable);
