@@ -463,6 +463,13 @@ void codegen_node(CodeGenerator* codegen, AstNode* node) {
         case AST_NODE_BLOCK:
             codegen_block(codegen, node);
             break;
+        case AST_NODE_PROGRAM:
+            // Program is essentially a block, handle it the same way
+            codegen_block(codegen, node);
+            break;
+        case AST_NODE_UNARY_OP:
+            codegen_unary_op(codegen, node);
+            break;
         // Add more cases as needed
         default:
             codegen_error(codegen, "Unsupported AST node type");
@@ -472,7 +479,7 @@ void codegen_node(CodeGenerator* codegen, AstNode* node) {
 
 // Generate code for a block
 void codegen_block(CodeGenerator* codegen, AstNode* node) {
-    assert(node->kind == AST_NODE_BLOCK);
+    assert(node->kind == AST_NODE_BLOCK || node->kind == AST_NODE_PROGRAM);
     
     codegen_begin_scope(codegen);
     

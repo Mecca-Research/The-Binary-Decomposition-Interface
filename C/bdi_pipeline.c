@@ -206,17 +206,26 @@ bool pipeline_execute(PipelineContext* ctx) {
     }
     
     // Execute bytecode
-    InterpretResult result;
+    BciVmResult vm_result;
     if (ctx->enhanced_vm) {
-        result = enhanced_vm_execute(ctx->enhanced_vm, ctx->chunk) ? 
-                 INTERPRET_OK : INTERPRET_RUNTIME_ERROR;
+        // Enhanced VM doesn't use BciVmResult yet, use legacy path
+        InterpretResult legacy_result = enhanced_vm_execute(ctx->enhanced_vm, ctx->chunk) ? 
+                                        INTERPRET_OK : INTERPRET_RUNTIME_ERROR;
+        vm_result.status = legacy_result;
+        // For enhanced VM, try to get result from stack if available
+        if (ctx->vm->stack_top > ctx->vm->stack) {
+            vm_result.result_value = ctx->vm->stack[0];
+        } else {
+            vm_result.result_value = 0.0;
+        }
     } else {
-        result = vm_interpret(ctx->vm, ctx->chunk);
+        // Use new result-capturing VM function
+        vm_result = vm_interpret_with_result(ctx->vm, ctx->chunk);
     }
     
     ctx->result.execute_time_us = get_time_us() - start_time;
     
-    if (result != INTERPRET_OK) {
+    if (vm_result.status != INTERPRET_OK) {
         ctx->result.success = false;
         ctx->result.error_message = "Runtime error";
         if (ctx->config.verbose) {
@@ -225,10 +234,8 @@ bool pipeline_execute(PipelineContext* ctx) {
         return false;
     }
     
-    // Get result value from VM stack (if any)
-    if (ctx->vm->stack_top > ctx->vm->stack) {
-        ctx->result.result_value = ctx->vm->stack[0];
-    }
+    // Get result value from VM result structure
+    ctx->result.result_value = vm_result.result_value;
     
     if (ctx->config.verbose) {
         printf("=== Execution Complete ===\n");
