@@ -1,4 +1,8 @@
 
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 199309L
+#endif
+
 #include "jit_compiler.h"
 #include <stdlib.h>
 #include <string.h>
@@ -50,6 +54,7 @@ JITStatus jit_compiler_init(JITCompiler* compiler) {
 
 static int64_t mock_compiled_function(void* context, int64_t* args, size_t arg_count) {
     // Mock compiled function that just returns sum of arguments
+    (void)context; // Suppress unused parameter warning
     int64_t result = 0;
     for (size_t i = 0; i < arg_count; i++) {
         result += args[i];
@@ -59,7 +64,7 @@ static int64_t mock_compiled_function(void* context, int64_t* args, size_t arg_c
 
 JITStatus jit_compiler_compile_function(
     JITCompiler* compiler,
-    const BCIChunk* chunk,
+    const Chunk* chunk,
     uint32_t function_id,
     JITTier tier,
     CompiledCode** out_code

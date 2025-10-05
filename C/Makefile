@@ -152,25 +152,49 @@ clean:
 
 # Phase 7: VM Enhancement with JIT & GC
 PHASE7_JIT_SOURCES = vm/jit/jit_compiler.c vm/jit/bytecode_compiler.c \
-                     vm/jit/hot_path.c vm/jit/tiered_compilation.c
+	             vm/jit/hot_path.c vm/jit/tiered_compilation.c
 PHASE7_GC_SOURCES = vm/gc/mark_sweep.c vm/gc/generational_gc.c
 PHASE7_SOURCES = $(PHASE7_JIT_SOURCES) $(PHASE7_GC_SOURCES)
 PHASE7_OBJECTS = $(PHASE7_SOURCES:.c=.o)
 
 PHASE7_TEST_SOURCES = tests/phase7/test_jit_compiler.c \
-                      tests/phase7/test_mark_sweep.c \
-                      tests/phase7/test_generational_gc.c \
-                      tests/phase7/test_all_vm.c
+	              tests/phase7/test_mark_sweep.c \
+	              tests/phase7/test_generational_gc.c \
+	              tests/phase7/test_all_vm.c
 PHASE7_TEST_OBJECTS = $(PHASE7_TEST_SOURCES:.c=.o)
 PHASE7_TEST_BINS = tests/phase7/test_jit_compiler \
-                   tests/phase7/test_mark_sweep \
-                   tests/phase7/test_generational_gc \
-                   tests/phase7/test_all_vm
+	           tests/phase7/test_mark_sweep \
+	           tests/phase7/test_generational_gc \
+	           tests/phase7/test_all_vm
 
-# VM library with Phase 7 enhancements
-vm_lib: $(PHASE7_OBJECTS)
-	@echo "Building VM library with JIT and GC support..."
-	ar rcs libvm.a $(PHASE7_OBJECTS)
+# Phase 8.2: Graph Execution Foundation
+PHASE8_GRAPH_SOURCES = vm/graph/graph.c vm/graph/graph_builder.c \
+	               vm/graph/graph_executor.c vm/graph/graph_optimizer.c \
+	               vm/vm_graph_integration.c
+PHASE8_GRAPH_OBJECTS = $(PHASE8_GRAPH_SOURCES:.c=.o)
+
+PHASE8_GRAPH_TEST_SOURCES = tests/phase8/test_graph_basic.c \
+	                    tests/phase8/test_graph_builder.c \
+	                    tests/phase8/test_graph_execution.c \
+	                    tests/phase8/test_graph_optimization.c \
+	                    tests/phase8/test_graph_integration.c \
+	                    tests/phase8/test_graph_stress.c
+PHASE8_GRAPH_TEST_OBJECTS = $(PHASE8_GRAPH_TEST_SOURCES:.c=.o)
+PHASE8_GRAPH_TEST_BINS = tests/phase8/test_graph_basic \
+	                 tests/phase8/test_graph_builder \
+	                 tests/phase8/test_graph_execution \
+	                 tests/phase8/test_graph_optimization \
+	                 tests/phase8/test_graph_integration \
+	                 tests/phase8/test_graph_stress
+
+# Combined VM library with Phase 7 + Phase 8.2
+VM_SOURCES = $(PHASE7_SOURCES) $(PHASE8_GRAPH_SOURCES) vm/vm.c vm/bci_vm.c vm/bci_chunk.c vm/vm_jit_integration.c
+VM_OBJECTS = $(VM_SOURCES:.c=.o)
+
+# VM library with Phase 7 and Phase 8.2 enhancements
+vm_lib: $(VM_OBJECTS)
+	@echo "Building VM library with JIT, GC, and Graph Execution support..."
+	ar rcs libvm.a $(VM_OBJECTS)
 	@echo "VM library built: libvm.a"
 
 # Phase 7 tests
@@ -193,8 +217,50 @@ tests/phase7/test_generational_gc: tests/phase7/test_generational_gc.o $(PHASE7_
 tests/phase7/test_all_vm: tests/phase7/test_all_vm.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+# Phase 8.2: Graph Execution Foundation tests
+test_phase8_graph: $(PHASE8_GRAPH_TEST_BINS)
+	@echo "Running Phase 8.2 Graph Execution Foundation tests..."
+	@./tests/phase8/test_graph_basic
+	@./tests/phase8/test_graph_builder
+	@./tests/phase8/test_graph_execution
+	@./tests/phase8/test_graph_optimization
+	@./tests/phase8/test_graph_integration
+	@./tests/phase8/test_graph_stress
+
+tests/phase8/test_graph_basic: tests/phase8/test_graph_basic.o $(VM_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $< $(VM_OBJECTS) $(LDFLAGS) -lpthread
+
+tests/phase8/test_graph_builder: tests/phase8/test_graph_builder.o $(VM_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $< $(VM_OBJECTS) $(LDFLAGS) -lpthread
+
+tests/phase8/test_graph_execution: tests/phase8/test_graph_execution.o $(VM_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $< $(VM_OBJECTS) $(LDFLAGS) -lpthread
+
+tests/phase8/test_graph_optimization: tests/phase8/test_graph_optimization.o $(VM_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $< $(VM_OBJECTS) $(LDFLAGS) -lpthread
+
+tests/phase8/test_graph_integration: tests/phase8/test_graph_integration.o $(VM_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $< $(VM_OBJECTS) $(LDFLAGS) -lpthread
+
+tests/phase8/test_graph_stress: tests/phase8/test_graph_stress.o $(VM_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $< $(VM_OBJECTS) $(LDFLAGS) -lpthread
+
+# Combined test suite
+test_vm_complete: test_phase7 test_phase8_graph
+	@echo ""
+	@echo "=== Complete VM Test Suite Results ==="
+	@echo "All Phase 7 and Phase 8.2 tests completed."
+
 # Clean Phase 7 artifacts
 clean_phase7:
-	rm -f $(PHASE7_OBJECTS) $(PHASE7_TEST_OBJECTS) $(PHASE7_TEST_BINS) libvm.a
+	rm -f $(PHASE7_OBJECTS) $(PHASE7_TEST_OBJECTS) $(PHASE7_TEST_BINS)
 
-.PHONY: vm_lib test_phase7 clean_phase7
+# Clean Phase 8.2 artifacts
+clean_phase8_graph:
+	rm -f $(PHASE8_GRAPH_OBJECTS) $(PHASE8_GRAPH_TEST_OBJECTS) $(PHASE8_GRAPH_TEST_BINS)
+
+# Clean all VM artifacts
+clean_vm:
+	rm -f $(VM_OBJECTS) libvm.a
+
+.PHONY: vm_lib test_phase7 test_phase8_graph test_vm_complete clean_phase7 clean_phase8_graph clean_vm
