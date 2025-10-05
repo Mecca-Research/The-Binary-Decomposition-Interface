@@ -1,0 +1,11 @@
+<map id="C/compiler/semantic_analyzer/bci_escape.h" name="C/compiler/semantic_analyzer/bci_escape.h">
+<area shape="rect" id="node1" title="Bci Escape API." alt="" coords="5,5,179,47"/>
+<area shape="rect" id="node2" href="$c23__compat_8h.html" title="C23 Compat API." alt="" coords="73,333,186,360"/>
+<area shape="rect" id="node3" href="$bci__ast__extended_8h.html" title="Abstract Syntax Tree." alt="" coords="73,95,257,121"/>
+<area shape="rect" id="node4" href="$bci__ast_8h.html" title="Abstract Syntax Tree." alt="" coords="117,177,233,203"/>
+<area shape="rect" id="node9" href="$bci__types__extended_8h.html" title="Bci Types Extended API." alt="" coords="296,169,432,211"/>
+<area shape="rect" id="node5" href="$compiler_2types_2bci__types_8h.html" title="Bci Types API." alt="" coords="218,259,366,285"/>
+<area shape="rect" id="node6" title=" " alt="" coords="258,333,329,360"/>
+<area shape="rect" id="node7" title=" " alt="" coords="357,333,440,360"/>
+<area shape="rect" id="node8" title=" " alt="" coords="467,333,541,360"/>
+</map>

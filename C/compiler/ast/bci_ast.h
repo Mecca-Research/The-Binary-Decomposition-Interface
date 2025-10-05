@@ -3,6 +3,17 @@
 //       The AST represents the parsed source code before semantic
 //       analysis and code generation.
 // ===================================================================
+/**
+ * @file bci_ast.h
+ * @brief Abstract Syntax Tree
+ * @details This file provides the bci ast functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_AST_H
 #define BCI_AST_H
 

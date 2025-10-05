@@ -3,6 +3,17 @@
 // Phase 5.2: CPU Backend Implementation
 // DESC: CPU kernel execution for BDI graphs
 // ===================================================================
+/**
+ * @file cpu_backend.h
+ * @brief Backend Code Generation
+ * @details This file provides the cpu backend functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_CPU_BACKEND_H
 #define AEON_CPU_BACKEND_H
 

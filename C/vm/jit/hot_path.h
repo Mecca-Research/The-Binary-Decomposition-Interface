@@ -1,4 +1,15 @@
 
+/**
+ * @file hot_path.h
+ * @brief Hot Path Detection System
+ * @details This file provides the hot path functionality for just-in-time compilation and optimization.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef HOT_PATH_H
 #define HOT_PATH_H
 

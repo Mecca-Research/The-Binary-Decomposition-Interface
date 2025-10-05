@@ -1,0 +1,11 @@
+<map id="GraphOptimizer" name="GraphOptimizer">
+<area shape="rect" id="node1" title=" " alt="" coords="201,499,326,525"/>
+<area shape="rect" id="node2" href="$structGraphOptimizerConfig.html" title=" " alt="" coords="5,409,172,436"/>
+<area shape="rect" id="node3" href="$structOptimizationPass.html" title=" " alt="" coords="196,409,331,436"/>
+<area shape="rect" id="node4" href="$structGraph.html" title=" " alt="" coords="233,320,294,347"/>
+<area shape="rect" id="node5" href="$structGraphNode.html" title=" " alt="" coords="239,109,333,136"/>
+<area shape="rect" id="node7" href="$structGraphEdge.html" title=" " alt="" coords="315,222,409,249"/>
+<area shape="rect" id="node6" href="$structBdiType.html" title=" " alt="" coords="195,5,268,32"/>
+<area shape="rect" id="node8" href="$structGraphValue.html" title=" " alt="" coords="292,5,389,32"/>
+<area shape="rect" id="node9" href="$structGraphOptimizationStats.html" title=" " alt="" coords="355,409,534,436"/>
+</map>

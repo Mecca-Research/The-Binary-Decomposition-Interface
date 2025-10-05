@@ -1,0 +1,9 @@
+<map id="C/compiler/parser/bci_parser.h" name="C/compiler/parser/bci_parser.h">
+<area shape="rect" id="node1" title="Parser Implementation." alt="" coords="249,5,409,47"/>
+<area shape="rect" id="node2" href="$bdi__pipeline_8h.html" title="Bdi Pipeline API." alt="" coords="5,102,132,129"/>
+<area shape="rect" id="node4" href="$bci__parser_8c.html" title=" " alt="" coords="157,95,317,136"/>
+<area shape="rect" id="node5" href="$bci__parser__extended_8h.html" title="Parser Implementation." alt="" coords="341,95,501,136"/>
+<area shape="rect" id="node7" href="$main_8c.html" title=" " alt="" coords="525,102,604,129"/>
+<area shape="rect" id="node3" href="$bdi__pipeline_8c.html" title=" " alt="" coords="6,191,131,218"/>
+<area shape="rect" id="node6" href="$bci__parser__extended_8c.html" title=" " alt="" coords="341,184,501,225"/>
+</map>

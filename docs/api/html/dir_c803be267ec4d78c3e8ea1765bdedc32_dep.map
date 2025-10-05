@@ -1,0 +1,8 @@
+<map id="C/kernel/scheduler/wavefront" name="C/kernel/scheduler/wavefront">
+<area shape="rect" id="node1" href="dir_c803be267ec4d78c3e8ea1765bdedc32.html" title="wavefront" alt="" coords="45,52,133,100"/>
+<area shape="rect" id="node2" href="dir_0a12885bcbf0dd65e09fdbd0b52dbc69.html" title="graph" alt="" coords="5,148,77,196"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000043_000019.html" title="1" alt="" coords="64,128,74,143"/>
+<area shape="rect" id="node3" href="dir_acff8c83f652c141e012537952706f80.html" title="device" alt="" coords="101,148,173,196"/>
+<area shape="rect" id="edge2-headlabel" href="dir_000043_000012.html" title="1" alt="" coords="120,121,129,135"/>
+<area shape="rect" id="clust1" href="dir_e067f496bc8919e3345a17834b9782c1.html" title="scheduler" alt="" coords="35,16,144,111"/>
+</map>

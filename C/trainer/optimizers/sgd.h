@@ -1,4 +1,15 @@
 
+/**
+ * @file sgd.h
+ * @brief Sgd API
+ * @details This file provides the sgd functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BDI_SGD_H
 #define BDI_SGD_H
 

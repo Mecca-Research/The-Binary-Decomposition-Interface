@@ -1,4 +1,15 @@
 
+/**
+ * @file tiered_compilation.h
+ * @brief Tiered Compilation Manager
+ * @details This file provides the tiered compilation functionality for just-in-time compilation and optimization.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef TIERED_COMPILATION_H
 #define TIERED_COMPILATION_H
 

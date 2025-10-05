@@ -1,0 +1,32 @@
+<map id="GraphExecutionTask" name="GraphExecutionTask">
+<area shape="rect" id="node1" title=" " alt="" coords="2177,216,2331,243"/>
+<area shape="rect" id="node2" href="$structGraphExecutor.html" title=" " alt="" coords="1951,216,2068,243"/>
+<area shape="rect" id="node3" href="$structGraphExecutorConfig.html" title=" " alt="" coords="1668,216,1827,243"/>
+<area shape="rect" id="node4" href="$structGraphScheduler.html" title=" " alt="" coords="1685,165,1810,192"/>
+<area shape="rect" id="node5" href="$structGraph.html" title=" " alt="" coords="1437,165,1498,192"/>
+<area shape="rect" id="node30" href="$structGraphExecutionContext.html" title=" " alt="" coords="1660,115,1835,141"/>
+<area shape="rect" id="node6" href="$structGraphNode.html" title=" " alt="" coords="746,157,841,184"/>
+<area shape="rect" id="node8" href="$structGraphEdge.html" title=" " alt="" coords="1083,243,1177,269"/>
+<area shape="rect" id="node7" href="$structBdiType.html" title=" " alt="" coords="485,157,558,184"/>
+<area shape="rect" id="node9" href="$structGraphValue.html" title=" " alt="" coords="473,75,570,101"/>
+<area shape="rect" id="node10" href="$structJITIntegratedVM.html" title=" " alt="" coords="1684,656,1811,683"/>
+<area shape="rect" id="node11" href="$structEnhancedVM.html" title=" " alt="" coords="1414,481,1521,508"/>
+<area shape="rect" id="node12" href="$structVM.html" title=" " alt="" coords="1109,429,1151,456"/>
+<area shape="rect" id="node13" href="$structChunk.html" title=" " alt="" coords="762,429,825,456"/>
+<area shape="rect" id="node14" href="$structJITCompiler.html" title=" " alt="" coords="745,543,841,569"/>
+<area shape="rect" id="node17" href="$structTieredCompilationManager.html" title=" " alt="" coords="1031,656,1229,683"/>
+<area shape="rect" id="node15" href="$structHotPathDetector.html" title=" " alt="" coords="729,673,858,700"/>
+<area shape="rect" id="node16" href="$structHotPathEntry.html" title=" " alt="" coords="468,673,575,700"/>
+<area shape="rect" id="node18" href="$structGenerationalGC.html" title=" " alt="" coords="1067,328,1193,355"/>
+<area shape="rect" id="node19" href="$structGenerationSpace.html" title=" " alt="" coords="727,328,860,355"/>
+<area shape="rect" id="node20" href="$structGenObject.html" title=" " alt="" coords="476,308,567,335"/>
+<area shape="rect" id="node24" href="$structRememberedSet.html" title=" " alt="" coords="728,273,859,300"/>
+<area shape="rect" id="node21" href="$structGenObjectHeader.html" title=" " alt="" coords="233,308,371,335"/>
+<area shape="rect" id="node22" href="$structGCObjectHeader.html" title=" " alt="" coords="5,353,136,380"/>
+<area shape="rect" id="node23" href="$structGCObject.html" title=" " alt="" coords="261,379,343,405"/>
+<area shape="rect" id="node25" href="$structGCRootSet.html" title=" " alt="" coords="605,379,697,405"/>
+<area shape="rect" id="node26" href="$structJITCodeCache.html" title=" " alt="" coords="1412,819,1523,845"/>
+<area shape="rect" id="node27" href="$structJITCacheEntry.html" title=" " alt="" coords="1075,819,1185,845"/>
+<area shape="rect" id="node28" href="$structCompiledCode.html" title=" " alt="" coords="735,819,852,845"/>
+<area shape="rect" id="node29" href="$structJITConfig.html" title=" " alt="" coords="1428,768,1507,795"/>
+</map>

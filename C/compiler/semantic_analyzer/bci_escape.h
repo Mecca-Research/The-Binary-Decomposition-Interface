@@ -3,6 +3,17 @@
 // DESC: Escape Analysis for Phase 3.3
 //       Determines if values escape to heap, return, or global scope
 // ===================================================================
+/**
+ * @file bci_escape.h
+ * @brief Bci Escape API
+ * @details This file provides the bci escape functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_ESCAPE_H
 #define BCI_ESCAPE_H
 

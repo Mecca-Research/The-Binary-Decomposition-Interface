@@ -1,0 +1,17 @@
+<map id="EnhancedVM" name="EnhancedVM">
+<area shape="rect" id="node1" title=" " alt="" coords="346,467,453,493"/>
+<area shape="rect" id="node2" href="$structVM.html" title=" " alt="" coords="15,377,58,404"/>
+<area shape="rect" id="node3" href="$structChunk.html" title=" " alt="" coords="5,288,68,315"/>
+<area shape="rect" id="node4" href="$structJITCompiler.html" title=" " alt="" coords="111,288,207,315"/>
+<area shape="rect" id="node7" href="$structTieredCompilationManager.html" title=" " alt="" coords="227,377,425,404"/>
+<area shape="rect" id="node5" href="$structHotPathDetector.html" title=" " alt="" coords="320,288,449,315"/>
+<area shape="rect" id="node6" href="$structHotPathEntry.html" title=" " alt="" coords="331,184,438,211"/>
+<area shape="rect" id="node8" href="$structGenerationalGC.html" title=" " alt="" coords="619,377,745,404"/>
+<area shape="rect" id="node9" href="$structGenerationSpace.html" title=" " alt="" coords="503,288,637,315"/>
+<area shape="rect" id="node10" href="$structGenObject.html" title=" " alt="" coords="642,184,733,211"/>
+<area shape="rect" id="node14" href="$structRememberedSet.html" title=" " alt="" coords="661,288,791,315"/>
+<area shape="rect" id="node11" href="$structGenObjectHeader.html" title=" " alt="" coords="619,95,756,121"/>
+<area shape="rect" id="node12" href="$structGCObjectHeader.html" title=" " alt="" coords="689,5,819,32"/>
+<area shape="rect" id="node13" href="$structGCObject.html" title=" " alt="" coords="787,95,870,121"/>
+<area shape="rect" id="node15" href="$structGCRootSet.html" title=" " alt="" coords="783,236,875,263"/>
+</map>

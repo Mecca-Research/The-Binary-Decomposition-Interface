@@ -2,6 +2,17 @@
 // DESC: Defines the abstraction for an execution device (e.g., CPU).
 //       M0 includes the CPU device.
 // ===================================================================
+/**
+ * @file device.h
+ * @brief Device Management
+ * @details This file provides the device functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_DEVICE_H
 #define AEON_DEVICE_H
 

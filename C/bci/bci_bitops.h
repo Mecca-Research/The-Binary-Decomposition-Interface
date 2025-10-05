@@ -1,5 +1,16 @@
 
 // BCI Bit Manipulation Utilities
+/**
+ * @file bci_bitops.h
+ * @brief Bci Bitops API
+ * @details This file provides the bci bitops functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_BITOPS_H
 #define BCI_BITOPS_H
 

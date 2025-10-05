@@ -2,6 +2,28 @@
 // C23 Compatibility Header
 // Provides C23 features for compilers with partial support
 
+/**
+ * @file c23_compat.h
+ * @brief C23 Compat API
+ * @details This file provides the c23 compat functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
+/**
+ * @file c23_compat.h
+ * @brief C23 Compat API
+ * @details This file provides the c23 compat functionality for the BDI virtual machine execution environment.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BDI_C23_COMPAT_H
 #define BDI_C23_COMPAT_H
 

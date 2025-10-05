@@ -1,0 +1,17 @@
+<map id="C/vm/jit/tiered_compilation.h" name="C/vm/jit/tiered_compilation.h">
+<area shape="rect" id="node1" title="Tiered Compilation Manager." alt="" coords="218,5,429,32"/>
+<area shape="rect" id="node2" href="$tiered__compilation_8c.html" title=" " alt="" coords="42,80,253,107"/>
+<area shape="rect" id="node3" href="$vm_8h.html" title="Virtual Machine Core API." alt="" coords="277,80,370,107"/>
+<area shape="rect" id="node7" href="$vm__jit__integration_8h.html" title="Vm Jit Integration API." alt="" coords="372,155,563,181"/>
+<area shape="rect" id="node4" href="$bdi__pipeline_8h.html" title="Bdi Pipeline API." alt="" coords="99,155,225,181"/>
+<area shape="rect" id="node6" href="$vm_8c.html" title=" " alt="" coords="256,155,348,181"/>
+<area shape="rect" id="node5" href="$bdi__pipeline_8c.html" title=" " alt="" coords="93,229,218,256"/>
+<area shape="rect" id="node8" href="$jit__stub_8c.html" title=" " alt="" coords="243,229,337,256"/>
+<area shape="rect" id="node9" href="$graph__executor_8h.html" title="Graph Optimization and Execution." alt="" coords="361,229,573,256"/>
+<area shape="rect" id="node13" href="$vm__graph__integration_8h.html" title="Graph Optimization and Execution." alt="" coords="597,304,812,331"/>
+<area shape="rect" id="node15" href="$vm__jit__integration_8c.html" title=" " alt="" coords="648,229,839,256"/>
+<area shape="rect" id="node10" href="$test__input__fix_8c.html" title=" " alt="" coords="5,304,140,331"/>
+<area shape="rect" id="node11" href="$test__input__node__fix_8c.html" title=" " alt="" coords="165,304,338,331"/>
+<area shape="rect" id="node12" href="$graph__executor_8c.html" title=" " alt="" coords="362,304,573,331"/>
+<area shape="rect" id="node14" href="$vm__graph__integration_8c.html" title=" " alt="" coords="597,379,812,405"/>
+</map>

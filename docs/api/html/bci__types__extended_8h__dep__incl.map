@@ -1,0 +1,16 @@
+<map id="C/compiler/types/bci_types_extended.h" name="C/compiler/types/bci_types_extended.h">
+<area shape="rect" id="node1" title="Bci Types Extended API." alt="" coords="808,5,963,47"/>
+<area shape="rect" id="node2" href="$bci__ast__extended_8h.html" title="Abstract Syntax Tree." alt="" coords="551,95,689,136"/>
+<area shape="rect" id="node12" href="$bci__type__inference_8h.html" title="Bci Type Inference API." alt="" coords="933,184,1157,225"/>
+<area shape="rect" id="node14" href="$bci__types__extended_8c.html" title=" " alt="" coords="923,95,1077,136"/>
+<area shape="rect" id="node3" href="$bci__ast__extended_8c.html" title=" " alt="" coords="5,184,144,225"/>
+<area shape="rect" id="node4" href="$bci__parser__extended_8h.html" title="Parser Implementation." alt="" coords="168,184,328,225"/>
+<area shape="rect" id="node6" href="$bci__cfg_8h.html" title="Bci Cfg API." alt="" coords="353,184,509,225"/>
+<area shape="rect" id="node8" href="$bci__escape_8h.html" title="Bci Escape API." alt="" coords="533,184,707,225"/>
+<area shape="rect" id="node10" href="$bci__lifetime_8h.html" title="Bci Lifetime API." alt="" coords="731,184,909,225"/>
+<area shape="rect" id="node5" href="$bci__parser__extended_8c.html" title=" " alt="" coords="168,273,328,315"/>
+<area shape="rect" id="node7" href="$bci__cfg_8c.html" title=" " alt="" coords="353,273,509,315"/>
+<area shape="rect" id="node9" href="$bci__escape_8c.html" title=" " alt="" coords="534,273,706,315"/>
+<area shape="rect" id="node11" href="$bci__lifetime_8c.html" title=" " alt="" coords="731,273,909,315"/>
+<area shape="rect" id="node13" href="$bci__type__inference_8c.html" title=" " alt="" coords="934,273,1157,315"/>
+</map>

@@ -2,6 +2,17 @@
 // ===================================================================
 // DESC: Bytecode Code Generator - Generates bytecode from AST
 // ===================================================================
+/**
+ * @file codegen.h
+ * @brief Codegen API
+ * @details This file provides the codegen functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_CODEGEN_H
 #define BCI_CODEGEN_H
 

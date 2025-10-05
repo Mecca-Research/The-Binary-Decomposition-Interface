@@ -1,4 +1,15 @@
 
+/**
+ * @file graph_builder.h
+ * @brief Graph Optimization and Execution
+ * @details This file provides the graph builder functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BDI_GRAPH_BUILDER_H
 #define BDI_GRAPH_BUILDER_H
 

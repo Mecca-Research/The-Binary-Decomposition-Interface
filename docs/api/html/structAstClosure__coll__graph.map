@@ -1,0 +1,22 @@
+<map id="AstClosure" name="AstClosure">
+<area shape="rect" id="node1" title=" " alt="" coords="887,384,979,411"/>
+<area shape="rect" id="node2" href="$structAstLambda.html" title=" " alt="" coords="657,419,751,445"/>
+<area shape="rect" id="node3" href="$structAstVarDecl.html" title=" " alt="" coords="161,327,254,353"/>
+<area shape="rect" id="node5" href="$structAstNode.html" title=" " alt="" coords="393,305,471,332"/>
+<area shape="rect" id="node8" href="$structAstFuncDecl.html" title=" " alt="" coords="882,95,985,121"/>
+<area shape="rect" id="node4" href="$structBciType.html" title=" " alt="" coords="5,365,77,392"/>
+<area shape="rect" id="node6" href="$structAstLiteral.html" title=" " alt="" coords="165,465,249,492"/>
+<area shape="rect" id="node7" href="$structAstBinaryOp.html" title=" " alt="" coords="653,196,755,223"/>
+<area shape="rect" id="node9" href="$structAstBlock.html" title=" " alt="" coords="665,260,743,287"/>
+<area shape="rect" id="node10" href="$structBciTypeExt.html" title=" " alt="" coords="385,799,479,825"/>
+<area shape="rect" id="node12" href="$structBciStructField.html" title=" " alt="" coords="649,747,759,773"/>
+<area shape="rect" id="node13" href="$structBciUnionType.html" title=" " alt="" coords="878,992,989,1019"/>
+<area shape="rect" id="node14" href="$structBciUnionVariant.html" title=" " alt="" coords="641,992,767,1019"/>
+<area shape="rect" id="node15" href="$structBciEnumType.html" title=" " alt="" coords="649,1124,759,1151"/>
+<area shape="rect" id="node17" href="$structBciFunctionType.html" title=" " alt="" coords="641,872,767,899"/>
+<area shape="rect" id="node18" href="$structBciGenericType.html" title=" " alt="" coords="872,584,995,611"/>
+<area shape="rect" id="node19" href="$structBciGenericParam.html" title=" " alt="" coords="637,696,771,723"/>
+<area shape="rect" id="node20" href="$structBciArrayType.html" title=" " alt="" coords="651,645,757,672"/>
+<area shape="rect" id="node11" href="$structBciStructType.html" title=" " alt="" coords="878,775,989,801"/>
+<area shape="rect" id="node16" href="$structBciEnumVariant.html" title=" " alt="" coords="369,1169,495,1196"/>
+</map>

@@ -2,6 +2,17 @@
 // DESC: Defines the core data structures for the AI training engine,
 //       representing the structured rules of logic and arithmetic.
 // ===================================================================
+/**
+ * @file ai_trainer_types.h
+ * @brief Ai Trainer Types API
+ * @details This file provides the ai trainer types functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AI_TRAINER_TYPES_H
 #define AI_TRAINER_TYPES_H
 

@@ -1,0 +1,11 @@
+<map id="C/compiler/parser/bci_parser.h" name="C/compiler/parser/bci_parser.h">
+<area shape="rect" id="node1" title="Parser Implementation." alt="" coords="10,5,170,47"/>
+<area shape="rect" id="node2" href="$c23__compat_8h.html" title="C23 Compat API." alt="" coords="81,244,195,271"/>
+<area shape="rect" id="node3" href="$bci__lexer_8h.html" title="Lexical Analysis." alt="" coords="21,95,159,121"/>
+<area shape="rect" id="node5" href="$bci__ast_8h.html" title="Abstract Syntax Tree." alt="" coords="189,95,305,121"/>
+<area shape="rect" id="node4" href="$bci__token_8h.html" title="Bci Token API." alt="" coords="66,169,210,196"/>
+<area shape="rect" id="node6" href="$compiler_2types_2bci__types_8h.html" title="Bci Types API." alt="" coords="285,169,433,196"/>
+<area shape="rect" id="node7" title=" " alt="" coords="223,244,293,271"/>
+<area shape="rect" id="node8" title=" " alt="" coords="318,244,401,271"/>
+<area shape="rect" id="node9" title=" " alt="" coords="425,244,499,271"/>
+</map>

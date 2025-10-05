@@ -1,0 +1,8 @@
+var searchData=
+[
+  ['numa_5fmanager_5fadd_5fregion_0',['numa_manager_add_region',['../ham__numa_8c.html#a32b68e12d323dc06ee895d862abc0b8a',1,'numa_manager_add_region(NumaManager *manager, HamRegion *region):&#160;ham_numa.c'],['../ham__numa_8h.html#a32b68e12d323dc06ee895d862abc0b8a',1,'numa_manager_add_region(NumaManager *manager, HamRegion *region):&#160;ham_numa.c']]],
+  ['numa_5fmanager_5fcreate_1',['numa_manager_create',['../ham__numa_8c.html#a301a85b2ed5fe66af7d69000c4b201c8',1,'numa_manager_create(uint32_t num_nodes):&#160;ham_numa.c'],['../ham__numa_8h.html#a301a85b2ed5fe66af7d69000c4b201c8',1,'numa_manager_create(uint32_t num_nodes):&#160;ham_numa.c']]],
+  ['numa_5fmanager_5ffree_2',['numa_manager_free',['../ham__numa_8c.html#acbd2591b1648ef0d369c7c568d62e938',1,'numa_manager_free(NumaManager *manager):&#160;ham_numa.c'],['../ham__numa_8h.html#acbd2591b1648ef0d369c7c568d62e938',1,'numa_manager_free(NumaManager *manager):&#160;ham_numa.c']]],
+  ['numa_5fmanager_5foptimize_3',['numa_manager_optimize',['../ham__numa_8c.html#a0ee30d48fa05e0da7e3c346276079b5c',1,'numa_manager_optimize(NumaManager *manager):&#160;ham_numa.c'],['../ham__numa_8h.html#a0ee30d48fa05e0da7e3c346276079b5c',1,'numa_manager_optimize(NumaManager *manager):&#160;ham_numa.c']]],
+  ['numerical_5fgradient_4',['numerical_gradient',['../gradient_8c.html#ae820263b701923c372138b1b6ab630c6',1,'numerical_gradient(double(*func)(double *, void *), double *params, size_t param_idx, size_t num_params, void *user_data, double epsilon):&#160;gradient.c'],['../gradient_8h.html#ae820263b701923c372138b1b6ab630c6',1,'numerical_gradient(double(*func)(double *, void *), double *params, size_t param_idx, size_t num_params, void *user_data, double epsilon):&#160;gradient.c']]]
+];

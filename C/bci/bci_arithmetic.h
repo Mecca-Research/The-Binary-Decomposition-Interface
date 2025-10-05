@@ -1,5 +1,16 @@
 
 // BCI Arithmetic Library - Binary arithmetic operations with carry
+/**
+ * @file bci_arithmetic.h
+ * @brief Bci Arithmetic API
+ * @details This file provides the bci arithmetic functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BCI_ARITHMETIC_H
 #define BCI_ARITHMETIC_H
 

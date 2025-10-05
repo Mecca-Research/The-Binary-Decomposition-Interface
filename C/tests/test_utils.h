@@ -5,6 +5,17 @@
  * Provides utility functions for stress and regression testing.
  */
 
+/**
+ * @file test_utils.h
+ * @brief Test Utils API
+ * @details This file provides the test utils functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef TEST_UTILS_H
 #define TEST_UTILS_H
 

@@ -3,6 +3,17 @@
 //       Aeon kernel's system call interface.
 // ===================================================================
 #include "c23_compat.h"
+/**
+ * @file syscalls.h
+ * @brief Syscalls API
+ * @details This file provides the syscalls functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_SYSCALLS_H
 #define AEON_SYSCALLS_H
 

@@ -1,4 +1,15 @@
 
+/**
+ * @file jit_compiler.h
+ * @brief JIT Compiler API
+ * @details This file provides the jit compiler functionality for just-in-time compilation and optimization.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef JIT_COMPILER_H
 #define JIT_COMPILER_H
 

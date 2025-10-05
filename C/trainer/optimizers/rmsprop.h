@@ -1,4 +1,15 @@
 
+/**
+ * @file rmsprop.h
+ * @brief Rmsprop API
+ * @details This file provides the rmsprop functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BDI_RMSPROP_H
 #define BDI_RMSPROP_H
 

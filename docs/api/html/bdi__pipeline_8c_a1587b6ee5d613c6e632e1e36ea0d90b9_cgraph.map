@@ -1,0 +1,15 @@
+<map id="pipeline_create" name="pipeline_create">
+<area shape="rect" id="node1" title=" " alt="" coords="5,161,128,188"/>
+<area shape="rect" id="node2" href="$bdi__pipeline_8c.html#a4cb2c43ab45e51d95877c581bf3ec3a8" title=" " alt="" coords="184,125,341,166"/>
+<area shape="rect" id="node13" href="$bdi__pipeline_8c.html#a8d135c95d14c1ed39d366006ed82bff6" title=" " alt="" coords="176,191,349,217"/>
+<area shape="rect" id="node3" href="$bci__chunk_8c.html#a0eda3660f7038c452eb532e96864681a" title=" " alt="" coords="431,5,525,32"/>
+<area shape="rect" id="node4" href="$bci__chunk_8c.html#ae3f433dd4e68caf30a46d5cd842e9539" title=" " alt="" coords="643,31,732,57"/>
+<area shape="rect" id="node5" href="$codegen_8c.html#a0f48a575d6156706c86b8f9fe8c36ff8" title=" " alt="" coords="415,107,541,133"/>
+<area shape="rect" id="node6" href="$codegen_8c.html#a27568620f394bfebf79cb45b4e67425d" title=" " alt="" coords="411,157,545,184"/>
+<area shape="rect" id="node7" href="$vm_8c.html#a244373fd4c66ef7a1a3828b3ef8ae815" title=" " alt="" coords="397,208,559,235"/>
+<area shape="rect" id="node12" href="$bci__vm_8c.html#a67d5459e325768797a02ef3cad46f37a" title=" " alt="" coords="872,263,943,289"/>
+<area shape="rect" id="node8" href="$vm_8c.html#af6f9a24e0820aea9f378b25504fd3f1d" title=" " alt="" coords="607,197,768,238"/>
+<area shape="rect" id="node9" href="$mark__sweep_8c.html#a54233150500889904e88fe9256a1c91f" title=" " alt="" coords="835,111,980,137"/>
+<area shape="rect" id="node10" href="$generational__gc_8c.html#a12658675f5cd2c64825b706594105915" title=" " alt="" coords="820,161,995,188"/>
+<area shape="rect" id="node11" href="$generational__gc_8c.html#a4e22451156b4f8e7bc77ccb635c92ee5" title=" " alt="" coords="816,212,999,239"/>
+</map>

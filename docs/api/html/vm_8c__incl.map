@@ -1,0 +1,19 @@
+<map id="C/vm/vm.c" name="C/vm/vm.c">
+<area shape="rect" id="node1" title=" " alt="" coords="542,5,634,32"/>
+<area shape="rect" id="node2" href="$vm_8h.html" title="Virtual Machine Core API." alt="" coords="429,80,484,107"/>
+<area shape="rect" id="node15" title=" " alt="" coords="508,80,575,107"/>
+<area shape="rect" id="node16" title=" " alt="" coords="600,80,670,107"/>
+<area shape="rect" id="node17" title=" " alt="" coords="694,80,765,107"/>
+<area shape="rect" id="node3" href="$bci__vm_8h.html" title="BCI Virtual Machine Implementation." alt="" coords="25,229,106,256"/>
+<area shape="rect" id="node10" href="$jit__compiler_8h.html" title="JIT Compiler API." alt="" coords="130,229,257,256"/>
+<area shape="rect" id="node11" href="$hot__path_8h.html" title="Hot Path Detection System." alt="" coords="485,379,593,405"/>
+<area shape="rect" id="node12" href="$tiered__compilation_8h.html" title="Tiered Compilation Manager." alt="" coords="308,155,482,181"/>
+<area shape="rect" id="node13" href="$mark__sweep_8h.html" title="Mark Sweep API." alt="" coords="618,379,754,405"/>
+<area shape="rect" id="node14" href="$generational__gc_8h.html" title="Garbage Collection System." alt="" coords="607,304,764,331"/>
+<area shape="rect" id="node4" href="$vm_2c23__compat_8h.html" title="C23 Compat API." alt="" coords="13,453,126,480"/>
+<area shape="rect" id="node5" href="$bci__chunk_8h.html" title="Bytecode Chunk Management." alt="" coords="20,304,119,331"/>
+<area shape="rect" id="node6" href="$vm_2bci__types_8h.html" title="Bci Types API." alt="" coords="162,379,258,405"/>
+<area shape="rect" id="node7" title=" " alt="" coords="260,453,330,480"/>
+<area shape="rect" id="node8" title=" " alt="" coords="411,453,494,480"/>
+<area shape="rect" id="node9" title=" " alt="" coords="575,453,650,480"/>
+</map>

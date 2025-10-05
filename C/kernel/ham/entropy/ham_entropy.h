@@ -3,6 +3,17 @@
 // Phase 5.4: HAM Entropy-Based Scoring
 // DESC: Entropy computation for intelligent memory management
 // ===================================================================
+/**
+ * @file ham_entropy.h
+ * @brief Ham Entropy API
+ * @details This file provides the ham entropy functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_HAM_ENTROPY_H
 #define AEON_HAM_ENTROPY_H
 

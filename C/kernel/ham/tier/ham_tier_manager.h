@@ -3,6 +3,17 @@
 // Phase 5.4: HAM Automatic Tier Management
 // DESC: Automatic promotion and demotion of memory regions
 // ===================================================================
+/**
+ * @file ham_tier_manager.h
+ * @brief Ham Tier Manager API
+ * @details This file provides the ham tier manager functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_HAM_TIER_MANAGER_H
 #define AEON_HAM_TIER_MANAGER_H
 

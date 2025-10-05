@@ -1,4 +1,15 @@
 
+/**
+ * @file loss.h
+ * @brief Loss API
+ * @details This file provides the loss functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef BDI_LOSS_H
 #define BDI_LOSS_H
 

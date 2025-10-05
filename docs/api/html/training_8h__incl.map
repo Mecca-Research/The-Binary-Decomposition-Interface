@@ -1,0 +1,11 @@
+<map id="C/trainer/training/training.h" name="C/trainer/training/training.h">
+<area shape="rect" id="node1" title="Training API." alt="" coords="395,5,527,47"/>
+<area shape="rect" id="node2" title=" " alt="" coords="505,169,580,196"/>
+<area shape="rect" id="node3" title=" " alt="" coords="144,169,227,196"/>
+<area shape="rect" id="node4" href="$sgd_8h.html" title="Sgd API." alt="" coords="27,95,170,121"/>
+<area shape="rect" id="node5" href="$adam_8h.html" title="Adam API." alt="" coords="194,95,350,121"/>
+<area shape="rect" id="node6" href="$rmsprop_8h.html" title="Rmsprop API." alt="" coords="375,95,548,121"/>
+<area shape="rect" id="node7" href="$lr__scheduler_8h.html" title="Task Scheduling System." alt="" coords="751,95,948,121"/>
+<area shape="rect" id="node9" href="$loss_8h.html" title="Loss API." alt="" coords="573,95,675,121"/>
+<area shape="rect" id="node8" title=" " alt="" coords="815,169,883,196"/>
+</map>

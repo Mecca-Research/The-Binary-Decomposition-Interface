@@ -1,0 +1,37 @@
+<map id="C/vm/bci_types.h" name="C/vm/bci_types.h">
+<area shape="rect" id="node1" title="Bci Types API." alt="" coords="1100,5,1235,32"/>
+<area shape="rect" id="node2" href="$bci__chunk_8h.html" title="Bytecode Chunk Management." alt="" coords="653,80,791,107"/>
+<area shape="rect" id="node30" href="$vm_2graph_2graph_8h.html" title="Graph Optimization and Execution." alt="" coords="1540,408,1691,435"/>
+<area shape="rect" id="node3" href="$bdi__pipeline_8h.html" title="Bdi Pipeline API." alt="" coords="207,408,333,435"/>
+<area shape="rect" id="node5" href="$bci__codegen_8h.html" title="Bci Codegen API." alt="" coords="629,162,815,189"/>
+<area shape="rect" id="node7" href="$main_8c.html" title=" " alt="" coords="528,251,607,278"/>
+<area shape="rect" id="node8" href="$codegen_8h.html" title="Codegen API." alt="" coords="56,155,207,196"/>
+<area shape="rect" id="node10" href="$bci__chunk_8c.html" title=" " alt="" coords="1155,162,1291,189"/>
+<area shape="rect" id="node11" href="$bci__vm_8h.html" title="BCI Virtual Machine Implementation." alt="" coords="431,162,549,189"/>
+<area shape="rect" id="node24" href="$bytecode__compiler_8h.html" title="Compiler Infrastructure." alt="" coords="1367,251,1579,278"/>
+<area shape="rect" id="node26" href="$jit__compiler_8h.html" title="JIT Compiler API." alt="" coords="915,162,1081,189"/>
+<area shape="rect" id="node4" href="$bdi__pipeline_8c.html" title=" " alt="" coords="207,483,333,509"/>
+<area shape="rect" id="node6" href="$bci__codegen_8c.html" title=" " alt="" coords="631,251,818,278"/>
+<area shape="rect" id="node9" href="$codegen_8c.html" title=" " alt="" coords="5,244,156,285"/>
+<area shape="rect" id="node12" href="$bci__vm_8c.html" title=" " alt="" coords="333,251,452,278"/>
+<area shape="rect" id="node13" href="$vm_8h.html" title="Virtual Machine Core API." alt="" coords="775,333,869,360"/>
+<area shape="rect" id="node14" href="$vm_8c.html" title=" " alt="" coords="776,408,868,435"/>
+<area shape="rect" id="node15" href="$vm__jit__integration_8h.html" title="Vm Jit Integration API." alt="" coords="1045,408,1236,435"/>
+<area shape="rect" id="node16" href="$jit__stub_8c.html" title=" " alt="" coords="1085,483,1180,509"/>
+<area shape="rect" id="node17" href="$graph__executor_8h.html" title="Graph Optimization and Execution." alt="" coords="1255,483,1467,509"/>
+<area shape="rect" id="node21" href="$vm__graph__integration_8h.html" title="Graph Optimization and Execution." alt="" coords="1875,557,2089,584"/>
+<area shape="rect" id="node23" href="$vm__jit__integration_8c.html" title=" " alt="" coords="871,483,1061,509"/>
+<area shape="rect" id="node18" href="$test__input__fix_8c.html" title=" " alt="" coords="1491,557,1625,584"/>
+<area shape="rect" id="node19" href="$test__input__node__fix_8c.html" title=" " alt="" coords="1058,557,1231,584"/>
+<area shape="rect" id="node20" href="$graph__executor_8c.html" title=" " alt="" coords="1255,557,1466,584"/>
+<area shape="rect" id="node22" href="$vm__graph__integration_8c.html" title=" " alt="" coords="1875,632,2089,659"/>
+<area shape="rect" id="node25" href="$bytecode__compiler_8c.html" title=" " alt="" coords="1367,333,1578,360"/>
+<area shape="rect" id="node27" href="$jit__compiler_8c.html" title=" " alt="" coords="1128,251,1292,278"/>
+<area shape="rect" id="node28" href="$tiered__compilation_8h.html" title="Tiered Compilation Manager." alt="" coords="893,251,1103,278"/>
+<area shape="rect" id="node29" href="$tiered__compilation_8c.html" title=" " alt="" coords="893,333,1103,360"/>
+<area shape="rect" id="node31" href="$vm_2graph_2graph_8c.html" title=" " alt="" coords="1541,483,1690,509"/>
+<area shape="rect" id="node32" href="$graph__builder_8h.html" title="Graph Optimization and Execution." alt="" coords="1715,483,1916,509"/>
+<area shape="rect" id="node34" href="$graph__optimizer_8h.html" title="Graph Optimization and Execution." alt="" coords="2042,483,2261,509"/>
+<area shape="rect" id="node33" href="$graph__builder_8c.html" title=" " alt="" coords="1650,557,1850,584"/>
+<area shape="rect" id="node35" href="$graph__optimizer_8c.html" title=" " alt="" coords="2113,557,2331,584"/>
+</map>

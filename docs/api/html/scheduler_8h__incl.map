@@ -1,0 +1,8 @@
+<map id="C/kernel/scheduler/scheduler.h" name="C/kernel/scheduler/scheduler.h">
+<area shape="rect" id="node1" title="Task Scheduling System." alt="" coords="67,5,209,47"/>
+<area shape="rect" id="node2" href="$c23__compat_8h.html" title="C23 Compat API." alt="" coords="179,319,292,345"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5,319,76,345"/>
+<area shape="rect" id="node4" href="$device_8h.html" title="Device Management." alt="" coords="99,95,177,121"/>
+<area shape="rect" id="node5" href="$ham_8h.html" title="Ham API." alt="" coords="107,169,169,196"/>
+<area shape="rect" id="node6" href="$motif_8h.html" title="Motif API." alt="" coords="104,244,172,271"/>
+</map>

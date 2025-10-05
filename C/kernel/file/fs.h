@@ -1,6 +1,17 @@
 // ===================================================================
 // DESC: Defines the on-disk data structures for the Aeon file system.
 // ===================================================================
+/**
+ * @file fs.h
+ * @brief Fs API
+ * @details This file provides the fs functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_FS_H
 #define AEON_FS_H
 

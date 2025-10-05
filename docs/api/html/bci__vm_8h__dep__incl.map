@@ -1,0 +1,18 @@
+<map id="C/vm/bci_vm.h" name="C/vm/bci_vm.h">
+<area shape="rect" id="node1" title="BCI Virtual Machine Implementation." alt="" coords="179,5,297,32"/>
+<area shape="rect" id="node2" href="$bdi__pipeline_8h.html" title="Bdi Pipeline API." alt="" coords="83,155,209,181"/>
+<area shape="rect" id="node4" href="$main_8c.html" title=" " alt="" coords="137,80,216,107"/>
+<area shape="rect" id="node5" href="$bci__vm_8c.html" title=" " alt="" coords="240,80,359,107"/>
+<area shape="rect" id="node6" href="$vm_8h.html" title="Virtual Machine Core API." alt="" coords="383,80,477,107"/>
+<area shape="rect" id="node3" href="$bdi__pipeline_8c.html" title=" " alt="" coords="83,229,209,256"/>
+<area shape="rect" id="node7" href="$vm_8c.html" title=" " alt="" coords="301,155,393,181"/>
+<area shape="rect" id="node8" href="$vm__jit__integration_8h.html" title="Vm Jit Integration API." alt="" coords="417,155,608,181"/>
+<area shape="rect" id="node9" href="$jit__stub_8c.html" title=" " alt="" coords="243,229,337,256"/>
+<area shape="rect" id="node10" href="$graph__executor_8h.html" title="Graph Optimization and Execution." alt="" coords="361,229,573,256"/>
+<area shape="rect" id="node14" href="$vm__graph__integration_8h.html" title="Graph Optimization and Execution." alt="" coords="597,304,812,331"/>
+<area shape="rect" id="node16" href="$vm__jit__integration_8c.html" title=" " alt="" coords="648,229,839,256"/>
+<area shape="rect" id="node11" href="$test__input__fix_8c.html" title=" " alt="" coords="5,304,140,331"/>
+<area shape="rect" id="node12" href="$test__input__node__fix_8c.html" title=" " alt="" coords="165,304,338,331"/>
+<area shape="rect" id="node13" href="$graph__executor_8c.html" title=" " alt="" coords="362,304,573,331"/>
+<area shape="rect" id="node15" href="$vm__graph__integration_8c.html" title=" " alt="" coords="597,379,812,405"/>
+</map>

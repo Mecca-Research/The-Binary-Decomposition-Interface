@@ -1,4 +1,15 @@
 
+/**
+ * @file mark_sweep.h
+ * @brief Mark Sweep API
+ * @details This file provides the mark sweep functionality for automatic memory management and garbage collection.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef MARK_SWEEP_H
 #define MARK_SWEEP_H
 

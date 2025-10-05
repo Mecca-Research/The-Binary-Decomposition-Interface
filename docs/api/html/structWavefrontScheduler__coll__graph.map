@@ -1,0 +1,10 @@
+<map id="WavefrontScheduler" name="WavefrontScheduler">
+<area shape="rect" id="node1" title=" " alt="" coords="119,395,272,421"/>
+<area shape="rect" id="node2" href="$structBdiGraph.html" title=" " alt="" coords="33,305,115,332"/>
+<area shape="rect" id="node3" href="$structGraphNode.html" title=" " alt="" coords="49,109,144,136"/>
+<area shape="rect" id="node5" href="$structGraphEdge.html" title=" " alt="" coords="121,215,214,241"/>
+<area shape="rect" id="node4" href="$structBdiType.html" title=" " alt="" coords="5,5,79,32"/>
+<area shape="rect" id="node6" href="$structGraphValue.html" title=" " alt="" coords="103,5,200,32"/>
+<area shape="rect" id="node7" href="$structDeviceVTable.html" title=" " alt="" coords="140,305,251,332"/>
+<area shape="rect" id="node8" href="$structWavefront.html" title=" " alt="" coords="275,305,364,332"/>
+</map>

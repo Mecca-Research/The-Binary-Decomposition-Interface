@@ -2,6 +2,17 @@
 // DESC: Defines the Process Control Block (PCB) and related structures
 //       for the Aeon Process Model.
 // ===================================================================
+/**
+ * @file process..h
+ * @brief Process. API
+ * @details This file provides the process. functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_PROCESS_H
 #define AEON_PROCESS_H
 

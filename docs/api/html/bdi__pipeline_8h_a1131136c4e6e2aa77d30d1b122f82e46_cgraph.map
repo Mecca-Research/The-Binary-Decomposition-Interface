@@ -1,0 +1,10 @@
+<map id="pipeline_destroy" name="pipeline_destroy">
+<area shape="rect" id="node1" title=" " alt="" coords="5,81,136,108"/>
+<area shape="rect" id="node2" href="$bci__chunk_8c.html#a0eda3660f7038c452eb532e96864681a" title=" " alt="" coords="221,5,316,32"/>
+<area shape="rect" id="node4" href="$codegen_8c.html#a27568620f394bfebf79cb45b4e67425d" title=" " alt="" coords="202,56,335,83"/>
+<area shape="rect" id="node5" href="$vm_8c.html#aaad6628f13d19015c121a4928aaa279e" title=" " alt="" coords="184,107,353,133"/>
+<area shape="rect" id="node8" href="$bci__vm_8c.html#ac3319c7904bff23a4f535c851a85ca8a" title=" " alt="" coords="455,157,531,184"/>
+<area shape="rect" id="node3" href="$bci__chunk_8c.html#ae3f433dd4e68caf30a46d5cd842e9539" title=" " alt="" coords="448,5,537,32"/>
+<area shape="rect" id="node6" href="$mark__sweep_8c.html#ab19d491fa982dcc4cfcd0eb7b1d84be9" title=" " alt="" coords="416,56,569,83"/>
+<area shape="rect" id="node7" href="$generational__gc_8c.html#a4e22451156b4f8e7bc77ccb635c92ee5" title=" " alt="" coords="401,107,584,133"/>
+</map>

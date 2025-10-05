@@ -3,6 +3,17 @@
 // Phase 5.2: FPGA Backend (Verilog Generation)
 // DESC: FPGA synthesis through Verilog code generation
 // ===================================================================
+/**
+ * @file fpga_verilog.h
+ * @brief Fpga Verilog API
+ * @details This file provides the fpga verilog functionality for the BDI system.
+ * 
+ * This file is part of the BDI (Binary Decomposition Interface) Kernel project.
+ * It provides core functionality for the BDI virtual machine and execution environment.
+ * 
+ * @author BDI Kernel Team
+ * @date 2024
+ */
 #ifndef AEON_FPGA_VERILOG_H
 #define AEON_FPGA_VERILOG_H
 
