@@ -17,6 +17,13 @@ typedef enum {
     INTERPRET_RUNTIME_ERROR
 } InterpretResult;
 
+// --- VM Execution Result Structure ---
+// Contains the result of VM execution including status and return value.
+typedef struct {
+    InterpretResult status;     // Execution status (OK, error, etc.)
+    double result_value;        // The computed result value (if any)
+} BciVmResult;
+
 
 // --- Virtual Machine Structure ---
 // The state of the virtual machine.
@@ -38,7 +45,12 @@ void vm_free(VM* vm);
 
 // The main entry point to run the VM. It takes a chunk of bytecode
 // and executes it. Returns the result of the interpretation.
+// DEPRECATED: Use vm_interpret_with_result() for new code.
 InterpretResult vm_interpret(VM* vm, Chunk* chunk);
+
+// Enhanced VM entry point that returns both status and result value.
+// This is the preferred method for capturing execution results.
+BciVmResult vm_interpret_with_result(VM* vm, Chunk* chunk);
 
 // Stack operations (for internal use, but declared for modularity).
 void vm_stack_push(VM* vm, double value);

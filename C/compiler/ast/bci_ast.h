@@ -89,6 +89,7 @@ AstNode* ast_new_node(AstNodeKind kind);
 void ast_free_node(AstNode* node);
 // Helper functions to create specific nodes, e.g.:
 AstNode* ast_new_literal_int(int64_t value);
+AstNode* ast_new_literal_float(double value);
 AstNode* ast_new_binary_op(const char* op, AstNode* left, AstNode* right);
 AstNode* ast_new_program();
 
