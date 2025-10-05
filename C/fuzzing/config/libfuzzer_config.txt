@@ -1,0 +1,66 @@
+
+# LibFuzzer Configuration for BDI Kernel Fuzzing
+#
+# This file contains LibFuzzer runtime options for optimal
+# fuzzing performance and bug detection.
+
+# Basic Options
+-max_len=4096                      # Maximum input length
+-timeout=10                        # Timeout per input (seconds)
+-rss_limit_mb=2048                # Memory limit (2GB)
+-malloc_limit_mb=2048             # Malloc limit (2GB)
+
+# Execution Options
+-runs=1000000                     # Maximum number of runs
+-max_total_time=3600              # Maximum total time (1 hour)
+-print_final_stats=1              # Print final statistics
+-reload=30                        # Reload corpus every 30 seconds
+
+# Coverage Options
+-use_counters=1                   # Use edge counters
+-use_memmem=1                     # Use memmem for coverage
+-shrink=1                         # Shrink corpus
+-reduce_inputs=1                  # Reduce input size
+
+# Corpus Management
+-merge=1                          # Merge corpus
+-minimize_crash=1                 # Minimize crash inputs
+-cleanse_crash=1                  # Cleanse crash inputs
+-exact_artifact_path=./crashes/   # Crash artifact path
+
+# Mutation Options
+-mutate_depth=5                   # Mutation depth
+-use_value_profile=1              # Use value profiling
+-cross_over=1                     # Enable crossover
+-cross_over_uniform_dist=1        # Uniform crossover distribution
+
+# Dictionary Options
+-dict=./fuzzing/dictionaries/opcodes.dict  # Opcode dictionary
+-use_auto_dict=1                  # Auto-generate dictionary
+
+# Output Options
+-print_pcs=1                      # Print program counters
+-print_funcs=30                   # Print top 30 functions
+-print_coverage=1                 # Print coverage info
+-verbosity=1                      # Verbosity level
+
+# Sanitizer Options
+-detect_leaks=1                   # Detect memory leaks
+-abort_on_error=1                 # Abort on first error
+-print_stacktrace=1               # Print stack traces
+
+# Performance Options
+-fork=1                           # Use fork mode
+-ignore_ooms=1                    # Ignore out-of-memory
+-ignore_timeouts=1                # Ignore timeouts
+-ignore_crashes=0                 # Don't ignore crashes
+
+# Seed Options
+-seed=1                           # Random seed (0 for random)
+-shuffle=1                        # Shuffle inputs
+-prefer_small=1                   # Prefer smaller inputs
+
+# Advanced Options
+-focus_function=""                # Focus on specific function
+-data_flow_trace=0                # Disable data flow tracing
+-collect_data_flow=0              # Disable data flow collection
