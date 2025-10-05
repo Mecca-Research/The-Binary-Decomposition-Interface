@@ -1,0 +1,18 @@
+--- C/compiler/codegen/codegen.c
++++ C/compiler/codegen/codegen.c
+@@ -395,6 +395,7 @@ void codegen_unary_op(CodeGenerator* codegen, AstNode* node) {
+ }
+ 
+ void codegen_if_statement(CodeGenerator* codegen, AstNode* node) {
++    (void)node;
+     // TODO: Implement if statement code generation
+     codegen_error(codegen, "If statements not yet implemented");
+ }
+@@ -426,6 +427,7 @@ void codegen_for_statement(CodeGenerator* codegen, AstNode* node) {
+ }
+ 
+ void codegen_while_statement(CodeGenerator* codegen, AstNode* node) {
++    (void)node;
+     // TODO: Implement while statement code generation
+     codegen_error(codegen, "While statements not yet implemented");
+ }

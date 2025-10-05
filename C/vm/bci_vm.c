@@ -15,6 +15,7 @@ void vm_init(VM* vm) {
 }
 
 void vm_free(VM* vm) {
+    (void)vm;
     // Nothing to do for now, as VM does not own the chunk.
 }
 
@@ -80,4 +81,10 @@ InterpretResult vm_interpret(VM* vm, Chunk* chunk) {
     vm->chunk = chunk;
     vm->ip = vm->chunk->code;
     return run(vm);
+}
+
+void vm_reset(VM* vm) {
+    vm->stack_top = vm->stack;
+    vm->chunk = nullptr;
+    vm->ip = nullptr;
 }

@@ -1,48 +1,74 @@
-# Phase 8 Bytecode Generation Test Suite Makefile
+# ===================================================================
+# Makefile for Phase 8 Tests
+# ===================================================================
 
 CC = gcc
-CFLAGS = -std=c2x -Wall -Wextra -Wpedantic -I../.. -I../../compiler/types -g -O2
+CFLAGS = -std=c2x -Wall -Wextra -Werror -O2 -g
+INCLUDES = -I../.. -I../../compiler -I../../vm
 LDFLAGS = -lm
 
 # Source directories
 COMPILER_DIR = ../../compiler
 VM_DIR = ../../vm
+GC_DIR = ../../vm/gc
 
-# Compiler source files
-CODEGEN_SOURCES = $(COMPILER_DIR)/codegen/codegen.c
-AST_SOURCES = $(COMPILER_DIR)/ast/bci_ast.c
-TYPE_SOURCES = $(COMPILER_DIR)/types/bci_types.c
-SYMBOL_SOURCES = $(COMPILER_DIR)/semantic_analyzer/bci_symbol.c
-
-# VM source files
-VM_SOURCES = $(VM_DIR)/bci_chunk.c $(VM_DIR)/bci_vm.c
+# Source files
+LEXER_SRC = $(COMPILER_DIR)/lexer/bci_lexer.c
+PARSER_SRC = $(COMPILER_DIR)/parser/bci_parser.c
+AST_SRC = $(COMPILER_DIR)/ast/bci_ast.c
+CODEGEN_SRC = $(COMPILER_DIR)/codegen/codegen.c
+CHUNK_SRC = $(VM_DIR)/bci_chunk.c
+VM_SRC = $(VM_DIR)/bci_vm.c $(VM_DIR)/vm.c
+GC_SRC = $(GC_DIR)/mark_sweep.c $(GC_DIR)/generational_gc.c
+PIPELINE_SRC = ../../bdi_pipeline.c
 
 # All source files
-ALL_SOURCES = $(CODEGEN_SOURCES) $(AST_SOURCES) $(TYPE_SOURCES) $(SYMBOL_SOURCES) $(VM_SOURCES)
+ALL_SRC = $(LEXER_SRC) $(PARSER_SRC) $(AST_SRC) $(CODEGEN_SRC) \
+          $(CHUNK_SRC) $(VM_SRC) $(GC_SRC) $(PIPELINE_SRC)
 
 # Test executables
-TESTS = test_bytecode_generation
+TEST_BYTECODE = test_bytecode_generation
+TEST_E2E = test_e2e_pipeline
 
-.PHONY: all clean run asan valgrind
+.PHONY: all clean test test-bytecode test-e2e
 
-all: $(TESTS)
+all: $(TEST_BYTECODE) $(TEST_E2E)
 
-test_bytecode_generation: test_bytecode_generation.c $(ALL_SOURCES)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+# Build bytecode generation tests
+$(TEST_BYTECODE): test_bytecode_generation.c $(ALL_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
-run: all
-	@echo "Running Phase 8 Bytecode Generation Tests..."
-	@echo "=============================================="
-	@./test_bytecode_generation
+# Build E2E pipeline tests
+$(TEST_E2E): test_e2e_pipeline.c $(ALL_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
+# Run all tests
+test: test-bytecode test-e2e
+
+# Run bytecode generation tests
+test-bytecode: $(TEST_BYTECODE)
+	@echo "========================================="
+	@echo "Running Bytecode Generation Tests"
+	@echo "========================================="
+	./$(TEST_BYTECODE)
+
+# Run E2E pipeline tests
+test-e2e: $(TEST_E2E)
+	@echo "========================================="
+	@echo "Running E2E Pipeline Tests"
+	@echo "========================================="
+	./$(TEST_E2E)
+
+# Clean build artifacts
 clean:
-	rm -f $(TESTS) *.o
+	rm -f $(TEST_BYTECODE) $(TEST_E2E) *.o
 
-valgrind: test_bytecode_generation
-	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./test_bytecode_generation
-
-asan: CFLAGS += -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
-asan: LDFLAGS += -fsanitize=address -fsanitize=undefined
-asan: clean all
-	@echo "Running with Address Sanitizer..."
-	@./test_bytecode_generation
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  all           - Build all tests"
+	@echo "  test          - Run all tests"
+	@echo "  test-bytecode - Run bytecode generation tests"
+	@echo "  test-e2e      - Run E2E pipeline tests"
+	@echo "  clean         - Remove build artifacts"
+	@echo "  help          - Show this help message"

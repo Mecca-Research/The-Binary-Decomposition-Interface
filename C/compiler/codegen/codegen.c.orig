@@ -395,7 +395,6 @@ void codegen_binary_op(CodeGenerator* codegen, AstNode* node) {
 
 // Generate code for an if statement
 void codegen_if_statement(CodeGenerator* codegen, AstNode* node) {
-    (void)node;
     // This is a placeholder - full implementation would handle AST_NODE_IF_STMT
     // For now, demonstrate the pattern
     
@@ -427,7 +426,6 @@ void codegen_if_statement(CodeGenerator* codegen, AstNode* node) {
 
 // Generate code for a while statement
 void codegen_while_statement(CodeGenerator* codegen, AstNode* node) {
-    (void)node;
     // Mark loop start
     int loop_start = codegen->current_function->chunk->count;
     

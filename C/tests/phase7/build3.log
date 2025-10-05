@@ -1,0 +1,27 @@
+gcc -std=c2x -Wall -Wextra -Wpedantic -I../.. -I../../compiler/types -g -O2 -o test_vm_gc_integration test_vm_gc_integration.c ../../vm/bci_vm.c ../../vm/bci_chunk.c ../../vm/vm.c ../../vm/gc/mark_sweep.c ../../vm/gc/generational_gc.c -lm
+In file included from ../../vm/vm.h:6,
+                 from test_vm_gc_integration.c:6:
+../../vm/jit/jit_compiler.h:73:11: error: unknown type name ‘BCIChunk’
+   73 |     const BCIChunk* chunk,
+      |           ^~~~~~~~
+test_vm_gc_integration.c: In function ‘test_complex_object_graph’:
+test_vm_gc_integration.c:316:15: warning: unused variable ‘obj_c’ [-Wunused-variable]
+  316 |     GCObject* obj_c = (GCObject*)vm_alloc(vm, 100);
+      |               ^~~~~
+test_vm_gc_integration.c:315:15: warning: unused variable ‘obj_b’ [-Wunused-variable]
+  315 |     GCObject* obj_b = (GCObject*)vm_alloc(vm, 100);
+      |               ^~~~~
+../../vm/bci_vm.c: In function ‘vm_free’:
+../../vm/bci_vm.c:17:18: warning: unused parameter ‘vm’ [-Wunused-parameter]
+   17 | void vm_free(VM* vm) {
+      |              ~~~~^~
+In file included from ../../vm/vm.h:6,
+                 from ../../vm/vm.c:6:
+../../vm/jit/jit_compiler.h:73:11: error: unknown type name ‘BCIChunk’
+   73 |     const BCIChunk* chunk,
+      |           ^~~~~~~~
+../../vm/vm.c: In function ‘enhanced_vm_execute_function’:
+../../vm/vm.c:282:60: warning: unused parameter ‘function_id’ [-Wunused-parameter]
+  282 | bool enhanced_vm_execute_function(EnhancedVM* vm, uint32_t function_id) {
+      |                                                   ~~~~~~~~~^~~~~~~~~~~
+make: *** [Makefile:22: test_vm_gc_integration] Error 1

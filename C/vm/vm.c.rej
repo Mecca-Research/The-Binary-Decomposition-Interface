@@ -1,0 +1,10 @@
+--- C/vm/vm.c
++++ C/vm/vm.c
+@@ -285,6 +285,7 @@ bool enhanced_vm_execute(EnhancedVM* vm, const Chunk* chunk) {
+ }
+ 
+ bool enhanced_vm_execute_function(EnhancedVM* vm, uint32_t function_id) {
++    (void)function_id;
+     // TODO: Implement function execution
+     fprintf(stderr, "Function execution not yet implemented\n");
+     return false;

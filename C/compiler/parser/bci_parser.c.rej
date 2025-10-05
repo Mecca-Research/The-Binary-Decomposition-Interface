@@ -1,0 +1,10 @@
+--- C/compiler/parser/bci_parser.c
++++ C/compiler/parser/bci_parser.c
+@@ -229,6 +229,7 @@ void parser_init(Parser* parser, Lexer* lexer) {
+ }
+ 
+ void parser_free(Parser* parser) {
++    (void)parser;
+     // Nothing to free for now.
+ }
+ 
