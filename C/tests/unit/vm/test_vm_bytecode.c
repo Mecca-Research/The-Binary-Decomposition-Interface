@@ -7,13 +7,15 @@
 static bool test_bytecode_chunk_creation(void) {
     TEST_MEMORY_CHECKPOINT();
     
-    Chunk* chunk = chunk_create();
-    TEST_ASSERT_NOT_NULL(chunk, "Chunk creation should succeed");
+    Chunk chunk;
+    chunk_init(&chunk);
     
-    TEST_ASSERT_EQ(0, chunk_size(chunk), "New chunk should be empty");
-    TEST_ASSERT_EQ(0, chunk_constant_count(chunk), "New chunk should have no constants");
+    TEST_ASSERT_EQ(0, chunk.count, "New chunk should be empty");
+    TEST_ASSERT_EQ(0, chunk.constants.len, "New chunk should have no constants");
+    TEST_ASSERT_NOT_NULL(chunk.code, "Chunk code array should be initialized");
+    TEST_ASSERT_NOT_NULL(chunk.lines, "Chunk lines array should be initialized");
     
-    chunk_destroy(chunk);
+    chunk_free(&chunk);
     TEST_MEMORY_VERIFY("Chunk creation should not leak memory");
     
     return true;
@@ -23,24 +25,25 @@ static bool test_bytecode_chunk_creation(void) {
 static bool test_bytecode_instruction_writing(void) {
     TEST_MEMORY_CHECKPOINT();
     
-    Chunk* chunk = chunk_create();
-    TEST_ASSERT_NOT_NULL(chunk, "Chunk creation should succeed");
+    Chunk chunk;
+    chunk_init(&chunk);
     
-    // Write various instructions
-    chunk_write_byte(chunk, OP_CONSTANT, 1);
-    chunk_write_byte(chunk, 0, 1); // constant index
-    chunk_write_byte(chunk, OP_ADD, 2);
-    chunk_write_byte(chunk, OP_RETURN, 3);
+    // Write various instructions using available API
+    int constant_index = chunk_add_constant(&chunk, 42.0);
+    chunk_write(&chunk, OP_CONSTANT, 1);
+    chunk_write(&chunk, constant_index, 1);
+    chunk_write(&chunk, OP_ADD, 2);
+    chunk_write(&chunk, OP_RETURN, 3);
     
-    TEST_ASSERT_EQ(4, chunk_size(chunk), "Chunk should contain 4 bytes");
+    TEST_ASSERT_EQ(4, chunk.count, "Chunk should contain 4 bytes");
     
-    // Verify instructions
-    TEST_ASSERT_EQ(OP_CONSTANT, chunk_get_byte(chunk, 0), "First instruction should be OP_CONSTANT");
-    TEST_ASSERT_EQ(0, chunk_get_byte(chunk, 1), "Second byte should be constant index");
-    TEST_ASSERT_EQ(OP_ADD, chunk_get_byte(chunk, 2), "Third instruction should be OP_ADD");
-    TEST_ASSERT_EQ(OP_RETURN, chunk_get_byte(chunk, 3), "Fourth instruction should be OP_RETURN");
+    // Verify instructions using direct access to chunk structure
+    TEST_ASSERT_EQ(OP_CONSTANT, chunk.code[0], "First instruction should be OP_CONSTANT");
+    TEST_ASSERT_EQ(constant_index, chunk.code[1], "Second byte should be constant index");
+    TEST_ASSERT_EQ(OP_ADD, chunk.code[2], "Third instruction should be OP_ADD");
+    TEST_ASSERT_EQ(OP_RETURN, chunk.code[3], "Fourth instruction should be OP_RETURN");
     
-    chunk_destroy(chunk);
+    chunk_free(&chunk);
     TEST_MEMORY_VERIFY("Bytecode writing should not leak memory");
     
     return true;
@@ -50,34 +53,25 @@ static bool test_bytecode_instruction_writing(void) {
 static bool test_constant_pool(void) {
     TEST_MEMORY_CHECKPOINT();
     
-    Chunk* chunk = chunk_create();
-    TEST_ASSERT_NOT_NULL(chunk, "Chunk creation should succeed");
+    Chunk chunk;
+    chunk_init(&chunk);
     
-    // Add constants
-    int const1_idx = chunk_add_constant(chunk, VALUE_NUMBER(42.0));
-    int const2_idx = chunk_add_constant(chunk, VALUE_NUMBER(3.14));
-    int const3_idx = chunk_add_constant(chunk, VALUE_BOOL(true));
+    // Add constants using available API
+    int const1_idx = chunk_add_constant(&chunk, 42.0);
+    int const2_idx = chunk_add_constant(&chunk, 3.14);
+    int const3_idx = chunk_add_constant(&chunk, -1.5);
     
     TEST_ASSERT_EQ(0, const1_idx, "First constant should have index 0");
     TEST_ASSERT_EQ(1, const2_idx, "Second constant should have index 1");
     TEST_ASSERT_EQ(2, const3_idx, "Third constant should have index 2");
-    TEST_ASSERT_EQ(3, chunk_constant_count(chunk), "Chunk should have 3 constants");
+    TEST_ASSERT_EQ(3, chunk.constants.len, "Chunk should have 3 constants");
     
-    // Retrieve constants
-    Value val1 = chunk_get_constant(chunk, 0);
-    Value val2 = chunk_get_constant(chunk, 1);
-    Value val3 = chunk_get_constant(chunk, 2);
+    // Retrieve constants using direct access
+    TEST_ASSERT_EQ(42.0, chunk.constants.data[0], "First constant should be 42.0");
+    TEST_ASSERT_EQ(3.14, chunk.constants.data[1], "Second constant should be 3.14");
+    TEST_ASSERT_EQ(-1.5, chunk.constants.data[2], "Third constant should be -1.5");
     
-    TEST_ASSERT(IS_NUMBER(val1), "First constant should be a number");
-    TEST_ASSERT_EQ(42.0, AS_NUMBER(val1), "First constant should be 42.0");
-    
-    TEST_ASSERT(IS_NUMBER(val2), "Second constant should be a number");
-    TEST_ASSERT_EQ(3.14, AS_NUMBER(val2), "Second constant should be 3.14");
-    
-    TEST_ASSERT(IS_BOOL(val3), "Third constant should be a boolean");
-    TEST_ASSERT(AS_BOOL(val3), "Third constant should be true");
-    
-    chunk_destroy(chunk);
+    chunk_free(&chunk);
     TEST_MEMORY_VERIFY("Constant pool should not leak memory");
     
     return true;
@@ -87,179 +81,213 @@ static bool test_constant_pool(void) {
 static bool test_line_number_tracking(void) {
     TEST_MEMORY_CHECKPOINT();
     
-    Chunk* chunk = chunk_create();
-    TEST_ASSERT_NOT_NULL(chunk, "Chunk creation should succeed");
+    Chunk chunk;
+    chunk_init(&chunk);
     
     // Write instructions with line numbers
-    chunk_write_byte(chunk, OP_CONSTANT, 10);
-    chunk_write_byte(chunk, 0, 10);
-    chunk_write_byte(chunk, OP_CONSTANT, 11);
-    chunk_write_byte(chunk, 1, 11);
-    chunk_write_byte(chunk, OP_ADD, 12);
-    chunk_write_byte(chunk, OP_RETURN, 13);
+    chunk_write(&chunk, OP_CONSTANT, 10);
+    chunk_write(&chunk, 0, 10);
+    chunk_write(&chunk, OP_CONSTANT, 11);
+    chunk_write(&chunk, 1, 11);
+    chunk_write(&chunk, OP_ADD, 12);
+    chunk_write(&chunk, OP_RETURN, 13);
     
-    // Verify line numbers
-    TEST_ASSERT_EQ(10, chunk_get_line(chunk, 0), "First instruction should be on line 10");
-    TEST_ASSERT_EQ(10, chunk_get_line(chunk, 1), "Second byte should be on line 10");
-    TEST_ASSERT_EQ(11, chunk_get_line(chunk, 2), "Third instruction should be on line 11");
-    TEST_ASSERT_EQ(11, chunk_get_line(chunk, 3), "Fourth byte should be on line 11");
-    TEST_ASSERT_EQ(12, chunk_get_line(chunk, 4), "Fifth instruction should be on line 12");
-    TEST_ASSERT_EQ(13, chunk_get_line(chunk, 5), "Sixth instruction should be on line 13");
+    // Verify line numbers using direct access
+    TEST_ASSERT_EQ(10, chunk.lines[0], "First instruction should be on line 10");
+    TEST_ASSERT_EQ(10, chunk.lines[1], "Second byte should be on line 10");
+    TEST_ASSERT_EQ(11, chunk.lines[2], "Third instruction should be on line 11");
+    TEST_ASSERT_EQ(11, chunk.lines[3], "Fourth byte should be on line 11");
+    TEST_ASSERT_EQ(12, chunk.lines[4], "Fifth instruction should be on line 12");
+    TEST_ASSERT_EQ(13, chunk.lines[5], "Sixth instruction should be on line 13");
     
-    chunk_destroy(chunk);
+    chunk_free(&chunk);
     TEST_MEMORY_VERIFY("Line number tracking should not leak memory");
     
     return true;
 }
 
-// Test bytecode disassembly
-static bool test_bytecode_disassembly(void) {
+// Test bytecode execution with VM
+static bool test_bytecode_execution(void) {
     TEST_MEMORY_CHECKPOINT();
     
-    Chunk* chunk = chunk_create();
-    TEST_ASSERT_NOT_NULL(chunk, "Chunk creation should succeed");
+    VM vm;
+    vm_init(&vm);
     
-    // Create a simple program
-    int const_idx = chunk_add_constant(chunk, VALUE_NUMBER(42.0));
-    chunk_write_byte(chunk, OP_CONSTANT, 1);
-    chunk_write_byte(chunk, const_idx, 1);
-    chunk_write_byte(chunk, OP_NEGATE, 2);
-    chunk_write_byte(chunk, OP_RETURN, 3);
+    Chunk chunk;
+    chunk_init(&chunk);
     
-    // Test disassembly
-    char* disassembly = chunk_disassemble(chunk, "test");
-    TEST_ASSERT_NOT_NULL(disassembly, "Disassembly should succeed");
+    // Create a simple program: push 42, return
+    int const_idx = chunk_add_constant(&chunk, 42.0);
+    chunk_write(&chunk, OP_CONSTANT, 1);
+    chunk_write(&chunk, const_idx, 1);
+    chunk_write(&chunk, OP_RETURN, 1);
     
-    // Check that disassembly contains expected elements
-    TEST_ASSERT(strstr(disassembly, "OP_CONSTANT") != NULL, "Disassembly should contain OP_CONSTANT");
-    TEST_ASSERT(strstr(disassembly, "OP_NEGATE") != NULL, "Disassembly should contain OP_NEGATE");
-    TEST_ASSERT(strstr(disassembly, "OP_RETURN") != NULL, "Disassembly should contain OP_RETURN");
-    TEST_ASSERT(strstr(disassembly, "42") != NULL, "Disassembly should contain constant value");
+    // Execute bytecode
+    InterpretResult result = vm_interpret(&vm, &chunk);
+    TEST_ASSERT_EQ(INTERPRET_OK, result, "Simple bytecode should execute successfully");
     
-    free(disassembly);
-    chunk_destroy(chunk);
-    TEST_MEMORY_VERIFY("Bytecode disassembly should not leak memory");
+    chunk_free(&chunk);
+    vm_free(&vm);
+    TEST_MEMORY_VERIFY("Bytecode execution should not leak memory");
     
     return true;
 }
 
-// Test bytecode validation
-static bool test_bytecode_validation(void) {
+// Test complex bytecode with arithmetic
+static bool test_complex_bytecode(void) {
     TEST_MEMORY_CHECKPOINT();
     
-    Chunk* chunk = chunk_create();
-    TEST_ASSERT_NOT_NULL(chunk, "Chunk creation should succeed");
+    VM vm;
+    vm_init(&vm);
     
-    // Create valid bytecode
-    int const_idx = chunk_add_constant(chunk, VALUE_NUMBER(42.0));
-    chunk_write_byte(chunk, OP_CONSTANT, 1);
-    chunk_write_byte(chunk, const_idx, 1);
-    chunk_write_byte(chunk, OP_RETURN, 2);
+    Chunk chunk;
+    chunk_init(&chunk);
     
-    // Validate bytecode
-    bool is_valid = chunk_validate(chunk);
-    TEST_ASSERT(is_valid, "Valid bytecode should pass validation");
+    // Create program: (5 + 3) * 2 - 1 = 15
+    int const1 = chunk_add_constant(&chunk, 5.0);
+    int const2 = chunk_add_constant(&chunk, 3.0);
+    int const3 = chunk_add_constant(&chunk, 2.0);
+    int const4 = chunk_add_constant(&chunk, 1.0);
     
-    // Create invalid bytecode (missing return)
-    Chunk* invalid_chunk = chunk_create();
-    chunk_write_byte(invalid_chunk, OP_CONSTANT, 1);
-    chunk_write_byte(invalid_chunk, const_idx, 1);
-    // Missing OP_RETURN
+    chunk_write(&chunk, OP_CONSTANT, 1);  // Push 5
+    chunk_write(&chunk, const1, 1);
+    chunk_write(&chunk, OP_CONSTANT, 2);  // Push 3
+    chunk_write(&chunk, const2, 2);
+    chunk_write(&chunk, OP_ADD, 3);       // 5 + 3 = 8
+    chunk_write(&chunk, OP_CONSTANT, 4);  // Push 2
+    chunk_write(&chunk, const3, 4);
+    chunk_write(&chunk, OP_MULTIPLY, 5);  // 8 * 2 = 16
+    chunk_write(&chunk, OP_CONSTANT, 6);  // Push 1
+    chunk_write(&chunk, const4, 6);
+    chunk_write(&chunk, OP_SUBTRACT, 7);  // 16 - 1 = 15
+    chunk_write(&chunk, OP_RETURN, 8);
     
-    bool is_invalid = chunk_validate(invalid_chunk);
-    TEST_ASSERT(!is_invalid, "Invalid bytecode should fail validation");
+    // Execute complex bytecode
+    BciVmResult result = vm_interpret_with_result(&vm, &chunk);
+    TEST_ASSERT_EQ(INTERPRET_OK, result.status, "Complex bytecode should execute successfully");
+    TEST_ASSERT_EQ(15.0, result.result_value, "Result should be 15.0");
     
-    chunk_destroy(chunk);
-    chunk_destroy(invalid_chunk);
-    TEST_MEMORY_VERIFY("Bytecode validation should not leak memory");
+    chunk_free(&chunk);
+    vm_free(&vm);
+    TEST_MEMORY_VERIFY("Complex bytecode should not leak memory");
     
     return true;
 }
 
-// Test bytecode optimization
-static bool test_bytecode_optimization(void) {
+// Test bytecode with negation
+static bool test_bytecode_negation(void) {
     TEST_MEMORY_CHECKPOINT();
     
-    Chunk* chunk = chunk_create();
-    TEST_ASSERT_NOT_NULL(chunk, "Chunk creation should succeed");
+    VM vm;
+    vm_init(&vm);
     
-    // Create unoptimized bytecode with redundant operations
-    int const1 = chunk_add_constant(chunk, VALUE_NUMBER(5.0));
-    int const2 = chunk_add_constant(chunk, VALUE_NUMBER(3.0));
+    Chunk chunk;
+    chunk_init(&chunk);
     
-    chunk_write_byte(chunk, OP_CONSTANT, 1);
-    chunk_write_byte(chunk, const1, 1);
-    chunk_write_byte(chunk, OP_CONSTANT, 2);
-    chunk_write_byte(chunk, const2, 2);
-    chunk_write_byte(chunk, OP_ADD, 3);
-    chunk_write_byte(chunk, OP_POP, 4);  // Redundant pop
-    chunk_write_byte(chunk, OP_CONSTANT, 5);
-    chunk_write_byte(chunk, const1, 5);
-    chunk_write_byte(chunk, OP_RETURN, 6);
+    // Create program: -(5 + 3) = -8
+    int const1 = chunk_add_constant(&chunk, 5.0);
+    int const2 = chunk_add_constant(&chunk, 3.0);
     
-    size_t original_size = chunk_size(chunk);
+    chunk_write(&chunk, OP_CONSTANT, 1);  // Push 5
+    chunk_write(&chunk, const1, 1);
+    chunk_write(&chunk, OP_CONSTANT, 2);  // Push 3
+    chunk_write(&chunk, const2, 2);
+    chunk_write(&chunk, OP_ADD, 3);       // 5 + 3 = 8
+    chunk_write(&chunk, OP_NEGATE, 4);    // -8
+    chunk_write(&chunk, OP_RETURN, 5);
     
-    // Optimize bytecode
-    chunk_optimize(chunk);
+    // Execute negation bytecode
+    BciVmResult result = vm_interpret_with_result(&vm, &chunk);
+    TEST_ASSERT_EQ(INTERPRET_OK, result.status, "Negation bytecode should execute successfully");
+    TEST_ASSERT_EQ(-8.0, result.result_value, "Result should be -8.0");
     
-    size_t optimized_size = chunk_size(chunk);
-    TEST_ASSERT(optimized_size <= original_size, "Optimization should not increase size");
+    chunk_free(&chunk);
+    vm_free(&vm);
+    TEST_MEMORY_VERIFY("Negation bytecode should not leak memory");
     
-    // Verify optimization removed redundant operations
-    bool has_redundant_pop = false;
-    for (size_t i = 0; i < optimized_size; i++) {
-        if (chunk_get_byte(chunk, i) == OP_POP) {
-            // Check if this pop is actually redundant
-            if (i > 0 && chunk_get_byte(chunk, i-1) == OP_ADD) {
-                has_redundant_pop = true;
-                break;
-            }
-        }
+    return true;
+}
+
+// Test bytecode with division
+static bool test_bytecode_division(void) {
+    TEST_MEMORY_CHECKPOINT();
+    
+    VM vm;
+    vm_init(&vm);
+    
+    Chunk chunk;
+    chunk_init(&chunk);
+    
+    // Create program: 15 / 3 = 5
+    int const1 = chunk_add_constant(&chunk, 15.0);
+    int const2 = chunk_add_constant(&chunk, 3.0);
+    
+    chunk_write(&chunk, OP_CONSTANT, 1);  // Push 15
+    chunk_write(&chunk, const1, 1);
+    chunk_write(&chunk, OP_CONSTANT, 2);  // Push 3
+    chunk_write(&chunk, const2, 2);
+    chunk_write(&chunk, OP_DIVIDE, 3);    // 15 / 3 = 5
+    chunk_write(&chunk, OP_RETURN, 4);
+    
+    // Execute division bytecode
+    BciVmResult result = vm_interpret_with_result(&vm, &chunk);
+    TEST_ASSERT_EQ(INTERPRET_OK, result.status, "Division bytecode should execute successfully");
+    TEST_ASSERT_EQ(5.0, result.result_value, "Result should be 5.0");
+    
+    chunk_free(&chunk);
+    vm_free(&vm);
+    TEST_MEMORY_VERIFY("Division bytecode should not leak memory");
+    
+    return true;
+}
+
+// Test chunk capacity growth
+static bool test_chunk_capacity_growth(void) {
+    TEST_MEMORY_CHECKPOINT();
+    
+    Chunk chunk;
+    chunk_init(&chunk);
+    
+    int initial_capacity = chunk.capacity;
+    
+    // Write many instructions to trigger capacity growth
+    for (int i = 0; i < initial_capacity + 10; i++) {
+        chunk_write(&chunk, OP_RETURN, i + 1);
     }
-    TEST_ASSERT(!has_redundant_pop, "Optimization should remove redundant operations");
     
-    chunk_destroy(chunk);
-    TEST_MEMORY_VERIFY("Bytecode optimization should not leak memory");
+    TEST_ASSERT(chunk.capacity > initial_capacity, "Chunk capacity should grow");
+    TEST_ASSERT_EQ(initial_capacity + 10, chunk.count, "All instructions should be written");
+    
+    chunk_free(&chunk);
+    TEST_MEMORY_VERIFY("Chunk capacity growth should not leak memory");
     
     return true;
 }
 
-// Test bytecode serialization
-static bool test_bytecode_serialization(void) {
+// Test constant pool capacity growth
+static bool test_constant_pool_growth(void) {
     TEST_MEMORY_CHECKPOINT();
     
-    Chunk* chunk = chunk_create();
-    TEST_ASSERT_NOT_NULL(chunk, "Chunk creation should succeed");
+    Chunk chunk;
+    chunk_init(&chunk);
     
-    // Create bytecode
-    int const_idx = chunk_add_constant(chunk, VALUE_NUMBER(42.0));
-    chunk_write_byte(chunk, OP_CONSTANT, 1);
-    chunk_write_byte(chunk, const_idx, 1);
-    chunk_write_byte(chunk, OP_NEGATE, 2);
-    chunk_write_byte(chunk, OP_RETURN, 3);
+    int initial_capacity = chunk.constants.capacity;
     
-    // Serialize chunk
-    size_t serialized_size;
-    uint8_t* serialized_data = chunk_serialize(chunk, &serialized_size);
-    TEST_ASSERT_NOT_NULL(serialized_data, "Serialization should succeed");
-    TEST_ASSERT(serialized_size > 0, "Serialized data should have non-zero size");
-    
-    // Deserialize chunk
-    Chunk* deserialized_chunk = chunk_deserialize(serialized_data, serialized_size);
-    TEST_ASSERT_NOT_NULL(deserialized_chunk, "Deserialization should succeed");
-    
-    // Verify deserialized chunk matches original
-    TEST_ASSERT_EQ(chunk_size(chunk), chunk_size(deserialized_chunk), "Sizes should match");
-    TEST_ASSERT_EQ(chunk_constant_count(chunk), chunk_constant_count(deserialized_chunk), "Constant counts should match");
-    
-    for (size_t i = 0; i < chunk_size(chunk); i++) {
-        TEST_ASSERT_EQ(chunk_get_byte(chunk, i), chunk_get_byte(deserialized_chunk, i), "Bytecode should match");
+    // Add many constants to trigger capacity growth
+    for (int i = 0; i < initial_capacity + 5; i++) {
+        chunk_add_constant(&chunk, (double)i);
     }
     
-    free(serialized_data);
-    chunk_destroy(chunk);
-    chunk_destroy(deserialized_chunk);
-    TEST_MEMORY_VERIFY("Bytecode serialization should not leak memory");
+    TEST_ASSERT(chunk.constants.capacity > initial_capacity, "Constants capacity should grow");
+    TEST_ASSERT_EQ(initial_capacity + 5, chunk.constants.len, "All constants should be added");
+    
+    // Verify all constants are correct
+    for (int i = 0; i < chunk.constants.len; i++) {
+        TEST_ASSERT_EQ((double)i, chunk.constants.data[i], "Constant values should be preserved");
+    }
+    
+    chunk_free(&chunk);
+    TEST_MEMORY_VERIFY("Constant pool growth should not leak memory");
     
     return true;
 }
@@ -270,10 +298,12 @@ static test_function_t vm_bytecode_tests[] = {
     test_bytecode_instruction_writing,
     test_constant_pool,
     test_line_number_tracking,
-    test_bytecode_disassembly,
-    test_bytecode_validation,
-    test_bytecode_optimization,
-    test_bytecode_serialization
+    test_bytecode_execution,
+    test_complex_bytecode,
+    test_bytecode_negation,
+    test_bytecode_division,
+    test_chunk_capacity_growth,
+    test_constant_pool_growth
 };
 
 test_suite_t vm_bytecode_test_suite = {
