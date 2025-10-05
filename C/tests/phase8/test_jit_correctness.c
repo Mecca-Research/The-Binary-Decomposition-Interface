@@ -1,4 +1,5 @@
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +47,7 @@ static Chunk* create_arithmetic_chunk(double a, double b, uint8_t op) {
     chunk_write(chunk, const1, 1);
     int const2 = chunk_add_constant(chunk, b);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const1, 1);
+    chunk_write(chunk, const2, 1);
     chunk_write(chunk, op, 1);
     chunk_write(chunk, OP_RETURN, 1);
     
@@ -61,25 +62,25 @@ static Chunk* create_nested_chunk(void) {
     // Expression: ((2 + 3) * 4) - (10 / 2)
     // = (5 * 4) - 5 = 20 - 5 = 15
     
-    int const_idx = chunk_add_constant(chunk, 2.0);
+    int const1_idx = chunk_add_constant(chunk, 2.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const1, 1);
-    int const_idx = chunk_add_constant(chunk, 3.0);
+    chunk_write(chunk, const1_idx, 1);
+    int const2_idx = chunk_add_constant(chunk, 3.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const1, 1);
+    chunk_write(chunk, const2_idx, 1);
     chunk_write(chunk, OP_ADD, 1);
     
-    int const_idx = chunk_add_constant(chunk, 4.0);
+    int const3_idx = chunk_add_constant(chunk, 4.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const1, 1);
+    chunk_write(chunk, const3_idx, 1);
     chunk_write(chunk, OP_MULTIPLY, 1);
     
-    int const_idx = chunk_add_constant(chunk, 10.0);
+    int const4_idx = chunk_add_constant(chunk, 10.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const1, 1);
-    int const_idx = chunk_add_constant(chunk, 2.0);
+    chunk_write(chunk, const4_idx, 1);
+    int const5_idx = chunk_add_constant(chunk, 2.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const1, 1);
+    chunk_write(chunk, const5_idx, 1);
     chunk_write(chunk, OP_DIVIDE, 1);
     
     chunk_write(chunk, OP_SUBTRACT, 1);
@@ -174,7 +175,7 @@ void test_jit_negation_correctness(void) {
     chunk_init(chunk);
     int const_idx = chunk_add_constant(chunk, 42.0);
     chunk_write(chunk, OP_CONSTANT, 1);
-    chunk_write(chunk, const1, 1);
+    chunk_write(chunk, const_idx, 1);
     chunk_write(chunk, OP_NEGATE, 1);
     chunk_write(chunk, OP_RETURN, 1);
     
@@ -322,3 +323,4 @@ int main(void) {
         return 1;
     }
 }
+
