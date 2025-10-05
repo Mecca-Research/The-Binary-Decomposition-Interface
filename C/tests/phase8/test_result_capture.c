@@ -44,13 +44,14 @@ static int tests_failed = 0;
     }
 
 // Helper to run pipeline with result capture enabled
-#define RUN_PIPELINE(source) \
-    ({ \
-        PipelineConfig config = pipeline_default_config(); \
-        config.enable_gc = false; \
-        config.enable_optimization = false; \
-        pipeline_run_with_config(source, config); \
-    })
+static inline PipelineResult run_pipeline_helper(const char* source) {
+    PipelineConfig config = pipeline_default_config();
+    config.enable_gc = false;
+    config.enable_optimization = false;
+    return pipeline_run_with_config(source, config);
+}
+
+#define RUN_PIPELINE(source) run_pipeline_helper(source)
 
 // ============================================================================
 // RESULT CAPTURE TESTS
