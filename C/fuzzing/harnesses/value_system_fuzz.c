@@ -18,10 +18,10 @@
 #include <math.h>
 
 // Include value system headers
-#include "../vm/value.h"
-#include "../vm/object.h"
-#include "../vm/memory.h"
-#include "../vm/vm.h"
+// Value types are in bci_chunk.h (ValueArray)
+// Object system not used in current VM
+// Memory management handled internally
+#include "vm/bci_vm.h"
 
 // Timeout protection
 #include <signal.h>
@@ -284,7 +284,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         return 0;
     }
     
-    initVM(vm);
+    vm_init(vm);
     
     // Test value creation and operations
     test_value_creation(data, size / 3, vm);
@@ -296,7 +296,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     test_value_printing(data + 2 * size / 3, size - 2 * size / 3, vm);
     
     // Cleanup
-    freeVM(vm);
+    vm_free(vm);
     free(vm);
     
     alarm(0);

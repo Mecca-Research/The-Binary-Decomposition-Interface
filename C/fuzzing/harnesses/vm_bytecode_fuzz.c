@@ -17,10 +17,10 @@
 #include <stdio.h>
 
 // Include VM headers
-#include "../vm/vm.h"
-#include "../vm/chunk.h"
-#include "../vm/value.h"
-#include "../vm/memory.h"
+#include "vm/bci_vm.h"
+#include "vm/bci_chunk.h"
+// Value types are in bci_chunk.h (ValueArray)
+// Memory management handled internally
 
 // Timeout protection for infinite loops
 #include <signal.h>
@@ -36,14 +36,14 @@ static VM* init_fuzz_vm(void) {
     VM* vm = malloc(sizeof(VM));
     if (!vm) return NULL;
     
-    initVM(vm);
+    vm_init(vm);
     return vm;
 }
 
 // Cleanup VM after fuzzing
 static void cleanup_fuzz_vm(VM* vm) {
     if (vm) {
-        freeVM(vm);
+        vm_free(vm);
         free(vm);
     }
 }
@@ -55,11 +55,11 @@ static Chunk* create_fuzz_chunk(const uint8_t* data, size_t size) {
     Chunk* chunk = malloc(sizeof(Chunk));
     if (!chunk) return NULL;
     
-    initChunk(chunk);
+    chunk_init(chunk);
     
     // Add fuzzed bytecode to chunk
     for (size_t i = 0; i < size && i < 1024; i++) {
-        writeChunk(chunk, data[i], i);
+        chunk_write(chunk, data[i], i);
     }
     
     return chunk;
@@ -92,10 +92,10 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     }
     
     // Execute the fuzzed bytecode
-    InterpretResult result = interpret(vm, chunk);
+    InterpretResult result = vm_interpret(vm, chunk);
     
     // Cleanup
-    freeChunk(chunk);
+    chunk_free(chunk);
     free(chunk);
     cleanup_fuzz_vm(vm);
     

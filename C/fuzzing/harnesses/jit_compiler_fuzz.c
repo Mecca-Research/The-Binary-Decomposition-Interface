@@ -17,10 +17,10 @@
 #include <stdio.h>
 
 // Include JIT headers
-#include "../vm/vm.h"
-#include "../vm/chunk.h"
-#include "../vm/jit.h"
-#include "../vm/memory.h"
+#include "vm/bci_vm.h"
+#include "vm/bci_chunk.h"
+#include "vm/jit/jit_compiler.h"
+// Memory management handled internally
 
 // Timeout protection
 #include <signal.h>
@@ -36,7 +36,7 @@ static VM* init_jit_fuzz_vm(void) {
     VM* vm = malloc(sizeof(VM));
     if (!vm) return NULL;
     
-    initVM(vm);
+    vm_init(vm);
     
     // Enable JIT compilation
     if (vm->jit) {
@@ -54,11 +54,11 @@ static Chunk* create_jit_fuzz_chunk(const uint8_t* data, size_t size) {
     Chunk* chunk = malloc(sizeof(Chunk));
     if (!chunk) return NULL;
     
-    initChunk(chunk);
+    chunk_init(chunk);
     
     // Create a loop structure to trigger hotspot detection
-    writeChunk(chunk, OP_CONSTANT, 0);
-    writeChunk(chunk, 0, 0); // Constant index
+    chunk_write(chunk, OP_CONSTANT, 0);
+    chunk_write(chunk, 0, 0); // Constant index
     
     // Add loop start marker
     size_t loop_start = chunk->count;
@@ -66,13 +66,13 @@ static Chunk* create_jit_fuzz_chunk(const uint8_t* data, size_t size) {
     // Add fuzzed bytecode in the loop
     for (size_t i = 0; i < size && i < 512; i++) {
         uint8_t opcode = data[i] % 32; // Limit to valid opcode range
-        writeChunk(chunk, opcode, i);
+        chunk_write(chunk, opcode, i);
     }
     
     // Add loop back instruction
-    writeChunk(chunk, OP_LOOP, size);
-    writeChunk(chunk, (chunk->count - loop_start) & 0xFF, size);
-    writeChunk(chunk, ((chunk->count - loop_start) >> 8) & 0xFF, size);
+// DISABLED:     chunk_write(chunk, OP_LOOP, size); // OP_LOOP not defined in current VM
+    chunk_write(chunk, (chunk->count - loop_start) & 0xFF, size);
+    chunk_write(chunk, ((chunk->count - loop_start) >> 8) & 0xFF, size);
     
     // Add constants for the chunk
     writeConstant(chunk, NUMBER_VAL(1.0));
@@ -89,7 +89,7 @@ static void test_jit_compilation(const uint8_t* data, size_t size) {
     
     Chunk* chunk = create_jit_fuzz_chunk(data, size);
     if (!chunk) {
-        freeVM(vm);
+        vm_free(vm);
         free(vm);
         return;
     }
@@ -103,9 +103,9 @@ static void test_jit_compilation(const uint8_t* data, size_t size) {
         freeJITFunction(jit_func);
     }
     
-    freeChunk(chunk);
+    chunk_free(chunk);
     free(chunk);
-    freeVM(vm);
+    vm_free(vm);
     free(vm);
 }
 
@@ -130,22 +130,22 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     
     Chunk* chunk = create_jit_fuzz_chunk(data, size);
     if (!chunk) {
-        freeVM(vm);
+        vm_free(vm);
         free(vm);
         alarm(0);
         return 0;
     }
     
     // Execute with JIT enabled - this should trigger compilation
-    InterpretResult result = interpret(vm, chunk);
+    InterpretResult result = vm_interpret(vm, chunk);
     
     // Test direct JIT compilation
     test_jit_compilation(data, size);
     
     // Cleanup
-    freeChunk(chunk);
+    chunk_free(chunk);
     free(chunk);
-    freeVM(vm);
+    vm_free(vm);
     free(vm);
     
     alarm(0);

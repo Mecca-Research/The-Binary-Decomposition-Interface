@@ -17,10 +17,10 @@
 #include <stdio.h>
 
 // Include memory management headers
-#include "../vm/memory.h"
-#include "../vm/value.h"
-#include "../vm/object.h"
-#include "../vm/vm.h"
+// Memory management handled internally
+// Value types are in bci_chunk.h (ValueArray)
+// Object system not used in current VM
+#include "vm/bci_vm.h"
 
 // Timeout protection
 #include <signal.h>
@@ -73,7 +73,7 @@ static void test_allocation_patterns(const uint8_t* data, size_t size) {
     VM* vm = malloc(sizeof(VM));
     if (!vm) return;
     
-    initVM(vm);
+    vm_init(vm);
     
     size_t offset = 0;
     uint32_t num_operations = (data[offset] % 32) + 1; // 1-32 operations
@@ -81,7 +81,7 @@ static void test_allocation_patterns(const uint8_t* data, size_t size) {
     
     void** ptrs = malloc(num_operations * sizeof(void*));
     if (!ptrs) {
-        freeVM(vm);
+        vm_free(vm);
         free(vm);
         return;
     }
@@ -149,7 +149,7 @@ static void test_allocation_patterns(const uint8_t* data, size_t size) {
     }
     
     free(ptrs);
-    freeVM(vm);
+    vm_free(vm);
     free(vm);
 }
 
@@ -160,7 +160,7 @@ static void test_object_gc(const uint8_t* data, size_t size) {
     VM* vm = malloc(sizeof(VM));
     if (!vm) return;
     
-    initVM(vm);
+    vm_init(vm);
     
     size_t offset = 0;
     uint32_t num_objects = (data[offset] % 16) + 1; // 1-16 objects
@@ -209,7 +209,7 @@ static void test_object_gc(const uint8_t* data, size_t size) {
     // Final GC
     collectGarbage(vm);
     
-    freeVM(vm);
+    vm_free(vm);
     free(vm);
 }
 

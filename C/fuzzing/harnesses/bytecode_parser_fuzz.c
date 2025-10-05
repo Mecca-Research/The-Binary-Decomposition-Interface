@@ -17,10 +17,10 @@
 #include <stdio.h>
 
 // Include parser headers
-#include "../vm/chunk.h"
-#include "../vm/value.h"
-#include "../vm/memory.h"
-#include "../vm/debug.h"
+#include "vm/bci_chunk.h"
+// Value types are in bci_chunk.h (ValueArray)
+// Memory management handled internally
+// Debug functions not needed for fuzzing
 
 // Timeout protection
 #include <signal.h>
@@ -56,12 +56,12 @@ static Chunk* parse_bytecode(const uint8_t* data, size_t size) {
     Chunk* chunk = malloc(sizeof(Chunk));
     if (!chunk) return NULL;
     
-    initChunk(chunk);
+    chunk_init(chunk);
     
     // Parse code section
     const uint8_t* code_data = data + offset;
     for (uint32_t i = 0; i < header->code_size && offset < size; i++) {
-        writeChunk(chunk, code_data[i], i);
+        chunk_write(chunk, code_data[i], i);
         offset++;
     }
     
@@ -99,7 +99,7 @@ static bool validate_chunk(Chunk* chunk) {
                 
             case OP_JUMP:
             case OP_JUMP_IF_FALSE:
-            case OP_LOOP:
+// DISABLED:             case OP_LOOP: // OP_LOOP not defined in current VM
                 if (i + 2 >= chunk->count) return false;
                 i += 2; // Skip 16-bit operand
                 break;
@@ -157,14 +157,14 @@ static void test_instruction_parsing(Chunk* chunk) {
             
             case OP_JUMP:
             case OP_JUMP_IF_FALSE:
-            case OP_LOOP: {
+// DISABLED:             case OP_LOOP: { // OP_LOOP not defined in current VM
                 if (offset + 2 < chunk->count) {
                     uint16_t jump_offset = 
                         (chunk->code[offset + 1] << 8) |
                         chunk->code[offset + 2];
                     
                     // Validate jump target
-                    int target = (instruction == OP_LOOP) ? 
+// DISABLED:                     int target = (instruction == OP_LOOP) ?  // OP_LOOP not defined in current VM
                         offset - jump_offset : offset + jump_offset;
                     
                     if (target >= 0 && target < chunk->count) {
@@ -214,12 +214,12 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     // Test direct chunk creation from raw data
     Chunk* raw_chunk = malloc(sizeof(Chunk));
     if (raw_chunk) {
-        initChunk(raw_chunk);
+        chunk_init(raw_chunk);
         
         // Add raw data as bytecode
         size_t code_size = size > 1024 ? 1024 : size;
         for (size_t i = 0; i < code_size; i++) {
-            writeChunk(raw_chunk, data[i], i);
+            chunk_write(raw_chunk, data[i], i);
         }
         
         // Test validation
@@ -233,7 +233,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
             test_debug_parsing(raw_chunk);
         }
         
-        freeChunk(raw_chunk);
+        chunk_free(raw_chunk);
         free(raw_chunk);
     }
     
@@ -247,7 +247,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
             test_debug_parsing(parsed_chunk);
         }
         
-        freeChunk(parsed_chunk);
+        chunk_free(parsed_chunk);
         free(parsed_chunk);
     }
     
