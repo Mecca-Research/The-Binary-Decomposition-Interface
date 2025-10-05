@@ -1,3 +1,43 @@
+/*
+ * OPCODE COMPATIBILITY NOTE:
+ * 
+ * This harness has been updated to work with the current VM implementation
+ * which supports only 7 basic opcodes (defined in C/vm/bci_chunk.h):
+ *   - OP_RETURN      (return from function)
+ *   - OP_CONSTANT    (load constant)
+ *   - OP_NEGATE      (unary negation)
+ *   - OP_ADD         (addition)
+ *   - OP_SUBTRACT    (subtraction)
+ *   - OP_MULTIPLY    (multiplication)
+ *   - OP_DIVIDE      (division)
+ * 
+ * Code sections requiring additional opcodes (control flow, variables, 
+ * function calls, etc.) have been commented out with TODO markers.
+ * These will be re-enabled as the VM implementation evolves.
+ * 
+ * See C/fuzzing/OPCODE_ANALYSIS.md for detailed opcode usage analysis.
+ */
+
+/*
+ * OPCODE COMPATIBILITY NOTE:
+ * 
+ * This harness has been updated to work with the current VM implementation
+ * which supports only 7 basic opcodes:
+ *   - OP_RETURN      (return from function)
+ *   - OP_CONSTANT    (load constant)
+ *   - OP_ADD         (addition)
+ *   - OP_SUBTRACT    (subtraction)
+ *   - OP_MULTIPLY    (multiplication)
+ *   - OP_DIVIDE      (division)
+ *   - OP_NEGATE      (unary negation)
+ * 
+ * Code sections requiring additional opcodes (control flow, variables, 
+ * function calls, etc.) have been commented out with TODO markers.
+ * These will be re-enabled as the VM implementation evolves.
+ * 
+ * See C/fuzzing/OPCODE_ANALYSIS.md for detailed opcode usage analysis.
+ */
+
 
 /*
  * VM Bytecode Execution Fuzzing Harness
@@ -11,6 +51,7 @@
  */
 
 #include <stdint.h>
+#include <unistd.h>  // For alarm()
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
