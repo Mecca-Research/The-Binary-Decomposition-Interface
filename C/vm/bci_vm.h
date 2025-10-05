@@ -44,6 +44,9 @@ InterpretResult vm_interpret(VM* vm, Chunk* chunk);
 void vm_stack_push(VM* vm, double value);
 double vm_stack_pop(VM* vm);
 
+// Reset VM state for reuse
+void vm_reset(VM* vm);
+
 // Compile-time invariants
 static_assert(sizeof(void*) >= 4, "VM requires at least 32-bit pointers");
 static_assert(sizeof(double) == 8, "VM requires 64-bit doubles");

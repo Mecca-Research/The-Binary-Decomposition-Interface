@@ -287,7 +287,6 @@ bool enhanced_vm_execute(EnhancedVM* vm, const Chunk* chunk) {
 bool enhanced_vm_execute_function(EnhancedVM* vm, uint32_t function_id) {
     if (!vm) return false;
     
-    (void)function_id;
     vm->total_executions++;
     
     // TODO: Implement function execution

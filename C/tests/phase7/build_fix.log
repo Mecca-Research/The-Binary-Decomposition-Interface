@@ -1,0 +1,16 @@
+gcc -std=c2x -Wall -Wextra -Wpedantic -I../.. -I../../compiler/types -g -O2 -o test_vm_gc_integration test_vm_gc_integration.c ../../vm/bci_vm.c ../../vm/bci_chunk.c ../../vm/vm.c ../../vm/gc/mark_sweep.c ../../vm/gc/generational_gc.c -lm
+test_vm_gc_integration.c: In function ‘test_complex_object_graph’:
+test_vm_gc_integration.c:322:15: warning: unused variable ‘obj_c’ [-Wunused-variable]
+  322 |     GCObject* obj_c = (GCObject*)vm_alloc(vm, 100);
+      |               ^~~~~
+test_vm_gc_integration.c:321:15: warning: unused variable ‘obj_b’ [-Wunused-variable]
+  321 |     GCObject* obj_b = (GCObject*)vm_alloc(vm, 100);
+      |               ^~~~~
+../../vm/bci_vm.c: In function ‘vm_free’:
+../../vm/bci_vm.c:17:18: warning: unused parameter ‘vm’ [-Wunused-parameter]
+   17 | void vm_free(VM* vm) {
+      |              ~~~~^~
+../../vm/vm.c: In function ‘enhanced_vm_execute_function’:
+../../vm/vm.c:287:60: warning: unused parameter ‘function_id’ [-Wunused-parameter]
+  287 | bool enhanced_vm_execute_function(EnhancedVM* vm, uint32_t function_id) {
+      |                                                   ~~~~~~~~~^~~~~~~~~~~

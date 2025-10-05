@@ -78,7 +78,7 @@ static bool match(Parser* parser, TokenKind kind) {
 
 // Forward declaration for the precedence table.
 typedef struct ParseRule ParseRule;
-// static ParseRule* get_rule(TokenKind kind);  // Unused for now
+static ParseRule* get_rule(TokenKind kind);
 
 // primary = NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;
 static AstNode* primary(Parser* parser) {
@@ -230,7 +230,6 @@ void parser_init(Parser* parser, Lexer* lexer) {
 }
 
 void parser_free(Parser* parser) {
-    (void)parser;
     // Nothing to free, parser doesn't own the lexer.
 }
 

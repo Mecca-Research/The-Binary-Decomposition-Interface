@@ -1,0 +1,27 @@
+gcc -std=c2x -Wall -Wextra -Wpedantic -I../.. -g -O2 -o test_vm_gc_integration test_vm_gc_integration.c ../../vm/bci_vm.c ../../vm/bci_chunk.c ../../vm/vm.c ../../vm/gc/mark_sweep.c ../../vm/gc/generational_gc.c -lm
+In file included from ../../vm/bci_vm.h:8,
+                 from ../../vm/vm.h:5,
+                 from test_vm_gc_integration.c:6:
+../../vm/bci_chunk.h:9:10: fatal error: bci_types.h: No such file or directory
+    9 | #include "bci_types.h"
+      |          ^~~~~~~~~~~~~
+compilation terminated.
+In file included from ../../vm/bci_vm.h:8,
+                 from ../../vm/bci_vm.c:6:
+../../vm/bci_chunk.h:9:10: fatal error: bci_types.h: No such file or directory
+    9 | #include "bci_types.h"
+      |          ^~~~~~~~~~~~~
+compilation terminated.
+In file included from ../../vm/bci_chunk.c:6:
+../../vm/bci_chunk.h:9:10: fatal error: bci_types.h: No such file or directory
+    9 | #include "bci_types.h"
+      |          ^~~~~~~~~~~~~
+compilation terminated.
+In file included from ../../vm/bci_vm.h:8,
+                 from ../../vm/vm.h:5,
+                 from ../../vm/vm.c:6:
+../../vm/bci_chunk.h:9:10: fatal error: bci_types.h: No such file or directory
+    9 | #include "bci_types.h"
+      |          ^~~~~~~~~~~~~
+compilation terminated.
+make: *** [Makefile:22: test_vm_gc_integration] Error 1
