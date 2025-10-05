@@ -8,6 +8,10 @@
 #include <math.h>
 #include <pthread.h>
 
+// Forward declarations
+static bool graph_executor_execute_sequential(GraphExecutor* executor, Graph* graph,
+                                            GraphExecutionContext* context);
+
 // Helper macros
 #define NANO_TO_SEC(ns) ((double)(ns) / 1000000000.0)
 #define SEC_TO_NANO(sec) ((uint64_t)((sec) * 1000000000.0))
@@ -179,6 +183,7 @@ GraphExecutionContext* graph_execution_context_create(Graph* graph) {
     GraphExecutionContext* context = (GraphExecutionContext*)calloc(1, sizeof(GraphExecutionContext));
     if (!context) return NULL;
     
+    context->graph = graph;  // Store reference to the graph
     context->input_count = graph->input_count;
     context->output_count = graph->output_count;
     
@@ -352,10 +357,6 @@ GraphExecutionResult graph_executor_execute(GraphExecutor* executor, Graph* grap
     return result;
 }
 
-// Forward declaration
-static bool graph_executor_execute_sequential(GraphExecutor* executor, Graph* graph,
-                                            GraphExecutionContext* context);
-
 // Sequential execution implementation
 static bool graph_executor_execute_sequential(GraphExecutor* executor, Graph* graph,
                                             GraphExecutionContext* context) {
@@ -482,9 +483,34 @@ bool graph_execute_node(GraphNode* node, GraphValue* inputs, GraphValue* outputs
             break;
             
         case GRAPH_NODE_INPUT:
-            // Input nodes don't execute - their values come from context
-            outputs[0] = graph_value_zero(GRAPH_TYPE_F64);
-            success = true;
+            // Input nodes get their values from the execution context
+            if (context && context->input_values) {
+                // Find the input index for this node by searching in the graph's inputs array
+                uint32_t input_index = UINT32_MAX;
+                Graph* graph = context->graph;
+                if (graph) {
+                    for (uint32_t i = 0; i < graph->input_count; i++) {
+                        if (graph->inputs[i] == node) {
+                            input_index = i;
+                            break;
+                        }
+                    }
+                }
+                
+                // Use the actual input value if found and within bounds
+                if (input_index != UINT32_MAX && input_index < context->input_count) {
+                    outputs[0] = context->input_values[input_index];
+                    success = true;
+                } else {
+                    // Error case: input node not found or index out of bounds
+                    outputs[0] = graph_value_zero(GRAPH_TYPE_F64);
+                    success = false;
+                }
+            } else {
+                // No context or input values provided
+                outputs[0] = graph_value_zero(GRAPH_TYPE_F64);
+                success = false;
+            }
             break;
             
         case GRAPH_NODE_OUTPUT:
