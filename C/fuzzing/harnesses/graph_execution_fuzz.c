@@ -17,11 +17,11 @@
 #include <stdio.h>
 
 // Include graph headers
-#include "../graph/graph.h"
-#include "../graph/graph_builder.h"
-#include "../graph/graph_executor.h"
-#include "../graph/graph_optimizer.h"
-#include "../vm/memory.h"
+#include "vm/graph/graph.h"
+#include "vm/graph/graph_builder.h"
+#include "vm/graph/graph_executor.h"
+#include "vm/graph/graph_optimizer.h"
+// Memory management handled internally
 
 // Timeout protection
 #include <signal.h>
