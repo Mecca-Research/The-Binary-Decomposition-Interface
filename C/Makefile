@@ -263,4 +263,146 @@ clean_phase8_graph:
 clean_vm:
 	rm -f $(VM_OBJECTS) libvm.a
 
+# Comprehensive Test Infrastructure
+# =================================
+
+# Coverage compilation flags
+COVERAGE_CFLAGS = -fprofile-arcs -ftest-coverage -fPIC -O0 -g
+COVERAGE_LDFLAGS = -lgcov --coverage
+
+# Test framework
+TEST_FRAMEWORK_SOURCES = tests/framework/test_framework.c tests/framework/test_runner.c
+TEST_FRAMEWORK_OBJECTS = $(TEST_FRAMEWORK_SOURCES:.c=.o)
+TEST_FRAMEWORK_BIN = tests/framework/test_runner
+
+# Unit test sources (150+ tests)
+UNIT_TEST_SOURCES = tests/unit/vm/test_vm_core.c \
+	           tests/unit/vm/test_vm_bytecode.c \
+	           tests/unit/vm/test_vm_memory.c \
+	           tests/unit/vm/test_vm_gc.c \
+	           tests/unit/vm/test_vm_stack.c \
+	           tests/unit/jit/test_jit_compiler.c \
+	           tests/unit/jit/test_jit_hotspot.c \
+	           tests/unit/jit/test_jit_cache.c \
+	           tests/unit/jit/test_jit_optimization.c \
+	           tests/unit/graph/test_graph_basic.c \
+	           tests/unit/graph/test_graph_builder.c \
+	           tests/unit/graph/test_graph_executor.c \
+	           tests/unit/graph/test_graph_optimizer.c \
+	           tests/unit/memory/test_memory_pool.c \
+	           tests/unit/memory/test_memory_gc.c \
+	           tests/unit/bytecode/test_bytecode_parser.c \
+	           tests/unit/bytecode/test_bytecode_validator.c \
+	           tests/unit/values/test_value_system.c \
+	           tests/unit/values/test_type_system.c \
+	           tests/unit/errors/test_error_handling.c
+
+# Integration test sources (85+ tests)
+INTEGRATION_TEST_SOURCES = tests/integration/vm_jit/test_vm_jit_integration.c \
+	                  tests/integration/graph_vm/test_graph_vm_integration.c \
+	                  tests/integration/jit_graph/test_jit_graph_integration.c \
+	                  tests/integration/memory_system/test_memory_integration.c \
+	                  tests/integration/performance/test_performance_integration.c \
+	                  tests/integration/error_handling/test_error_integration.c
+
+# Test objects
+UNIT_TEST_OBJECTS = $(UNIT_TEST_SOURCES:.c=.o)
+INTEGRATION_TEST_OBJECTS = $(INTEGRATION_TEST_SOURCES:.c=.o)
+
+# Coverage targets
+.PHONY: coverage coverage-build coverage-test coverage-report coverage-clean
+.PHONY: test-comprehensive test-unit test-integration test-performance test-memory
+.PHONY: test-all test-quick test-ci
 .PHONY: vm_lib test_phase7 test_phase8_graph test_vm_complete clean_phase7 clean_phase8_graph clean_vm
+
+# Build with coverage instrumentation
+coverage-build:
+	@echo "Building with coverage instrumentation..."
+	$(MAKE) clean
+	$(MAKE) CFLAGS="$(CFLAGS) $(COVERAGE_CFLAGS)" LDFLAGS="$(LDFLAGS) $(COVERAGE_LDFLAGS)" all vm_lib
+
+# Build test framework
+test-framework: $(TEST_FRAMEWORK_BIN)
+
+$(TEST_FRAMEWORK_BIN): $(TEST_FRAMEWORK_OBJECTS)
+	@echo "Building comprehensive test framework..."
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lm -lpthread
+
+# Build unit tests
+test-unit-build: $(UNIT_TEST_OBJECTS)
+	@echo "Unit test objects built"
+
+# Build integration tests  
+test-integration-build: $(INTEGRATION_TEST_OBJECTS)
+	@echo "Integration test objects built"
+
+# Run comprehensive test suite
+test-comprehensive: test-framework
+	@echo "Running comprehensive test suite..."
+	./scripts/run_tests.sh
+
+# Run unit tests only
+test-unit: test-framework
+	@echo "Running unit tests..."
+	./scripts/run_tests.sh --unit-only
+
+# Run integration tests only
+test-integration: test-framework
+	@echo "Running integration tests..."
+	./scripts/run_tests.sh --integration-only
+
+# Run performance tests
+test-performance: test-framework
+	@echo "Running performance tests..."
+	./scripts/run_tests.sh --performance
+
+# Run memory leak detection
+test-memory: test-framework
+	@echo "Running memory leak detection..."
+	./scripts/run_tests.sh --no-memory-tests
+
+# Quick test suite (essential tests only)
+test-quick: test-framework
+	@echo "Running quick test suite..."
+	./scripts/run_tests.sh --unit-only --sequential
+
+# CI test suite (all tests with coverage)
+test-ci: coverage-build test-framework
+	@echo "Running CI test suite with coverage..."
+	./scripts/run_tests.sh
+	$(MAKE) coverage-report
+
+# Generate coverage reports
+coverage: coverage-build test-comprehensive coverage-report
+
+coverage-test: test-comprehensive
+
+coverage-report:
+	@echo "Generating coverage reports..."
+	./scripts/generate_coverage.sh
+
+# Clean coverage data
+coverage-clean:
+	@echo "Cleaning coverage data..."
+	find . -name "*.gcda" -delete 2>/dev/null || true
+	find . -name "*.gcno" -delete 2>/dev/null || true
+	find . -name "*.gcov" -delete 2>/dev/null || true
+	rm -rf coverage_reports test_results
+
+# All tests (comprehensive suite)
+test-all: test-comprehensive
+
+# Clean test artifacts
+clean-tests:
+	rm -f $(TEST_FRAMEWORK_OBJECTS) $(UNIT_TEST_OBJECTS) $(INTEGRATION_TEST_OBJECTS)
+	rm -f $(TEST_FRAMEWORK_BIN)
+	rm -rf test_results coverage_reports
+
+# Enhanced clean target
+clean: clean-tests coverage-clean
+	rm -f $(BCI_OBJS) $(BTL_OBJS) $(TYPES_EXT_OBJS) $(PARSER_EXT_OBJS) $(SEMANTIC_EXT_OBJS)
+	rm -f $(LIBBCI) $(LIBBTL) $(LIBTYPES_EXT) $(LIBPARSER_EXT) $(LIBSEMANTIC_EXT)
+	rm -f $(TESTS) $(PHASE3_TESTS) $(BENCHMARKS)
+	rm -f $(VM_OBJECTS) libvm.a
+	rm -f $(PHASE7_OBJECTS) $(PHASE7_TEST_OBJECTS) $(PHASE7_TEST_BINS)
+	rm -f $(PHASE8_GRAPH_OBJECTS) $(PHASE8_GRAPH_TEST_OBJECTS) $(PHASE8_GRAPH_TEST_BINS)
