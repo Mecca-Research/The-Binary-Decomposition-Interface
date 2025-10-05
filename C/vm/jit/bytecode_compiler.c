@@ -28,7 +28,7 @@ void bytecode_compiler_destroy(BytecodeCompiler* compiler) {
 
 bool bytecode_compiler_compile_chunk(
     BytecodeCompiler* compiler,
-    const BCIChunk* chunk,
+    const Chunk* chunk,
     uint32_t function_id,
     CompilationResult* result
 ) {

@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 // Hot path detection thresholds
 #define HOT_PATH_THRESHOLD_BASELINE 100
