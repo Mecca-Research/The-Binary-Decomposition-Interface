@@ -31,8 +31,12 @@ double vm_stack_pop(VM* vm) {
 
 // --- Core VM Execution Logic ---
 
-// The main execution loop for the VM.
-static InterpretResult run(VM* vm) {
+// The main execution loop for the VM (internal, returns result structure).
+static BciVmResult run_with_result(VM* vm) {
+    BciVmResult result;
+    result.status = INTERPRET_OK;
+    result.result_value = 0.0;
+
 #define READ_BYTE() (*vm->ip++)
 #define READ_CONSTANT() (vm->chunk->constants.data[READ_BYTE()])
 
@@ -49,8 +53,14 @@ static InterpretResult run(VM* vm) {
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
             case OP_RETURN: {
-                printf("Result: %g\n", vm_stack_pop(vm));
-                return INTERPRET_OK;
+                // Capture the result value BEFORE popping it
+                if (vm->stack_top > vm->stack) {
+                    result.result_value = vm->stack_top[-1];  // Peek at top value
+                }
+                double value = vm_stack_pop(vm);
+                printf("Result: %g\n", value);
+                result.status = INTERPRET_OK;
+                return result;
             }
             case OP_CONSTANT: {
                 double constant = READ_CONSTANT();
@@ -68,7 +78,8 @@ static InterpretResult run(VM* vm) {
             
             default:
                 // Handle unknown opcode
-                return INTERPRET_RUNTIME_ERROR;
+                result.status = INTERPRET_RUNTIME_ERROR;
+                return result;
         }
     }
 
@@ -77,10 +88,17 @@ static InterpretResult run(VM* vm) {
 #undef BINARY_OP
 }
 
-InterpretResult vm_interpret(VM* vm, Chunk* chunk) {
+// New enhanced function that returns result structure
+BciVmResult vm_interpret_with_result(VM* vm, Chunk* chunk) {
     vm->chunk = chunk;
     vm->ip = vm->chunk->code;
-    return run(vm);
+    return run_with_result(vm);
+}
+
+// Legacy function for backward compatibility
+InterpretResult vm_interpret(VM* vm, Chunk* chunk) {
+    BciVmResult result = vm_interpret_with_result(vm, chunk);
+    return result.status;
 }
 
 void vm_reset(VM* vm) {

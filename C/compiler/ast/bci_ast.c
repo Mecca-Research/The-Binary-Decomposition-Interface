@@ -67,8 +67,17 @@ void ast_free_node(AstNode* node) {
 AstNode* ast_new_literal_int(int64_t value) {
     AstNode* node = ast_new_node(AST_NODE_LITERAL);
     if (!node) return nullptr;
+    // For now, treat integers as doubles for simplicity (VM uses double stack)
+    node->as.literal.type = nullptr;
+    node->as.literal.value.f64 = (double)value;
+    return node;
+}
+
+AstNode* ast_new_literal_float(double value) {
+    AstNode* node = ast_new_node(AST_NODE_LITERAL);
+    if (!node) return nullptr;
     node->as.literal.type = nullptr; // Type will be set during semantic analysis
-    node->as.literal.value.i64 = value;
+    node->as.literal.value.f64 = value;
     return node;
 }
 

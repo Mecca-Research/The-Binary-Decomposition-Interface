@@ -92,11 +92,8 @@ static AstNode* primary(Parser* parser) {
     }
     
     if (match(parser, TOKEN_FLOAT_LITERAL)) {
-        // Note: ast_new_literal_int is a placeholder. A proper AST would have
-        // AstNode* ast_new_literal_float(double value);
-        // For now, we will truncate.
         double value = strtod(parser->previous.start, nullptr);
-        return ast_new_literal_int((int64_t)value);
+        return ast_new_literal_float(value);
     }
 
     if (match(parser, TOKEN_LPAREN)) {
