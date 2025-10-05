@@ -348,3 +348,309 @@ help: info
 
 %.d: %.c
 	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< -MF $@
+
+# ============================================================================
+# Fuzzing Infrastructure - Comprehensive Security Testing
+# ============================================================================
+
+# Fuzzing Configuration
+FUZZING_DIR := C/fuzzing
+FUZZING_BUILD_DIR := build/fuzzing
+FUZZING_HARNESSES := vm_bytecode jit_compiler graph_execution memory_management bytecode_parser value_system
+
+# AFL++ Configuration
+AFL_CC := afl-clang-fast
+AFL_CXX := afl-clang-fast++
+AFL_CFLAGS := -O2 -g -fsanitize=address -fsanitize=undefined
+AFL_CFLAGS += -D__AFL_COMPILER -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+
+# LibFuzzer Configuration  
+LIBFUZZER_CC := clang
+LIBFUZZER_CXX := clang++
+LIBFUZZER_CFLAGS := -O1 -g -fsanitize=fuzzer,address,undefined
+LIBFUZZER_CFLAGS += -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+
+# Sanitizer Configuration
+SANITIZER_CC := clang
+SANITIZER_CXX := clang++
+SANITIZER_CFLAGS := -O1 -g -fsanitize=address,undefined,memory
+SANITIZER_CFLAGS += -fno-sanitize-recover=all -fno-omit-frame-pointer
+
+# Coverage Configuration
+COVERAGE_CC := gcc
+COVERAGE_CXX := g++
+COVERAGE_CFLAGS := -O0 -g --coverage -fprofile-arcs -ftest-coverage
+COVERAGE_LDFLAGS := --coverage -lgcov
+
+# Common fuzzing includes
+FUZZ_INCLUDES := -I$(FUZZING_DIR)/harnesses -IC -IC/vm -IC/graph -IC/jit
+
+# ============================================================================
+# Fuzzing Build Targets
+# ============================================================================
+
+# Create fuzzing build directory
+$(FUZZING_BUILD_DIR):
+	@mkdir -p $(FUZZING_BUILD_DIR)
+
+# AFL++ Harness Compilation
+define AFL_HARNESS_RULE
+$(FUZZING_BUILD_DIR)/afl_$(1): $(FUZZING_DIR)/harnesses/$(1)_fuzz.c $(FUZZING_BUILD_DIR)
+	@echo "==> Building AFL++ harness: $(1)"
+	@$(AFL_CC) $(AFL_CFLAGS) $(FUZZ_INCLUDES) \
+	        $(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
+	        -o $(FUZZING_BUILD_DIR)/afl_$(1) \
+	        2>/dev/null || echo "Warning: AFL++ build failed for $(1)"
+endef
+
+# LibFuzzer Harness Compilation
+define LIBFUZZER_HARNESS_RULE
+$(FUZZING_BUILD_DIR)/libfuzzer_$(1): $(FUZZING_DIR)/harnesses/$(1)_fuzz.c $(FUZZING_BUILD_DIR)
+	@echo "==> Building LibFuzzer harness: $(1)"
+	@$(LIBFUZZER_CC) $(LIBFUZZER_CFLAGS) $(FUZZ_INCLUDES) \
+	        $(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
+	        -o $(FUZZING_BUILD_DIR)/libfuzzer_$(1) \
+	        2>/dev/null || echo "Warning: LibFuzzer build failed for $(1)"
+endef
+
+# Sanitizer Harness Compilation
+define SANITIZER_HARNESS_RULE
+$(FUZZING_BUILD_DIR)/sanitizer_$(1): $(FUZZING_DIR)/harnesses/$(1)_fuzz.c $(FUZZING_BUILD_DIR)
+	@echo "==> Building Sanitizer harness: $(1)"
+	@$(SANITIZER_CC) $(SANITIZER_CFLAGS) $(FUZZ_INCLUDES) \
+	        $(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
+	        -o $(FUZZING_BUILD_DIR)/sanitizer_$(1) \
+	        2>/dev/null || echo "Warning: Sanitizer build failed for $(1)"
+endef
+
+# Coverage Harness Compilation
+define COVERAGE_HARNESS_RULE
+$(FUZZING_BUILD_DIR)/coverage_$(1): $(FUZZING_DIR)/harnesses/$(1)_fuzz.c $(FUZZING_BUILD_DIR)
+	@echo "==> Building Coverage harness: $(1)"
+	@$(COVERAGE_CC) $(COVERAGE_CFLAGS) $(FUZZ_INCLUDES) \
+	        $(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
+	        -o $(FUZZING_BUILD_DIR)/coverage_$(1) \
+	        $(COVERAGE_LDFLAGS) \
+	        2>/dev/null || echo "Warning: Coverage build failed for $(1)"
+endef
+
+# Generate rules for all harnesses
+$(foreach harness,$(FUZZING_HARNESSES),$(eval $(call AFL_HARNESS_RULE,$(harness))))
+$(foreach harness,$(FUZZING_HARNESSES),$(eval $(call LIBFUZZER_HARNESS_RULE,$(harness))))
+$(foreach harness,$(FUZZING_HARNESSES),$(eval $(call SANITIZER_HARNESS_RULE,$(harness))))
+$(foreach harness,$(FUZZING_HARNESSES),$(eval $(call COVERAGE_HARNESS_RULE,$(harness))))
+
+# ============================================================================
+# Fuzzing Targets
+# ============================================================================
+
+# Build all AFL++ harnesses
+fuzz-afl: $(foreach harness,$(FUZZING_HARNESSES),$(FUZZING_BUILD_DIR)/afl_$(harness))
+	@echo "==> AFL++ harnesses built successfully"
+
+# Build all LibFuzzer harnesses
+fuzz-libfuzzer: $(foreach harness,$(FUZZING_HARNESSES),$(FUZZING_BUILD_DIR)/libfuzzer_$(harness))
+	@echo "==> LibFuzzer harnesses built successfully"
+
+# Build all sanitizer harnesses
+fuzz-sanitizers: $(foreach harness,$(FUZZING_HARNESSES),$(FUZZING_BUILD_DIR)/sanitizer_$(harness))
+	@echo "==> Sanitizer harnesses built successfully"
+
+# Build all coverage harnesses
+fuzz-coverage: $(foreach harness,$(FUZZING_HARNESSES),$(FUZZING_BUILD_DIR)/coverage_$(harness))
+	@echo "==> Coverage harnesses built successfully"
+
+# Build all fuzzing harnesses
+fuzz-all: fuzz-afl fuzz-libfuzzer fuzz-sanitizers fuzz-coverage
+	@echo "==> All fuzzing harnesses built successfully"
+
+# Individual harness targets
+fuzz-vm: $(FUZZING_BUILD_DIR)/afl_vm_bytecode $(FUZZING_BUILD_DIR)/libfuzzer_vm_bytecode
+	@echo "==> VM bytecode fuzzing harnesses built"
+
+fuzz-jit: $(FUZZING_BUILD_DIR)/afl_jit_compiler $(FUZZING_BUILD_DIR)/libfuzzer_jit_compiler
+	@echo "==> JIT compiler fuzzing harnesses built"
+
+fuzz-graph: $(FUZZING_BUILD_DIR)/afl_graph_execution $(FUZZING_BUILD_DIR)/libfuzzer_graph_execution
+	@echo "==> Graph execution fuzzing harnesses built"
+
+fuzz-memory: $(FUZZING_BUILD_DIR)/afl_memory_management $(FUZZING_BUILD_DIR)/libfuzzer_memory_management
+	@echo "==> Memory management fuzzing harnesses built"
+
+fuzz-parser: $(FUZZING_BUILD_DIR)/afl_bytecode_parser $(FUZZING_BUILD_DIR)/libfuzzer_bytecode_parser
+	@echo "==> Bytecode parser fuzzing harnesses built"
+
+fuzz-values: $(FUZZING_BUILD_DIR)/afl_value_system $(FUZZING_BUILD_DIR)/libfuzzer_value_system
+	@echo "==> Value system fuzzing harnesses built"
+
+# ============================================================================
+# Fuzzing Execution Targets
+# ============================================================================
+
+# Run all fuzzing harnesses
+fuzz-run-all:
+	@echo "==> Running comprehensive fuzzing campaign..."
+	@chmod +x scripts/run_fuzzing.sh
+	@./scripts/run_fuzzing.sh
+
+# Run parallel fuzzing
+fuzz-run-parallel:
+	@echo "==> Running parallel fuzzing campaign..."
+	@chmod +x scripts/parallel_fuzz.sh
+	@./scripts/parallel_fuzz.sh
+
+# Run fuzzing with specific duration
+fuzz-run-timed:
+	@echo "==> Running timed fuzzing campaign (30 minutes)..."
+	@chmod +x scripts/run_fuzzing.sh
+	@./scripts/run_fuzzing.sh --duration 1800
+
+# ============================================================================
+# Fuzzing Analysis Targets
+# ============================================================================
+
+# Analyze crashes
+fuzz-analyze-crashes:
+	@echo "==> Analyzing fuzzing crashes..."
+	@chmod +x scripts/crash_analysis.sh
+	@./scripts/crash_analysis.sh
+
+# Minimize crashes
+fuzz-minimize-crashes:
+	@echo "==> Minimizing crash inputs..."
+	@chmod +x scripts/crash_analysis.sh
+	@./scripts/crash_analysis.sh --minimize
+
+# Generate coverage report
+fuzz-coverage-report:
+	@echo "==> Generating fuzzing coverage report..."
+	@chmod +x scripts/coverage_report.sh
+	@./scripts/coverage_report.sh --action report
+
+# Manage corpus
+fuzz-corpus-generate:
+	@echo "==> Generating fuzzing corpus..."
+	@chmod +x scripts/corpus_management.sh
+	@./scripts/corpus_management.sh --action generate
+
+fuzz-corpus-minimize:
+	@echo "==> Minimizing fuzzing corpus..."
+	@chmod +x scripts/corpus_management.sh
+	@./scripts/corpus_management.sh --action minimize
+
+# ============================================================================
+# Fuzzing Maintenance Targets
+# ============================================================================
+
+# Clean fuzzing artifacts
+fuzz-clean:
+	@echo "==> Cleaning fuzzing artifacts..."
+	@rm -rf $(FUZZING_BUILD_DIR)
+	@rm -rf $(FUZZING_DIR)/crashes/*
+	@rm -rf $(FUZZING_DIR)/coverage/*
+	@find $(FUZZING_DIR) -name "*.gcda" -delete
+	@find $(FUZZING_DIR) -name "*.gcno" -delete
+
+# Clean only crash data
+fuzz-clean-crashes:
+	@echo "==> Cleaning crash data..."
+	@rm -rf $(FUZZING_DIR)/crashes/*
+
+# Clean only coverage data
+fuzz-clean-coverage:
+	@echo "==> Cleaning coverage data..."
+	@rm -rf $(FUZZING_DIR)/coverage/*
+
+# Reproduce specific crash
+fuzz-reproduce:
+	@echo "==> Reproducing crash (specify CRASH_FILE=path/to/crash)..."
+	@if [ -z "$(CRASH_FILE)" ]; then \
+	        echo "Error: Please specify CRASH_FILE=path/to/crash"; \
+	        exit 1; \
+	fi
+	@chmod +x scripts/crash_analysis.sh
+	@./scripts/crash_analysis.sh --crash "$(CRASH_FILE)"
+
+# ============================================================================
+# Fuzzing Information and Help
+# ============================================================================
+
+fuzz-info:
+	@echo "========================================"
+	@echo "BDI Kernel Fuzzing Infrastructure"
+	@echo "========================================"
+	@echo "Harnesses Available:"
+	@for harness in $(FUZZING_HARNESSES); do \
+	        echo "  - $$harness"; \
+	done
+	@echo ""
+	@echo "Build Targets:"
+	@echo "  fuzz-afl              - Build AFL++ harnesses"
+	@echo "  fuzz-libfuzzer        - Build LibFuzzer harnesses"
+	@echo "  fuzz-sanitizers       - Build sanitizer harnesses"
+	@echo "  fuzz-coverage         - Build coverage harnesses"
+	@echo "  fuzz-all              - Build all harnesses"
+	@echo ""
+	@echo "Execution Targets:"
+	@echo "  fuzz-run-all          - Run comprehensive fuzzing"
+	@echo "  fuzz-run-parallel     - Run parallel fuzzing"
+	@echo "  fuzz-run-timed        - Run timed fuzzing (30min)"
+	@echo ""
+	@echo "Analysis Targets:"
+	@echo "  fuzz-analyze-crashes  - Analyze found crashes"
+	@echo "  fuzz-minimize-crashes - Minimize crash inputs"
+	@echo "  fuzz-coverage-report  - Generate coverage report"
+	@echo ""
+	@echo "Corpus Management:"
+	@echo "  fuzz-corpus-generate  - Generate seed corpus"
+	@echo "  fuzz-corpus-minimize  - Minimize corpus"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  fuzz-clean            - Clean all fuzzing data"
+	@echo "  fuzz-clean-crashes    - Clean crash data only"
+	@echo "  fuzz-clean-coverage   - Clean coverage data only"
+	@echo "  fuzz-reproduce        - Reproduce specific crash"
+	@echo ""
+	@echo "Dependencies Required:"
+	@echo "  - AFL++ (afl-clang-fast)"
+	@echo "  - Clang with LibFuzzer support"
+	@echo "  - AddressSanitizer, UBSan, MSan"
+	@echo "  - lcov/gcov for coverage"
+	@echo "========================================"
+
+fuzz-help: fuzz-info
+
+# ============================================================================
+# Fuzzing Integration with Main Build
+# ============================================================================
+
+# Add fuzzing to main help
+help: info fuzz-info
+
+# Add fuzzing clean to main clean
+clean: fuzz-clean-coverage
+	@echo "==> Cleaning build artifacts..."
+	@rm -rf build/
+	@rm -rf $(TARGET)
+	@rm -f *.o *.d
+	@find . -name "*.o" -delete
+	@find . -name "*.d" -delete
+	@find . -name "*.gcda" -delete
+	@find . -name "*.gcno" -delete
+
+# Security testing target
+security-test: fuzz-all fuzz-run-timed fuzz-analyze-crashes
+	@echo "==> Comprehensive security testing completed"
+	@echo "==> Check $(FUZZING_DIR)/crashes/ for any discovered vulnerabilities"
+
+# Add fuzzing to all target
+all: $(TARGET) fuzz-corpus-generate
+	@echo "==> Build completed with fuzzing corpus ready"
+
+.PHONY: fuzz-afl fuzz-libfuzzer fuzz-sanitizers fuzz-coverage fuzz-all
+.PHONY: fuzz-vm fuzz-jit fuzz-graph fuzz-memory fuzz-parser fuzz-values
+.PHONY: fuzz-run-all fuzz-run-parallel fuzz-run-timed
+.PHONY: fuzz-analyze-crashes fuzz-minimize-crashes fuzz-coverage-report
+.PHONY: fuzz-corpus-generate fuzz-corpus-minimize
+.PHONY: fuzz-clean fuzz-clean-crashes fuzz-clean-coverage fuzz-reproduce
+.PHONY: fuzz-info fuzz-help security-test

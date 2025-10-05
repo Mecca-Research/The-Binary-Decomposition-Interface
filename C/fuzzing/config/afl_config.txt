@@ -1,0 +1,49 @@
+
+# AFL++ Configuration for BDI Kernel Fuzzing
+# 
+# This file contains AFL++ specific configuration options
+# for optimal fuzzing performance and coverage.
+
+# AFL++ Environment Variables
+export AFL_SKIP_CPUFREQ=1
+export AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES=1
+export AFL_FAST_CAL=1
+export AFL_DISABLE_TRIM=1
+
+# Instrumentation Options
+export AFL_LLVM_LAF_ALL=1          # Enable all compare splitting
+export AFL_LLVM_CMPLOG=1           # Enable comparison logging
+export AFL_LLVM_DICT2FILE=1        # Auto-generate dictionaries
+
+# Performance Options
+export AFL_SKIP_BIN_CHECK=1        # Skip binary checks for speed
+export AFL_NO_AFFINITY=1           # Disable CPU affinity
+export AFL_TMPDIR=/tmp/afl_tmp     # Use fast tmpfs for temp files
+
+# Memory Options
+export AFL_PRELOAD=""              # No preloaded libraries
+export AFL_INST_RATIO=100          # Full instrumentation
+
+# Fuzzing Strategy
+export AFL_CUSTOM_MUTATOR_LIBRARY=""  # No custom mutators initially
+export AFL_PYTHON_MODULE=""           # No Python modules
+
+# Timeout Settings
+export AFL_HANG_TMOUT=1000         # 1 second hang timeout
+export AFL_FORKSRV_INIT_TMOUT=10000 # 10 second fork server timeout
+
+# Coverage Options
+export AFL_MAP_SIZE=65536          # Coverage map size
+export AFL_QUIET=1                 # Reduce output noise
+
+# Crash Handling
+export AFL_CRASH_EXITCODE=1        # Exit code for crashes
+export AFL_NO_CRASH_README=1       # Don't create crash readme
+
+# Parallel Fuzzing
+export AFL_FINAL_SYNC=1            # Enable final sync
+export AFL_IMPORT_FIRST=1          # Import seeds first
+
+# Debug Options (disable for production)
+# export AFL_DEBUG=1
+# export AFL_DEBUG_CHILD=1
