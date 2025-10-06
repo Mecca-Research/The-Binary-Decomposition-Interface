@@ -49,7 +49,7 @@ static void *multithread_alloc_worker(void *arg) {
     // Perform allocations
     for (uint32_t i = 0; i < ctx->iterations; i++) {
         size_t size = fuzz_random_size(64, 4096);
-        void *ptr = alloc_memory(size, GFP_KERNEL | GFP_NUMA_LOCAL);
+        void *ptr = kmalloc(size, GFP_KERNEL | GFP_NUMA_LOCAL);
         
         bool success = (ptr != NULL);
         thread_stats_record_op(ctx->stats, success);
@@ -57,7 +57,7 @@ static void *multithread_alloc_worker(void *arg) {
         if (ptr) {
             thread_stats_record_alloc(ctx->stats, size);
             memset(ptr, 0xAA, size);
-            free_memory(ptr);
+            kfree(ptr);
             thread_stats_record_free(ctx->stats, size);
         }
     }
@@ -130,7 +130,7 @@ static void *cpu_migration_worker(void *arg) {
         
         // Allocate on new CPU
         size_t size = fuzz_random_size(128, 2048);
-        void *ptr = alloc_memory(size, GFP_KERNEL | GFP_NUMA_LOCAL);
+        void *ptr = kmalloc(size, GFP_KERNEL | GFP_NUMA_LOCAL);
         
         if (ptr) {
             thread_stats_record_op(ctx->stats, true);
@@ -141,7 +141,7 @@ static void *cpu_migration_worker(void *arg) {
                 // CPU migration happened, which is acceptable
             }
             
-            free_memory(ptr);
+            kfree(ptr);
         } else {
             thread_stats_record_op(ctx->stats, false);
         }
@@ -202,12 +202,12 @@ static void *leak_detection_worker(void *arg) {
     
     for (uint32_t i = 0; i < ctx->iterations; i++) {
         size_t size = fuzz_random_size(64, 1024);
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (ptr) {
             // Randomly decide to free or store
             if (rand() % 2 == 0) {
-                free_memory(ptr);
+                kfree(ptr);
             } else {
                 // Store in shared pool
                 pthread_mutex_lock(&pool->lock);
@@ -252,7 +252,7 @@ REDTEAM_TEST(cross_thread_leak_detection, "numa",
     // Free all stored allocations
     for (uint32_t i = 0; i < alloc_pool.count; i++) {
         if (alloc_pool.allocations[i]) {
-            free_memory(alloc_pool.allocations[i]);
+            kfree(alloc_pool.allocations[i]);
         }
     }
     
@@ -285,7 +285,7 @@ REDTEAM_TEST(arena_exhaustion, "numa",
     // Try to exhaust arena
     for (uint32_t i = 0; i < max_allocs; i++) {
         size_t size = 4096; // Fixed size to stress arena
-        void *ptr = alloc_memory(size, GFP_KERNEL | GFP_NUMA_LOCAL);
+        void *ptr = kmalloc(size, GFP_KERNEL | GFP_NUMA_LOCAL);
         
         if (ptr) {
             allocations[alloc_count++] = ptr;
@@ -300,19 +300,19 @@ REDTEAM_TEST(arena_exhaustion, "numa",
     // Verify we can still allocate after freeing some
     if (alloc_count > 100) {
         for (uint32_t i = 0; i < 50; i++) {
-            free_memory(allocations[i]);
+            kfree(allocations[i]);
         }
         
         // Try to allocate again
-        void *ptr = alloc_memory(4096, GFP_KERNEL);
+        void *ptr = kmalloc(4096, GFP_KERNEL);
         REDTEAM_ASSERT_NOT_NULL(ptr, "Failed to allocate after freeing");
-        free_memory(ptr);
+        kfree(ptr);
     }
     
     // Cleanup
     for (uint32_t i = 0; i < alloc_count; i++) {
         if (allocations[i]) {
-            free_memory(allocations[i]);
+            kfree(allocations[i]);
         }
     }
     
@@ -333,12 +333,12 @@ REDTEAM_TEST(numa_node_preference, "numa",
         size_t size = fuzz_random_size(1024, 8192);
         
         // Allocate with NUMA local preference
-        void *ptr = alloc_memory(size, GFP_KERNEL | GFP_NUMA_LOCAL);
+        void *ptr = kmalloc(size, GFP_KERNEL | GFP_NUMA_LOCAL);
         
         if (ptr) {
             // TODO: Verify allocation is on local NUMA node
             // This requires NUMA topology information
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     

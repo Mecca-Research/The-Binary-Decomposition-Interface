@@ -37,7 +37,7 @@ REDTEAM_TEST(hugepage_2mb_boundary, "hugepage",
     for (size_t i = 0; i < sizeof(test_sizes) / sizeof(test_sizes[0]); i++) {
         size_t size = test_sizes[i];
         
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (ptr) {
             // Verify allocation
@@ -52,7 +52,7 @@ REDTEAM_TEST(hugepage_2mb_boundary, "hugepage",
             // Write to memory
             memset(ptr, 0xDD, size > 4096 ? 4096 : size);
             
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
@@ -78,7 +78,7 @@ REDTEAM_TEST(hugepage_1gb_boundary, "hugepage",
     for (size_t i = 0; i < sizeof(test_sizes) / sizeof(test_sizes[0]); i++) {
         size_t size = test_sizes[i];
         
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (ptr) {
             // For sizes >= 1GB, verify huge page alignment
@@ -90,7 +90,7 @@ REDTEAM_TEST(hugepage_1gb_boundary, "hugepage",
             // Write to first and last pages
             memset(ptr, 0xEE, 4096);
             
-            free_memory(ptr);
+            kfree(ptr);
         }
         // Failure is acceptable for very large allocations
     }
@@ -108,21 +108,21 @@ REDTEAM_TEST(hugepage_alignment, "hugepage",
     // Test 2MB huge pages
     for (uint32_t i = 0; i < 10; i++) {
         size_t size = HUGE_PAGE_2MB + (i * 4096);
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (ptr) {
             REDTEAM_ASSERT_PTR_ALIGNED(ptr, HUGE_PAGE_2MB,
                                       "2MB huge page alignment violation");
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
     // Test 1GB huge pages (if supported)
-    void *ptr_1gb = alloc_memory(HUGE_PAGE_1GB, GFP_KERNEL);
+    void *ptr_1gb = kmalloc(HUGE_PAGE_1GB, GFP_KERNEL);
     if (ptr_1gb) {
         REDTEAM_ASSERT_PTR_ALIGNED(ptr_1gb, HUGE_PAGE_1GB,
                                   "1GB huge page alignment violation");
-        free_memory(ptr_1gb);
+        kfree(ptr_1gb);
     }
     
     return TEST_PASS;
@@ -141,7 +141,7 @@ REDTEAM_TEST(hugepage_counter_integrity, "hugepage",
     
     // Allocate huge pages
     for (uint32_t i = 0; i < num_allocs; i++) {
-        allocations[i] = alloc_memory(HUGE_PAGE_2MB, GFP_KERNEL);
+        allocations[i] = kmalloc(HUGE_PAGE_2MB, GFP_KERNEL);
     }
     
     MemoryStats stats_after_alloc = get_memory_stats();
@@ -154,7 +154,7 @@ REDTEAM_TEST(hugepage_counter_integrity, "hugepage",
     // Free huge pages
     for (uint32_t i = 0; i < num_allocs; i++) {
         if (allocations[i]) {
-            free_memory(allocations[i]);
+            kfree(allocations[i]);
         }
     }
     
@@ -189,7 +189,7 @@ REDTEAM_TEST(hugepage_mixed_sizes, "hugepage",
             size = fuzz_random_size(4096, 1024 * 1024); // Regular
         }
         
-        allocations[i] = alloc_memory(size, GFP_KERNEL);
+        allocations[i] = kmalloc(size, GFP_KERNEL);
         
         if (allocations[i]) {
             // Verify alignment for huge pages
@@ -203,7 +203,7 @@ REDTEAM_TEST(hugepage_mixed_sizes, "hugepage",
     // Free all
     for (uint32_t i = 0; i < num_allocs; i++) {
         if (allocations[i]) {
-            free_memory(allocations[i]);
+            kfree(allocations[i]);
         }
     }
     
@@ -222,16 +222,16 @@ REDTEAM_TEST(hugepage_fallback, "hugepage",
     
     // Try to allocate many huge pages until exhaustion
     for (uint32_t i = 0; i < max_attempts; i++) {
-        void *ptr = alloc_memory(HUGE_PAGE_2MB, GFP_KERNEL);
+        void *ptr = kmalloc(HUGE_PAGE_2MB, GFP_KERNEL);
         
         if (ptr) {
             allocations[alloc_count++] = ptr;
         } else {
             // Huge pages exhausted, try regular allocation
-            ptr = alloc_memory(HUGE_PAGE_2MB, GFP_KERNEL | GFP_NOWAIT);
+            ptr = kmalloc(HUGE_PAGE_2MB, GFP_KERNEL | GFP_NOWAIT);
             if (ptr) {
                 // Fallback succeeded
-                free_memory(ptr);
+                kfree(ptr);
             }
             break;
         }
@@ -241,7 +241,7 @@ REDTEAM_TEST(hugepage_fallback, "hugepage",
     
     // Cleanup
     for (uint32_t i = 0; i < alloc_count; i++) {
-        free_memory(allocations[i]);
+        kfree(allocations[i]);
     }
     
     return TEST_PASS;
@@ -259,14 +259,14 @@ REDTEAM_TEST(hugepage_stress, "hugepage",
         // Randomly choose huge page size
         size_t size = (rand() % 2 == 0) ? HUGE_PAGE_2MB : HUGE_PAGE_1GB;
         
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (ptr) {
             // Write to memory
             memset(ptr, 0xFF, 4096);
             
             // Immediately free
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
@@ -288,13 +288,13 @@ REDTEAM_TEST(hugepage_counter_drift, "hugepage",
         
         // Allocate
         for (uint32_t i = 0; i < 10; i++) {
-            allocations[i] = alloc_memory(HUGE_PAGE_2MB, GFP_KERNEL);
+            allocations[i] = kmalloc(HUGE_PAGE_2MB, GFP_KERNEL);
         }
         
         // Free
         for (uint32_t i = 0; i < 10; i++) {
             if (allocations[i]) {
-                free_memory(allocations[i]);
+                kfree(allocations[i]);
             }
         }
     }
