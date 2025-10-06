@@ -79,6 +79,31 @@
     return (result < 0) ? -errno : 0;
 }
 
+[[nodiscard]] int64_t sys_chmod(const syscall_args_t *args) {
+    const char *path = (const char *)args->arg0;
+    mode_t mode = (mode_t)args->arg1;
+    
+    if (path == nullptr) {
+        return -EFAULT;
+    }
+    
+    int result = chmod(path, mode);
+    return (result < 0) ? -errno : 0;
+}
+
+[[nodiscard]] int64_t sys_chown(const syscall_args_t *args) {
+    const char *path = (const char *)args->arg0;
+    uid_t owner = (uid_t)args->arg1;
+    gid_t group = (gid_t)args->arg2;
+    
+    if (path == nullptr) {
+        return -EFAULT;
+    }
+    
+    int result = chown(path, owner, group);
+    return (result < 0) ? -errno : 0;
+}
+
 /* ===================================================================
  * Extended File Operations
  * =================================================================== */
