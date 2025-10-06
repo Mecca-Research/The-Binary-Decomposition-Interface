@@ -32,7 +32,7 @@ REDTEAM_TEST(alloc_random_sizes, "allocator",
         size_t size = fuzz_random_size(1, 1024 * 1024);
         
         // Allocate
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (ptr) {
             // Verify allocation
@@ -41,7 +41,7 @@ REDTEAM_TEST(alloc_random_sizes, "allocator",
             // Store for later free
             int slot = rand() % 100;
             if (allocations[slot]) {
-                free_memory(allocations[slot]);
+                kfree(allocations[slot]);
             }
             allocations[slot] = ptr;
             
@@ -53,7 +53,7 @@ REDTEAM_TEST(alloc_random_sizes, "allocator",
     // Cleanup
     for (int i = 0; i < 100; i++) {
         if (allocations[i]) {
-            free_memory(allocations[i]);
+            kfree(allocations[i]);
         }
     }
     
@@ -72,7 +72,7 @@ REDTEAM_TEST(alloc_alignment_fuzz, "allocator",
         size_t size = fuzz_random_size(16, 4096);
         size_t alignment = fuzz_random_alignment(4096);
         
-        void *ptr = alloc_memory_aligned(size, alignment, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL) // Note: alignment not guaranteed, kernel lacks aligned alloc API;
         
         if (ptr) {
             // Verify alignment
@@ -82,7 +82,7 @@ REDTEAM_TEST(alloc_alignment_fuzz, "allocator",
             // Write to memory
             memset(ptr, 0xBB, size);
             
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
@@ -114,7 +114,7 @@ REDTEAM_TEST(alloc_flag_combinations, "allocator",
         size_t size = fuzz_random_size(64, 8192);
         uint32_t flag = flags[rand() % num_flags];
         
-        void *ptr = alloc_memory(size, flag);
+        void *ptr = kmalloc(size, flag);
         
         if (ptr) {
             // If GFP_ZERO, verify memory is zeroed
@@ -130,7 +130,7 @@ REDTEAM_TEST(alloc_flag_combinations, "allocator",
                 REDTEAM_ASSERT(all_zero, "GFP_ZERO flag did not zero memory");
             }
             
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
@@ -157,11 +157,11 @@ REDTEAM_TEST(alloc_boundary_sizes, "allocator",
             size_t size = boundary + offset;
             if (size == 0 || size > HUGE_PAGE_1GB) continue;
             
-            void *ptr = alloc_memory(size, GFP_KERNEL);
+            void *ptr = kmalloc(size, GFP_KERNEL);
             
             if (ptr) {
                 memset(ptr, 0xCC, size);
-                free_memory(ptr);
+                kfree(ptr);
             }
         }
     }
@@ -175,11 +175,11 @@ REDTEAM_TEST(alloc_boundary_sizes, "allocator",
 
 REDTEAM_TEST(detect_double_free, "allocator",
              "Verify double-free detection") {
-    void *ptr = alloc_memory(1024, GFP_KERNEL);
+    void *ptr = kmalloc(1024, GFP_KERNEL);
     REDTEAM_ASSERT_NOT_NULL(ptr, "Initial allocation failed");
     
     // First free - should succeed
-    free_memory(ptr);
+    kfree(ptr);
     
     // Second free - should be detected and handled
     // Note: This test expects the allocator to handle double-free gracefully
@@ -198,12 +198,12 @@ REDTEAM_TEST(detect_double_free, "allocator",
 REDTEAM_TEST(detect_mismatched_free, "allocator",
              "Verify mismatched size free detection") {
     size_t alloc_size = 1024;
-    void *ptr = alloc_memory(alloc_size, GFP_KERNEL);
+    void *ptr = kmalloc(alloc_size, GFP_KERNEL);
     REDTEAM_ASSERT_NOT_NULL(ptr, "Allocation failed");
     
     // Free with different size - should be detected
     // Note: This assumes the allocator tracks allocation sizes
-    free_memory(ptr);
+    kfree(ptr);
     
     return TEST_PASS;
 }
@@ -224,7 +224,7 @@ REDTEAM_TEST(stats_invariants, "allocator",
     // Allocate
     for (uint32_t i = 0; i < num_allocs; i++) {
         sizes[i] = fuzz_random_size(64, 4096);
-        allocations[i] = alloc_memory(sizes[i], GFP_KERNEL);
+        allocations[i] = kmalloc(sizes[i], GFP_KERNEL);
         if (allocations[i]) {
             total_allocated += sizes[i];
         }
@@ -239,7 +239,7 @@ REDTEAM_TEST(stats_invariants, "allocator",
     // Free all
     for (uint32_t i = 0; i < num_allocs; i++) {
         if (allocations[i]) {
-            free_memory(allocations[i]);
+            kfree(allocations[i]);
         }
     }
     
@@ -268,12 +268,12 @@ REDTEAM_TEST(fault_injection_alloc, "allocator",
         size_t size = fuzz_random_size(64, 4096);
         alloc_attempts++;
         
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (!ptr) {
             alloc_failures++;
         } else {
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
@@ -302,10 +302,10 @@ REDTEAM_TEST(counter_overflow, "allocator",
     
     for (uint32_t i = 0; i < iterations; i++) {
         size_t size = fuzz_random_size(16, 256);
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (ptr) {
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
@@ -326,12 +326,12 @@ REDTEAM_TEST(counter_overflow, "allocator",
 
 REDTEAM_TEST(zero_size_alloc, "allocator",
              "Test zero-size allocation handling") {
-    void *ptr = alloc_memory(0, GFP_KERNEL);
+    void *ptr = kmalloc(0, GFP_KERNEL);
     
     // Zero-size allocation should either return NULL or a valid pointer
     // that can be safely freed
     if (ptr) {
-        free_memory(ptr);
+        kfree(ptr);
     }
     
     return TEST_PASS;
@@ -351,11 +351,11 @@ REDTEAM_TEST(max_size_alloc, "allocator",
     };
     
     for (size_t i = 0; i < sizeof(large_sizes) / sizeof(large_sizes[0]); i++) {
-        void *ptr = alloc_memory(large_sizes[i], GFP_KERNEL);
+        void *ptr = kmalloc(large_sizes[i], GFP_KERNEL);
         
         if (ptr) {
             // Successfully allocated large memory
-            free_memory(ptr);
+            kfree(ptr);
         }
         // Failure is acceptable for very large allocations
     }
@@ -373,11 +373,11 @@ REDTEAM_TEST(stress_rapid_alloc_free, "allocator",
     
     for (uint32_t i = 0; i < iterations; i++) {
         size_t size = fuzz_random_size(16, 1024);
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (ptr) {
             // Immediately free
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
@@ -396,29 +396,29 @@ REDTEAM_TEST(stress_fragmentation, "allocator",
     // Allocate with varying sizes
     for (uint32_t i = 0; i < num_allocs; i++) {
         size_t size = fuzz_random_size(64, 8192);
-        allocations[i] = alloc_memory(size, GFP_KERNEL);
+        allocations[i] = kmalloc(size, GFP_KERNEL);
     }
     
     // Free every other allocation to create fragmentation
     for (uint32_t i = 0; i < num_allocs; i += 2) {
         if (allocations[i]) {
-            free_memory(allocations[i]);
+            kfree(allocations[i]);
             allocations[i] = NULL;
         }
     }
     
     // Try to allocate large blocks (should be challenging with fragmentation)
     for (uint32_t i = 0; i < 100; i++) {
-        void *ptr = alloc_memory(16384, GFP_KERNEL);
+        void *ptr = kmalloc(16384, GFP_KERNEL);
         if (ptr) {
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
     // Cleanup remaining allocations
     for (uint32_t i = 0; i < num_allocs; i++) {
         if (allocations[i]) {
-            free_memory(allocations[i]);
+            kfree(allocations[i]);
         }
     }
     

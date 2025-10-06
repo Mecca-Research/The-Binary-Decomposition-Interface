@@ -62,11 +62,11 @@ REDTEAM_TEST(instrumentation_alloc_tracing, "instrumentation",
     // Perform traced allocations
     for (uint32_t i = 0; i < 100; i++) {
         size_t size = fuzz_random_size(64, 4096);
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         
         if (ptr) {
             trace_allocation(ptr, size, "test_location");
-            free_memory(ptr);
+            kfree(ptr);
             trace_free(ptr);
         }
     }
@@ -104,9 +104,9 @@ REDTEAM_TEST(instrumentation_differential, "instrumentation",
     const uint32_t num_ops = 1000;
     for (uint32_t i = 0; i < num_ops; i++) {
         size_t size = fuzz_random_size(64, 1024);
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         if (ptr) {
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
@@ -194,7 +194,7 @@ REDTEAM_TEST(instrumentation_asan_integration, "instrumentation",
     // This test verifies ASAN can detect issues
     // When compiled with -fsanitize=address
     
-    void *ptr = alloc_memory(1024, GFP_KERNEL);
+    void *ptr = kmalloc(1024, GFP_KERNEL);
     REDTEAM_ASSERT_NOT_NULL(ptr, "Allocation failed");
     
     // Normal access - should be fine
@@ -203,7 +203,7 @@ REDTEAM_TEST(instrumentation_asan_integration, "instrumentation",
     // Note: Intentional buffer overflow would be detected by ASAN:
     // memset(ptr, 0xBB, 2048); // This would trigger ASAN
     
-    free_memory(ptr);
+    kfree(ptr);
     
     // Note: Use-after-free would be detected by ASAN:
     // memset(ptr, 0xCC, 1024); // This would trigger ASAN
@@ -299,9 +299,9 @@ REDTEAM_TEST(instrumentation_performance, "instrumentation",
     // Perform operations
     for (uint32_t i = 0; i < iterations; i++) {
         size_t size = 1024;
-        void *ptr = alloc_memory(size, GFP_KERNEL);
+        void *ptr = kmalloc(size, GFP_KERNEL);
         if (ptr) {
-            free_memory(ptr);
+            kfree(ptr);
         }
     }
     
@@ -328,7 +328,7 @@ REDTEAM_TEST(instrumentation_pattern_detection, "instrumentation",
     void *allocations[num_allocs];
     
     for (uint32_t i = 0; i < num_allocs; i++) {
-        allocations[i] = alloc_memory(4096, GFP_KERNEL);
+        allocations[i] = kmalloc(4096, GFP_KERNEL);
         
         if (allocations[i]) {
             // Fill with pattern
@@ -352,7 +352,7 @@ REDTEAM_TEST(instrumentation_pattern_detection, "instrumentation",
             }
             
             REDTEAM_ASSERT(pattern_valid, "Memory pattern corrupted");
-            free_memory(allocations[i]);
+            kfree(allocations[i]);
         }
     }
     
@@ -398,13 +398,13 @@ REDTEAM_TEST(instrumentation_stack_trace, "instrumentation",
     // This test would capture stack traces for allocations
     // Useful for debugging memory issues
     
-    void *ptr = alloc_memory(1024, GFP_KERNEL);
+    void *ptr = kmalloc(1024, GFP_KERNEL);
     
     if (ptr) {
         // TODO: Capture and log stack trace
         // This would require backtrace() or similar
         
-        free_memory(ptr);
+        kfree(ptr);
     }
     
     return TEST_PASS;
