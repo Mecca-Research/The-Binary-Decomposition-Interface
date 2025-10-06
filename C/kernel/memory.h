@@ -191,6 +191,7 @@ typedef struct {
     
     // Fast path cache
     void *cache[16];                    // Small object cache
+    size_t cache_sizes[16];             // Sizes of cached allocations (for safe krealloc)
     uint8_t cache_count;
     
     // Arena memory pool
@@ -209,6 +210,7 @@ typedef struct {
     uint8_t padding[CACHE_LINE_SIZE - 
                     (sizeof(uint32_t) * 2 + 
                      sizeof(void*) * 17 + 
+                     sizeof(size_t) * 17 +
                      sizeof(uint8_t) + 
                      sizeof(size_t) * 2 + 
                      sizeof(atomic_uint_fast64_t) * 5) % CACHE_LINE_SIZE];

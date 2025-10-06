@@ -33,8 +33,20 @@ typedef struct {
     uint32_t magic;             // Magic number for validation
 } alloc_metadata_t;
 
+/**
+ * @brief Arena allocation header
+ * @details Smaller header for arena allocations to track size for safe krealloc
+ */
+typedef struct {
+    size_t size;                // Original allocation size
+    uint16_t magic;             // Magic number for validation
+    uint16_t padding;           // Padding for alignment
+} arena_header_t;
+
 #define ALLOC_MAGIC 0xDEADBEEF
+#define ARENA_MAGIC 0xABCD
 #define METADATA_SIZE sizeof(alloc_metadata_t)
+#define ARENA_HEADER_SIZE sizeof(arena_header_t)
 
 // ============================================================================
 // Global State
@@ -262,18 +274,30 @@ static void* percpu_arena_alloc(size_t size) {
     // Try cache first for small allocations
     if (size <= 64 && arena->cache_count > 0) {
         atomic_fetch_add(&arena->cache_hits, 1);
+        // Pop from cache and return the cached allocation
+        // The header is already set from when it was originally allocated
         return arena->cache[--arena->cache_count];
     }
     
     atomic_fetch_add(&arena->cache_misses, 1);
     
-    // Allocate from arena
-    size_t aligned_size = (size + 15) & ~15UL;  // 16-byte alignment
+    // Allocate from arena with header
+    // Total space needed: header + requested size, aligned to 16 bytes
+    size_t total_size = ARENA_HEADER_SIZE + size;
+    size_t aligned_size = (total_size + 15) & ~15UL;  // 16-byte alignment
     
     if (arena->arena_used + aligned_size <= arena->arena_size) {
-        void *ptr = (char*)arena->arena_base + arena->arena_used;
+        void *allocation = (char*)arena->arena_base + arena->arena_used;
         arena->arena_used += aligned_size;
-        return ptr;
+        
+        // Write header
+        arena_header_t *header = (arena_header_t*)allocation;
+        header->size = size;
+        header->magic = ARENA_MAGIC;
+        header->padding = 0;
+        
+        // Return pointer after header
+        return (char*)allocation + ARENA_HEADER_SIZE;
     }
     
     // Arena full, fall back to slow path
@@ -616,17 +640,28 @@ void* krealloc(void *ptr, size_t new_size, uint32_t flags) {
     
     if (ptr >= arena->arena_base && 
         ptr < (char*)arena->arena_base + arena->arena_size) {
-        // Arena allocation - no metadata header exists
+        // Arena allocation - has arena header before the pointer
+        // Get the header to find the original allocation size
+        arena_header_t *header = (arena_header_t*)((char*)ptr - ARENA_HEADER_SIZE);
+        
+        // Validate header
+        if (header->magic != ARENA_MAGIC) {
+            printf("krealloc: Invalid arena header magic at %p, possible corruption\n", ptr);
+            // Fallback: use conservative estimate
+            header = nullptr;
+        }
+        
+        size_t old_size = header ? header->size : 1024;  // Fallback to max arena size
+        
         // Allocate new memory with kmalloc
         void *new_ptr = kmalloc(new_size, flags);
         if (new_ptr == nullptr) {
             return nullptr;
         }
         
-        // For arena allocations, use conservative copy size
-        // Arena allocations are ≤1KB, aligned to 16 bytes
-        // We copy the smaller of: new_size or 1KB (max arena allocation)
-        size_t copy_size = (new_size < 1024) ? new_size : 1024;
+        // CRITICAL FIX: Copy only the minimum of old_size and new_size
+        // This prevents reading past the end of the original buffer
+        size_t copy_size = (old_size < new_size) ? old_size : new_size;
         memcpy(new_ptr, ptr, copy_size);
         
         // Free old allocation back to arena cache
