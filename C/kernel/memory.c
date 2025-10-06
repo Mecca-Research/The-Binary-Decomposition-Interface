@@ -273,14 +273,23 @@ static void* percpu_arena_alloc(size_t size) {
     
     // Try cache first for small allocations
     if (size <= 64 && arena->cache_count > 0) {
-        atomic_fetch_add(&arena->cache_hits, 1);
         void *cached_ptr = arena->cache[--arena->cache_count];
         
-        // Update the size in the header for cached allocations
+        // Check if cached block is large enough for the requested size
         arena_header_t *header = (arena_header_t*)((char*)cached_ptr - ARENA_HEADER_SIZE);
-        header->size = size;
         
-        return cached_ptr;
+        // Verify magic and check if cached block size is sufficient
+        if (header->magic == ARENA_MAGIC && header->size >= size) {
+            // Cached block is large enough, reuse it
+            // CRITICAL: Do NOT overwrite header->size!
+            // The header must always reflect the actual allocated block capacity
+            atomic_fetch_add(&arena->cache_hits, 1);
+            return cached_ptr;
+        } else {
+            // Cached block too small or invalid, put it back and allocate fresh
+            arena->cache[arena->cache_count++] = cached_ptr;
+            // Fall through to fresh allocation below
+        }
     }
     
     atomic_fetch_add(&arena->cache_misses, 1);
