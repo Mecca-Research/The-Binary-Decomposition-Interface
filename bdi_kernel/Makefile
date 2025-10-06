@@ -91,3 +91,228 @@ DRIVER_OBJS = drivers/nvme.o drivers/ahci.o drivers/xhci.o drivers/usb_hid.o
 FS_OBJS = fs/fat32.o fs/ext2.o
 
 OBJS += $(DRIVER_OBJS) $(FS_OBJS)
+
+# ============================================================================
+# Testing Infrastructure - Item 8
+# ============================================================================
+
+# Test directories
+TEST_DIR := tests
+STRESS_TEST_DIR := $(TEST_DIR)/stress
+REGRESSION_TEST_DIR := $(TEST_DIR)/regression
+PROFILING_DIR := profiling
+
+# Test sources
+TEST_RUNNER_SRC := $(TEST_DIR)/test_runner.c
+STRESS_TEST_SRCS := $(wildcard $(STRESS_TEST_DIR)/*.c)
+REGRESSION_TEST_SRCS := $(wildcard $(REGRESSION_TEST_DIR)/*.c)
+PROFILING_SRCS := $(wildcard $(PROFILING_DIR)/*.c)
+
+# Test binaries
+TEST_RUNNER := test_runner
+STRESS_TESTS := $(patsubst $(STRESS_TEST_DIR)/%.c,$(STRESS_TEST_DIR)/%,$(STRESS_TEST_SRCS))
+REGRESSION_TESTS := $(patsubst $(REGRESSION_TEST_DIR)/%.c,$(REGRESSION_TEST_DIR)/%,$(REGRESSION_TEST_SRCS))
+
+# Test flags
+TEST_CFLAGS := $(CFLAGS) -I$(TEST_DIR) -I$(PROFILING_DIR)
+TEST_LDFLAGS := $(LDFLAGS) -lpthread
+
+# ============================================================================
+# Test Targets
+# ============================================================================
+
+.PHONY: test test-unit test-integration test-stress test-regression test-performance
+.PHONY: test-all test-clean build-tests
+
+# Build all tests
+build-tests: $(TEST_RUNNER) $(STRESS_TESTS) $(REGRESSION_TESTS)
+	@echo "==> All tests built successfully"
+
+# Build test runner
+$(TEST_RUNNER): $(TEST_RUNNER_SRC) $(PROFILING_SRCS)
+	@echo "==> Building test runner..."
+	$(CC) $(TEST_CFLAGS) $(TEST_LDFLAGS) -o $@ $^
+
+# Build stress tests
+$(STRESS_TEST_DIR)/%: $(STRESS_TEST_DIR)/%.c
+	@echo "==> Building stress test: $@"
+	$(CC) $(TEST_CFLAGS) $(TEST_LDFLAGS) -o $@ $<
+
+# Build regression tests
+$(REGRESSION_TEST_DIR)/%: $(REGRESSION_TEST_DIR)/%.c
+	@echo "==> Building regression test: $@"
+	$(CC) $(TEST_CFLAGS) $(TEST_LDFLAGS) -o $@ $<
+
+# Run all tests
+test: build-tests
+	@echo "==> Running all tests..."
+	./$(TEST_RUNNER) --category=all --verbose
+
+# Run unit tests
+test-unit: build-tests
+	@echo "==> Running unit tests..."
+	./$(TEST_RUNNER) --category=unit --verbose
+
+# Run integration tests
+test-integration: build-tests
+	@echo "==> Running integration tests..."
+	./$(TEST_RUNNER) --category=integration --verbose
+
+# Run stress tests
+test-stress: build-tests
+	@echo "==> Running stress tests..."
+	./$(TEST_RUNNER) --category=stress --duration=60
+
+# Run regression tests
+test-regression: build-tests
+	@echo "==> Running regression tests..."
+	./$(TEST_RUNNER) --category=regression --verbose
+
+# Run performance tests
+test-performance: build-tests
+	@echo "==> Running performance tests..."
+	./$(TEST_RUNNER) --category=performance --output=json
+
+# Run all test categories
+test-all: test-unit test-integration test-regression test-performance
+	@echo "==> All test categories completed"
+
+# Clean test artifacts
+test-clean:
+	@echo "==> Cleaning test artifacts..."
+	@rm -f $(TEST_RUNNER) $(STRESS_TESTS) $(REGRESSION_TESTS)
+	@rm -rf test_results/
+	@rm -f *.json *.csv
+	@find $(TEST_DIR) -name "*.o" -delete
+
+# ============================================================================
+# Stress Test Targets (Individual)
+# ============================================================================
+
+.PHONY: stress-memory stress-scheduler stress-process
+
+stress-memory: $(STRESS_TEST_DIR)/memory_stress
+	@echo "==> Running memory stress test (60 seconds)..."
+	./$(STRESS_TEST_DIR)/memory_stress 60
+
+stress-scheduler: $(STRESS_TEST_DIR)/scheduler_stress
+	@echo "==> Running scheduler stress test (60 seconds)..."
+	./$(STRESS_TEST_DIR)/scheduler_stress 60
+
+stress-process: $(STRESS_TEST_DIR)/process_stress
+	@echo "==> Running process stress test (60 seconds)..."
+	./$(STRESS_TEST_DIR)/process_stress 60
+
+# ============================================================================
+# Profiling Targets
+# ============================================================================
+
+.PHONY: profile profile-report
+
+profile: build-tests
+	@echo "==> Running tests with profiling enabled..."
+	./$(TEST_RUNNER) --category=performance --verbose
+	@echo "==> Profiling data collected"
+
+profile-report:
+	@echo "==> Generating profiling report..."
+	@if [ -f profiler_output.json ]; then \
+		cat profiler_output.json; \
+	else \
+		echo "No profiling data found. Run 'make profile' first."; \
+	fi
+
+# ============================================================================
+# Coverage Targets
+# ============================================================================
+
+.PHONY: coverage coverage-report coverage-clean
+
+coverage:
+	@echo "==> Building with coverage instrumentation..."
+	$(MAKE) clean
+	$(MAKE) BUILD_MODE=debug CFLAGS="--coverage -fprofile-arcs -ftest-coverage -O0 -g" \
+		LDFLAGS="--coverage -lgcov" all build-tests
+	@echo "==> Running tests with coverage..."
+	./$(TEST_RUNNER) --category=all || true
+	@echo "==> Generating coverage report..."
+	lcov --capture --directory . --output-file coverage.info
+	lcov --remove coverage.info '/usr/*' --output-file coverage.info
+	genhtml coverage.info --output-directory coverage_html
+	@echo "==> Coverage report generated in coverage_html/"
+
+coverage-report:
+	@if [ -f coverage.info ]; then \
+		lcov --list coverage.info; \
+	else \
+		echo "No coverage data found. Run 'make coverage' first."; \
+	fi
+
+coverage-clean:
+	@echo "==> Cleaning coverage data..."
+	@rm -f coverage.info
+	@rm -rf coverage_html/
+	@find . -name "*.gcda" -delete
+	@find . -name "*.gcno" -delete
+
+# ============================================================================
+# CI/CD Helper Targets
+# ============================================================================
+
+.PHONY: ci-build ci-test ci-sanitizers ci-coverage
+
+ci-build:
+	@echo "==> CI: Building kernel..."
+	$(MAKE) BUILD_MODE=release all
+
+ci-test: build-tests
+	@echo "==> CI: Running tests..."
+	./$(TEST_RUNNER) --category=all --output=json > test_results.json || true
+
+ci-sanitizers:
+	@echo "==> CI: Building with sanitizers..."
+	$(MAKE) clean
+	$(MAKE) BUILD_MODE=debug CFLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
+		LDFLAGS="-fsanitize=address,undefined" all build-tests
+	@echo "==> CI: Running tests with sanitizers..."
+	./$(TEST_RUNNER) --category=unit --verbose
+
+ci-coverage: coverage
+	@echo "==> CI: Coverage build complete"
+
+# ============================================================================
+# Help Target Update
+# ============================================================================
+
+help: info
+	@echo ""
+	@echo "Testing Targets:"
+	@echo "  make test                   - Run all tests"
+	@echo "  make test-unit              - Run unit tests"
+	@echo "  make test-integration       - Run integration tests"
+	@echo "  make test-stress            - Run stress tests"
+	@echo "  make test-regression        - Run regression tests"
+	@echo "  make test-performance       - Run performance tests"
+	@echo "  make test-all               - Run all test categories"
+	@echo "  make test-clean             - Clean test artifacts"
+	@echo ""
+	@echo "Stress Test Targets:"
+	@echo "  make stress-memory          - Run memory stress test"
+	@echo "  make stress-scheduler       - Run scheduler stress test"
+	@echo "  make stress-process         - Run process stress test"
+	@echo ""
+	@echo "Profiling Targets:"
+	@echo "  make profile                - Run tests with profiling"
+	@echo "  make profile-report         - Show profiling report"
+	@echo ""
+	@echo "Coverage Targets:"
+	@echo "  make coverage               - Generate coverage report"
+	@echo "  make coverage-report        - Show coverage summary"
+	@echo "  make coverage-clean         - Clean coverage data"
+	@echo ""
+	@echo "CI/CD Targets:"
+	@echo "  make ci-build               - CI build"
+	@echo "  make ci-test                - CI test run"
+	@echo "  make ci-sanitizers          - CI sanitizer tests"
+	@echo "  make ci-coverage            - CI coverage build"
+
