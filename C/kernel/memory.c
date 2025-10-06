@@ -609,6 +609,36 @@ void* krealloc(void *ptr, size_t new_size, uint32_t flags) {
         return nullptr;
     }
     
+    // Bug Fix #6: Handle per-CPU arena allocations
+    // Check if pointer is from per-CPU arena (same logic as kfree)
+    uint32_t cpu = get_current_cpu();
+    percpu_arena_t *arena = &g_percpu_arenas[cpu];
+    
+    if (ptr >= arena->arena_base && 
+        ptr < (char*)arena->arena_base + arena->arena_size) {
+        // Arena allocation - no metadata header exists
+        // Allocate new memory with kmalloc
+        void *new_ptr = kmalloc(new_size, flags);
+        if (new_ptr == nullptr) {
+            return nullptr;
+        }
+        
+        // For arena allocations, use conservative copy size
+        // Arena allocations are ≤1KB, aligned to 16 bytes
+        // We copy the smaller of: new_size or 1KB (max arena allocation)
+        size_t copy_size = (new_size < 1024) ? new_size : 1024;
+        memcpy(new_ptr, ptr, copy_size);
+        
+        // Free old allocation back to arena cache
+        if (arena->cache_count < 16) {
+            arena->cache[arena->cache_count++] = ptr;
+        }
+        atomic_fetch_add(&arena->free_count, 1);
+        
+        return new_ptr;
+    }
+    
+    // Non-arena allocation - has metadata header
     // Bug Fix #4: Use tracked allocation size to prevent buffer overrun
     // Get old allocation size from metadata
     alloc_metadata_t *metadata = (alloc_metadata_t*)((char*)ptr - METADATA_SIZE);
