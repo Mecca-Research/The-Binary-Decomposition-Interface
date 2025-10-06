@@ -21,6 +21,8 @@ extern int64_t sys_getgid(const syscall_args_t *args);
 extern int64_t sys_getegid(const syscall_args_t *args);
 extern int64_t sys_setuid(const syscall_args_t *args);
 extern int64_t sys_setgid(const syscall_args_t *args);
+extern int64_t sys_chmod(const syscall_args_t *args);
+extern int64_t sys_chown(const syscall_args_t *args);
 extern int64_t sys_lstat(const syscall_args_t *args);
 extern int64_t sys_fcntl(const syscall_args_t *args);
 extern int64_t sys_readv(const syscall_args_t *args);
@@ -120,15 +122,17 @@ int syscall_register_extended(void) {
      * File I/O Syscalls (Extended)
      * =================================================================== */
     
-    /* Extended file operations (27, 33-39) */
+    /* Extended file operations (27, 29-30, 33-39) */
     result |= register_syscall(SYS_lstat, sys_lstat, "lstat", SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_chmod, sys_chmod, "chmod", 0);
+    result |= register_syscall(SYS_chown, sys_chown, "chown", 0);
     result |= register_syscall(SYS_fcntl, sys_fcntl, "fcntl", SYSCALL_FLAG_BATCHABLE);
     result |= register_syscall(SYS_readv, sys_readv, "readv", SYSCALL_FLAG_ZERO_COPY);
     result |= register_syscall(SYS_writev, sys_writev, "writev", SYSCALL_FLAG_ZERO_COPY);
     result |= register_syscall(SYS_pread, sys_pread, "pread", SYSCALL_FLAG_ZERO_COPY);
     result |= register_syscall(SYS_pwrite, sys_pwrite, "pwrite", SYSCALL_FLAG_ZERO_COPY);
     result |= register_syscall(SYS_truncate, sys_truncate, "truncate", 0);
-    registered_count += 7;
+    registered_count += 9;
     
     /* ===================================================================
      * Directory Operations (Extended)
