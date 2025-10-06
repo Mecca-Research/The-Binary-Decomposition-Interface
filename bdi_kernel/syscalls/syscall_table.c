@@ -113,8 +113,8 @@ static void update_stats(syscall_stats_t *stats, uint64_t start_time_ns, bool er
  * @param flags Syscall flags
  * @return 0 on success, negative errno on failure
  */
-static int register_syscall(uint32_t num, syscall_handler_t handler, 
-                           const char *name, uint32_t flags) {
+int register_syscall(uint32_t num, syscall_handler_t handler, 
+                    const char *name, uint32_t flags) {
     if (num >= SYSCALL_COUNT) {
         fprintf(stderr, "syscall_table: Invalid syscall number %u\n", num);
         return -EINVAL;
@@ -227,7 +227,16 @@ int syscall_init(void) {
     register_syscall(SYS_zerocopy_write, sys_zerocopy_write, "zerocopy_write", 
                     SYSCALL_FLAG_ZERO_COPY);
     
-    printf("syscall_table: Initialization complete\n");
+    printf("syscall_table: Base initialization complete\n");
+    
+    /* Register extended syscalls (all 108 syscalls) */
+    int ext_result = syscall_register_extended();
+    if (ext_result != 0) {
+        fprintf(stderr, "syscall_table: Failed to register extended syscalls: %d\n", ext_result);
+        return ext_result;
+    }
+    
+    printf("syscall_table: Full initialization complete with all %d syscalls\n", SYSCALL_COUNT);
     return 0;
 }
 
