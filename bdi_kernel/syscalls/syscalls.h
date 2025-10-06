@@ -432,6 +432,29 @@ typedef struct {
 [[nodiscard]] int syscall_init(void);
 
 /**
+ * @brief Register a syscall handler in the table
+ * 
+ * @param num Syscall number
+ * @param handler Handler function
+ * @param name Syscall name (for debugging)
+ * @param flags Syscall flags
+ * @return 0 on success, negative errno on failure
+ */
+[[nodiscard]] int register_syscall(uint32_t num, syscall_handler_t handler, 
+                                   const char *name, uint32_t flags);
+
+/**
+ * @brief Register extended syscalls (called after syscall_init)
+ * 
+ * Registers all 108 syscalls including extended handlers from
+ * aeon_handlers_extended.c. This must be called after syscall_init()
+ * to ensure all syscalls are reachable at runtime.
+ * 
+ * @return 0 on success, negative errno on failure
+ */
+[[nodiscard]] int syscall_register_extended(void);
+
+/**
  * @brief Dispatch a system call
  * 
  * @param syscall_num System call number

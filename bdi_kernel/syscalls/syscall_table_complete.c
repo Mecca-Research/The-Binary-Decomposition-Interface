@@ -1,4 +1,3 @@
-
 /**
  * @file syscall_table_complete.c
  * @brief Complete System Call Table with All 108 Syscalls
@@ -75,21 +74,160 @@ extern int64_t sys_getrlimit(const syscall_args_t *args);
 extern int64_t sys_setrlimit(const syscall_args_t *args);
 extern int64_t sys_getpagesize(const syscall_args_t *args);
 
-/* External registration function from syscall_table.c */
-extern int syscall_init(void);
-
 /**
  * @brief Register all remaining syscalls
  * 
  * This function is called after syscall_init() to register the
  * remaining syscalls that were not registered in the base table.
  * 
+ * CRITICAL FIX: This function now actually registers all 108 syscalls
+ * instead of just printing a stub message. Without this, all extended
+ * syscalls would return -ENOSYS at runtime.
+ * 
  * @return 0 on success, negative errno on failure
  */
 int syscall_register_extended(void) {
-    /* This function would call register_syscall for all extended handlers */
-    /* For now, we document that all 108 syscalls are defined */
+    int result = 0;
+    int registered_count = 0;
     
-    printf("syscall_table_complete: All 108 syscalls registered\n");
+    printf("syscall_table_complete: Registering extended syscalls...\n");
+    
+    /* ===================================================================
+     * Process Management Syscalls (Extended)
+     * =================================================================== */
+    
+    /* Signal handling syscalls (9-12) */
+    result |= register_syscall(SYS_sigaction, sys_sigaction, "sigaction", 0);
+    result |= register_syscall(SYS_sigreturn, sys_sigreturn, "sigreturn", 0);
+    result |= register_syscall(SYS_pause, sys_pause, "pause", 0);
+    result |= register_syscall(SYS_alarm, sys_alarm, "alarm", SYSCALL_FLAG_BATCHABLE);
+    registered_count += 4;
+    
+    /* User/Group ID syscalls (13-18) */
+    result |= register_syscall(SYS_getuid, sys_getuid, "getuid", 
+                              SYSCALL_FLAG_FAST_PATH | SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_geteuid, sys_geteuid, "geteuid", 
+                              SYSCALL_FLAG_FAST_PATH | SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_getgid, sys_getgid, "getgid", 
+                              SYSCALL_FLAG_FAST_PATH | SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_getegid, sys_getegid, "getegid", 
+                              SYSCALL_FLAG_FAST_PATH | SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_setuid, sys_setuid, "setuid", 0);
+    result |= register_syscall(SYS_setgid, sys_setgid, "setgid", 0);
+    registered_count += 6;
+    
+    /* ===================================================================
+     * File I/O Syscalls (Extended)
+     * =================================================================== */
+    
+    /* Extended file operations (27, 33-39) */
+    result |= register_syscall(SYS_lstat, sys_lstat, "lstat", SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_fcntl, sys_fcntl, "fcntl", SYSCALL_FLAG_BATCHABLE);
+    result |= register_syscall(SYS_readv, sys_readv, "readv", SYSCALL_FLAG_ZERO_COPY);
+    result |= register_syscall(SYS_writev, sys_writev, "writev", SYSCALL_FLAG_ZERO_COPY);
+    result |= register_syscall(SYS_pread, sys_pread, "pread", SYSCALL_FLAG_ZERO_COPY);
+    result |= register_syscall(SYS_pwrite, sys_pwrite, "pwrite", SYSCALL_FLAG_ZERO_COPY);
+    result |= register_syscall(SYS_truncate, sys_truncate, "truncate", 0);
+    registered_count += 7;
+    
+    /* ===================================================================
+     * Directory Operations (Extended)
+     * =================================================================== */
+    
+    /* Extended directory operations (44-49) */
+    result |= register_syscall(SYS_link, sys_link, "link", SYSCALL_FLAG_BATCHABLE);
+    result |= register_syscall(SYS_symlink, sys_symlink, "symlink", SYSCALL_FLAG_BATCHABLE);
+    result |= register_syscall(SYS_readlink, sys_readlink, "readlink", SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_rename, sys_rename, "rename", SYSCALL_FLAG_BATCHABLE);
+    result |= register_syscall(SYS_getdents, sys_getdents, "getdents", SYSCALL_FLAG_READONLY);
+    registered_count += 5;
+    
+    /* ===================================================================
+     * Memory Management Syscalls (Extended)
+     * =================================================================== */
+    
+    /* Extended memory management (53-63) */
+    result |= register_syscall(SYS_msync, sys_msync, "msync", 0);
+    result |= register_syscall(SYS_madvise, sys_madvise, "madvise", 0);
+    result |= register_syscall(SYS_mlock, sys_mlock, "mlock", 0);
+    result |= register_syscall(SYS_munlock, sys_munlock, "munlock", 0);
+    result |= register_syscall(SYS_mlockall, sys_mlockall, "mlockall", 0);
+    result |= register_syscall(SYS_munlockall, sys_munlockall, "munlockall", 0);
+    result |= register_syscall(SYS_sbrk, sys_sbrk, "sbrk", 0);
+    result |= register_syscall(SYS_mremap, sys_mremap, "mremap", 0);
+    result |= register_syscall(SYS_mincore, sys_mincore, "mincore", SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_mmap2, sys_mmap2, "mmap2", 0);
+    registered_count += 10;
+    
+    /* ===================================================================
+     * IPC Syscalls (Extended)
+     * =================================================================== */
+    
+    /* Socket operations (73-83) */
+    result |= register_syscall(SYS_bind, sys_bind, "bind", 0);
+    result |= register_syscall(SYS_listen, sys_listen, "listen", 0);
+    result |= register_syscall(SYS_accept, sys_accept, "accept", 0);
+    result |= register_syscall(SYS_connect, sys_connect, "connect", 0);
+    result |= register_syscall(SYS_send, sys_send, "send", SYSCALL_FLAG_ZERO_COPY);
+    result |= register_syscall(SYS_recv, sys_recv, "recv", SYSCALL_FLAG_ZERO_COPY);
+    result |= register_syscall(SYS_sendto, sys_sendto, "sendto", SYSCALL_FLAG_ZERO_COPY);
+    result |= register_syscall(SYS_recvfrom, sys_recvfrom, "recvfrom", SYSCALL_FLAG_ZERO_COPY);
+    result |= register_syscall(SYS_shutdown, sys_shutdown, "shutdown", 0);
+    result |= register_syscall(SYS_setsockopt, sys_setsockopt, "setsockopt", 0);
+    result |= register_syscall(SYS_getsockopt, sys_getsockopt, "getsockopt", SYSCALL_FLAG_READONLY);
+    registered_count += 11;
+    
+    /* Shared memory and message queue operations (85-89) */
+    result |= register_syscall(SYS_shm_unlink, sys_shm_unlink, "shm_unlink", 0);
+    result |= register_syscall(SYS_msgget, sys_msgget, "msgget", 0);
+    result |= register_syscall(SYS_msgsnd, sys_msgsnd, "msgsnd", 0);
+    result |= register_syscall(SYS_msgrcv, sys_msgrcv, "msgrcv", 0);
+    registered_count += 4;
+    
+    /* ===================================================================
+     * Time Syscalls (Extended)
+     * =================================================================== */
+    
+    /* Extended time operations (90, 92, 94-99) */
+    result |= register_syscall(SYS_time, sys_time, "time", 
+                              SYSCALL_FLAG_FAST_PATH | SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_settimeofday, sys_settimeofday, "settimeofday", 0);
+    result |= register_syscall(SYS_clock_settime, sys_clock_settime, "clock_settime", 0);
+    result |= register_syscall(SYS_clock_getres, sys_clock_getres, "clock_getres", 
+                              SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_clock_nanosleep, sys_clock_nanosleep, "clock_nanosleep", 0);
+    result |= register_syscall(SYS_timer_create, sys_timer_create, "timer_create", 0);
+    result |= register_syscall(SYS_timer_delete, sys_timer_delete, "timer_delete", 0);
+    registered_count += 7;
+    
+    /* ===================================================================
+     * System Information Syscalls (Extended)
+     * =================================================================== */
+    
+    /* System information operations (100-107) */
+    result |= register_syscall(SYS_uname, sys_uname, "uname", SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_sysinfo, sys_sysinfo, "sysinfo", SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_getrusage, sys_getrusage, "getrusage", SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_times, sys_times, "times", SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_syslog, sys_syslog, "syslog", 0);
+    result |= register_syscall(SYS_getrlimit, sys_getrlimit, "getrlimit", SYSCALL_FLAG_READONLY);
+    result |= register_syscall(SYS_setrlimit, sys_setrlimit, "setrlimit", 0);
+    result |= register_syscall(SYS_getpagesize, sys_getpagesize, "getpagesize", 
+                              SYSCALL_FLAG_FAST_PATH | SYSCALL_FLAG_READONLY);
+    registered_count += 8;
+    
+    /* ===================================================================
+     * Summary
+     * =================================================================== */
+    
+    if (result != 0) {
+        fprintf(stderr, "syscall_table_complete: Failed to register some syscalls\n");
+        return -EIO;
+    }
+    
+    printf("syscall_table_complete: Successfully registered %d extended syscalls\n", 
+           registered_count);
+    printf("syscall_table_complete: Total syscalls available: %d\n", SYSCALL_COUNT);
+    
     return 0;
 }
