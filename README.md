@@ -433,7 +433,7 @@ BDI is currently a solo development effort ("Me, Myself and AI"), but the projec
 
 ---
 
-## 📄 License MiT
+## 📄 License MIT
 
 ---
 
