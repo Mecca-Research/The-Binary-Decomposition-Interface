@@ -118,7 +118,7 @@ Experimental C++ implementation exploring advanced metaprogramming techniques:
 
 ### Development Status
 
-The project is currently in active development by a solo developer ("Me, Myself and AI"). All core metaprogramming engines are implemented, with ongoing work on kernel completion, driver development, and C++23 refactoring.
+All core metaprogramming engines are implemented, with ongoing work on kernel completion, driver development, and C++23 refactoring.
 
 ---
 
@@ -452,7 +452,6 @@ BDI is currently a solo development effort ("Me, Myself and AI"), but the projec
 
 BDI represents an ambitious vision to fundamentally rethink computational substrates. This project is the result of extensive research, experimentation, and dedication to creating a more verifiable, efficient, and intelligent computing foundation.
 
-**Development Team**: Me, Myself and AI (Solo Developer)
 
 ---
 
