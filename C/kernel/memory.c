@@ -19,6 +19,24 @@
 #include <time.h>
 
 // ============================================================================
+// Allocation Metadata Tracking
+// ============================================================================
+
+/**
+ * @brief Allocation metadata header
+ * @details Stored before each allocation to track size and type
+ */
+typedef struct {
+    size_t size;                // Original allocation size
+    uint32_t order;             // PMM order (if PMM-backed)
+    page_frame_t *page;         // Page frame pointer (if PMM-backed)
+    uint32_t magic;             // Magic number for validation
+} alloc_metadata_t;
+
+#define ALLOC_MAGIC 0xDEADBEEF
+#define METADATA_SIZE sizeof(alloc_metadata_t)
+
+// ============================================================================
 // Global State
 // ============================================================================
 
@@ -62,6 +80,27 @@ static inline size_t align_to_page(size_t size) {
  */
 static inline bool is_page_aligned(const void *addr) {
     return ((uintptr_t)addr & (PAGE_SIZE - 1)) == 0;
+}
+
+/**
+ * @brief Calculate order for given number of pages
+ * @param num_pages Number of pages needed
+ * @return Order value (2^order >= num_pages)
+ */
+static inline uint32_t calculate_order(size_t num_pages) {
+    if (num_pages == 0) {
+        return 0;
+    }
+    
+    uint32_t order = 0;
+    size_t pages = 1;
+    
+    while (pages < num_pages && order < MAX_ORDER) {
+        order++;
+        pages <<= 1;
+    }
+    
+    return order;
 }
 
 // ============================================================================
@@ -351,6 +390,29 @@ bool try_promote_huge_page(void *addr, size_t size) {
 }
 
 // ============================================================================
+// Page Allocation Wrappers (Bug Fix #5)
+// ============================================================================
+
+/**
+ * @brief Allocate pages - wrapper for pmm_alloc_pages
+ * @param gfp_mask GFP allocation flags
+ * @param order Allocation order
+ * @return Page frame pointer or nullptr on failure
+ */
+page_frame_t* alloc_pages(uint32_t gfp_mask, uint32_t order) {
+    return pmm_alloc_pages(gfp_mask, order);
+}
+
+/**
+ * @brief Free pages - wrapper for pmm_free_pages
+ * @param page Page frame pointer
+ * @param order Allocation order
+ */
+void free_pages(page_frame_t *page, uint32_t order) {
+    pmm_free_pages(page, order);
+}
+
+// ============================================================================
 // Memory Allocator Implementation
 // ============================================================================
 
@@ -461,12 +523,10 @@ void* kmalloc(size_t size, uint32_t flags) {
     }
     
     // Fall back to PMM for larger allocations
-    uint32_t order = 0;
-    size_t aligned_size = align_to_page(size);
-    
-    while ((PAGE_SIZE << order) < aligned_size && order < MAX_ORDER) {
-        order++;
-    }
+    // Need space for metadata + actual allocation
+    size_t total_size = size + METADATA_SIZE;
+    size_t aligned_size = align_to_page(total_size);
+    uint32_t order = calculate_order(aligned_size / PAGE_SIZE);
     
     page_frame_t *page = alloc_pages(flags, order);
     if (page == nullptr) {
@@ -474,7 +534,15 @@ void* kmalloc(size_t size, uint32_t flags) {
         return nullptr;
     }
     
-    ptr = page->virtual_addr;
+    // Store metadata at the beginning
+    alloc_metadata_t *metadata = (alloc_metadata_t*)page->virtual_addr;
+    metadata->size = size;
+    metadata->order = order;
+    metadata->page = page;
+    metadata->magic = ALLOC_MAGIC;
+    
+    // Return pointer after metadata
+    ptr = (char*)page->virtual_addr + METADATA_SIZE;
     
     if (flags & GFP_ZERO) {
         memset(ptr, 0, size);
@@ -507,11 +575,24 @@ void kfree(void *ptr) {
         return;
     }
     
-    // Otherwise, free through PMM
-    // In a real implementation, we would look up the page frame
-    // For now, just update statistics
-    atomic_fetch_add(&g_memory_stats.free_memory, PAGE_SIZE);
-    atomic_fetch_sub(&g_memory_stats.used_memory, PAGE_SIZE);
+    // Bug Fix #3: Properly free PMM allocations
+    // Get metadata stored before the allocation
+    alloc_metadata_t *metadata = (alloc_metadata_t*)((char*)ptr - METADATA_SIZE);
+    
+    // Validate metadata
+    if (metadata->magic != ALLOC_MAGIC) {
+        printf("kfree: Invalid metadata magic, possible corruption at %p\n", ptr);
+        return;
+    }
+    
+    // Free through PMM using stored page frame and order
+    if (metadata->page != nullptr) {
+        size_t freed_size = PAGE_SIZE << metadata->order;
+        free_pages(metadata->page, metadata->order);
+        
+        atomic_fetch_add(&g_memory_stats.free_memory, freed_size);
+        atomic_fetch_sub(&g_memory_stats.used_memory, freed_size);
+    }
 }
 
 void* kzalloc(size_t size, uint32_t flags) {
@@ -528,13 +609,26 @@ void* krealloc(void *ptr, size_t new_size, uint32_t flags) {
         return nullptr;
     }
     
+    // Bug Fix #4: Use tracked allocation size to prevent buffer overrun
+    // Get old allocation size from metadata
+    alloc_metadata_t *metadata = (alloc_metadata_t*)((char*)ptr - METADATA_SIZE);
+    
+    // Validate metadata
+    if (metadata->magic != ALLOC_MAGIC) {
+        printf("krealloc: Invalid metadata magic, possible corruption at %p\n", ptr);
+        return nullptr;
+    }
+    
+    size_t old_size = metadata->size;
+    
     void *new_ptr = kmalloc(new_size, flags);
     if (new_ptr == nullptr) {
         return nullptr;
     }
     
-    // Copy old data (simplified - real implementation would track sizes)
-    memcpy(new_ptr, ptr, new_size);
+    // Copy only the minimum of old and new size to prevent buffer overrun
+    size_t copy_size = (old_size < new_size) ? old_size : new_size;
+    memcpy(new_ptr, ptr, copy_size);
     kfree(ptr);
     
     return new_ptr;
