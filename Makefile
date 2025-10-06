@@ -133,7 +133,10 @@ KERNEL_SRCS += bdi_kernel/kernel/pipe.c bdi_kernel/kernel/socket.c
 KERNEL_SRCS += bdi_kernel/kernel/autoprofiler.c
 
 # Device and backend
-DEVICE_SRCS := bdi_kernel/device/device.c
+DEVICE_SRCS := bdi_kernel/device/device.c bdi_kernel/device/device_manager.c
+DEVICE_SRCS += bdi_kernel/device/hotplug.c bdi_kernel/device/irq.c
+DEVICE_SRCS += bdi_kernel/device/driver_interface.c bdi_kernel/device/device_class.c
+DEVICE_SRCS += bdi_kernel/device/backend_integration.c
 BACKEND_SRCS := bdi_kernel/backend/gpu_backend.c bdi_kernel/backend/fpga_backend.c
 BACKEND_SRCS += bdi_kernel/backend/bpu_device.c
 
