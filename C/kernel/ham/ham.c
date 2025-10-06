@@ -192,12 +192,22 @@ int ham_alloc(RegionId *out_id, HamTier tier, size_t size_bytes, void **out_ptr)
     
     // Allocate backing memory based on tier
     if (tier == HAM_CRITICAL || tier == HAM_ACTIVE) {
-        // Allocate from PMM
+        // Bug Fix #1: Calculate correct order for multi-page allocations
         uint32_t num_pages = (size_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
-        region->pages = pmm_alloc_pages(GFP_KERNEL | GFP_ZERO, 0);
+        
+        // Calculate order: 2^order >= num_pages
+        uint32_t order = 0;
+        uint32_t pages_for_order = 1;
+        while (pages_for_order < num_pages && order < 11) {  // MAX_ORDER is 11
+            order++;
+            pages_for_order <<= 1;
+        }
+        
+        region->pages = pmm_alloc_pages(GFP_KERNEL | GFP_ZERO, order);
         
         if (region->pages == nullptr) {
-            printf("HAM: Failed to allocate pages for region\n");
+            printf("HAM: Failed to allocate pages for region (order=%u, num_pages=%u)\n", 
+                   order, num_pages);
             region->id = 0;
             return -1;
         }
@@ -272,7 +282,17 @@ int ham_free(RegionId id) {
     
     // Free backing memory
     if (region->pages != nullptr) {
-        pmm_free_pages(region->pages, 0);
+        // Bug Fix #2: Calculate correct order for multi-page regions
+        // Must match the order used during allocation to properly free buddy allocator blocks
+        uint32_t num_pages = region->num_pages;
+        uint32_t order = 0;
+        uint32_t pages_for_order = 1;
+        while (pages_for_order < num_pages && order < 11) {  // MAX_ORDER is 11
+            order++;
+            pages_for_order <<= 1;
+        }
+        
+        pmm_free_pages(region->pages, order);
         region->pages = nullptr;
     } else if (region->base != nullptr) {
         free(region->base);
@@ -308,16 +328,58 @@ int ham_resize(RegionId id, size_t new_size) {
         return 0;
     }
     
-    // Simplified resize - reallocate
-    void *new_base = realloc(region->base, new_size);
-    if (new_base == nullptr) {
-        region_unlock(region);
-        return -1;
-    }
-    
     size_t old_size = region->capacity_bytes;
-    region->base = new_base;
-    region->capacity_bytes = new_size;
+    
+    // Bug Fix #2: Handle PMM-backed regions differently from heap regions
+    if (region->pages != nullptr) {
+        // PMM-backed region - need to allocate new pages, copy, and free old
+        uint32_t new_num_pages = (new_size + PAGE_SIZE - 1) / PAGE_SIZE;
+        
+        // Calculate new order
+        uint32_t new_order = 0;
+        uint32_t pages_for_order = 1;
+        while (pages_for_order < new_num_pages && new_order < 11) {
+            new_order++;
+            pages_for_order <<= 1;
+        }
+        
+        // Allocate new pages
+        page_frame_t *new_pages = pmm_alloc_pages(GFP_KERNEL | GFP_ZERO, new_order);
+        if (new_pages == nullptr) {
+            region_unlock(region);
+            return -1;
+        }
+        
+        // Copy old data (up to minimum of old and new size)
+        size_t copy_size = (old_size < new_size) ? old_size : new_size;
+        memcpy(new_pages->virtual_addr, region->base, copy_size);
+        
+        // Free old pages (calculate old order)
+        uint32_t old_num_pages = region->num_pages;
+        uint32_t old_order = 0;
+        uint32_t old_pages_for_order = 1;
+        while (old_pages_for_order < old_num_pages && old_order < 11) {
+            old_order++;
+            old_pages_for_order <<= 1;
+        }
+        pmm_free_pages(region->pages, old_order);
+        
+        // Update region
+        region->pages = new_pages;
+        region->base = new_pages->virtual_addr;
+        region->num_pages = new_num_pages;
+        region->capacity_bytes = new_size;
+    } else {
+        // Heap-backed region (DORMANT/ARCHIVE) - can use realloc
+        void *new_base = realloc(region->base, new_size);
+        if (new_base == nullptr) {
+            region_unlock(region);
+            return -1;
+        }
+        
+        region->base = new_base;
+        region->capacity_bytes = new_size;
+    }
     
     // Update statistics
     if (new_size > old_size) {
