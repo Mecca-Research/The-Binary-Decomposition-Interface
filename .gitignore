@@ -12,11 +12,12 @@ core
 core.*
 vgcore.*
 
-# Test executables
-C/tests/phase7/test_jit_compiler
-C/tests/phase7/test_mark_sweep
-C/tests/phase7/test_generational_gc
-C/tests/phase7/test_all_vm
+# Test executables - ignore all compiled test binaries
+C/tests/**/test_*
+C/tests/**/benchmark_*
+!C/tests/**/*.c
+!C/tests/**/*.h
+!C/tests/**/*.sh
 
 # LLVM intermediate files
 *.ll

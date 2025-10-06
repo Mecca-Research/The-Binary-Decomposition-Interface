@@ -282,7 +282,17 @@ int ham_free(RegionId id) {
     
     // Free backing memory
     if (region->pages != nullptr) {
-        pmm_free_pages(region->pages, 0);
+        // Bug Fix #2: Calculate correct order for multi-page regions
+        // Must match the order used during allocation to properly free buddy allocator blocks
+        uint32_t num_pages = region->num_pages;
+        uint32_t order = 0;
+        uint32_t pages_for_order = 1;
+        while (pages_for_order < num_pages && order < 11) {  // MAX_ORDER is 11
+            order++;
+            pages_for_order <<= 1;
+        }
+        
+        pmm_free_pages(region->pages, order);
         region->pages = nullptr;
     } else if (region->base != nullptr) {
         free(region->base);
