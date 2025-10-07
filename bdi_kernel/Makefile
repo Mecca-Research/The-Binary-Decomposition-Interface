@@ -152,7 +152,11 @@ coverage-clean:
 
 .PHONY: ci-build ci-test ci-sanitizers ci-coverage
 
-ci-build: build-tests
+ci-build:
+	@echo "==> CI: Building kernel..."
+	$(MAKE) -C .. BUILD_MODE=release all
+	@echo "==> CI: Building tests..."
+	$(MAKE) build-tests
 	@echo "==> CI: Build completed successfully"
 
 ci-test: test-all
