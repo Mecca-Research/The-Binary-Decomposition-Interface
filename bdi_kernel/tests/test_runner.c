@@ -1,4 +1,5 @@
 
+
 /*
  * BDI Kernel Test Runner
  * Unified test discovery, execution, and reporting infrastructure
@@ -74,6 +75,12 @@ static void discover_tests(void);
 static void run_tests(test_config_t *config);
 static void print_results(test_stats_t *stats);
 
+// External test suite declarations
+extern int run_memory_stress_test(int duration_sec);
+extern int run_scheduler_stress_test(int duration_sec);
+extern int run_process_stress_test(int duration_sec);
+extern int run_regression_tests(void);
+
 // Test registration macro
 #define REGISTER_TEST(name, desc, cat, func) \
     __attribute__((constructor)) static void register_##func(void) { \
@@ -144,10 +151,44 @@ static test_result_t test_process_creation(void) {
     return TEST_RESULT_PASS;
 }
 
+// Wrapper functions for stress tests
+static test_result_t test_memory_stress_wrapper(void) {
+    // Get duration from global config (default 60 seconds)
+    extern test_config_t g_test_config;
+    int result = run_memory_stress_test(g_test_config.duration_seconds);
+    return (result == 0) ? TEST_RESULT_PASS : TEST_RESULT_FAIL;
+}
+
+static test_result_t test_scheduler_stress_wrapper(void) {
+    extern test_config_t g_test_config;
+    int result = run_scheduler_stress_test(g_test_config.duration_seconds);
+    return (result == 0) ? TEST_RESULT_PASS : TEST_RESULT_FAIL;
+}
+
+static test_result_t test_process_stress_wrapper(void) {
+    extern test_config_t g_test_config;
+    int result = run_process_stress_test(g_test_config.duration_seconds);
+    return (result == 0) ? TEST_RESULT_PASS : TEST_RESULT_FAIL;
+}
+
+// Wrapper function for regression tests
+static test_result_t test_regression_suite_wrapper(void) {
+    int result = run_regression_tests();
+    return (result == 0) ? TEST_RESULT_PASS : TEST_RESULT_FAIL;
+}
+
 // Register sample tests
 REGISTER_TEST("memory_allocation", "Basic memory allocation test", TEST_CATEGORY_UNIT, test_memory_allocation)
 REGISTER_TEST("scheduler_basic", "Basic scheduler functionality", TEST_CATEGORY_UNIT, test_scheduler_basic)
 REGISTER_TEST("process_creation", "Process creation test", TEST_CATEGORY_INTEGRATION, test_process_creation)
+
+// Register stress tests
+REGISTER_TEST("memory_stress", "Memory allocation/deallocation stress test", TEST_CATEGORY_STRESS, test_memory_stress_wrapper)
+REGISTER_TEST("scheduler_stress", "Scheduler work stealing and context switch stress", TEST_CATEGORY_STRESS, test_scheduler_stress_wrapper)
+REGISTER_TEST("process_stress", "Process lifecycle and IPC stress test", TEST_CATEGORY_STRESS, test_process_stress_wrapper)
+
+// Register regression tests
+REGISTER_TEST("regression_suite", "Regression test suite for previously fixed bugs", TEST_CATEGORY_REGRESSION, test_regression_suite_wrapper)
 
 // Test discovery
 static void discover_tests(void) {
@@ -160,8 +201,14 @@ static void discover_tests(void) {
     }
 }
 
+// Global config for wrapper functions
+test_config_t g_test_config;
+
 // Test execution
 static void run_tests(test_config_t *config) {
+    // Store config globally for wrapper functions
+    g_test_config = *config;
+    
     test_stats_t stats = {0};
     double start_time = get_time_ms();
     

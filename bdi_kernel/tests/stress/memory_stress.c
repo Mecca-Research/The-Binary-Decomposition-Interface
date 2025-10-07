@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -249,6 +250,7 @@ int run_memory_stress_test(int duration_sec) {
 }
 
 // Entry point for standalone execution
+#ifndef TEST_RUNNER_BUILD
 int main(int argc, char *argv[]) {
     int duration = STRESS_DURATION_SEC;
     
@@ -259,3 +261,5 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
     return run_memory_stress_test(duration);
 }
+
+#endif

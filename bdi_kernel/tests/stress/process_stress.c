@@ -13,6 +13,7 @@
 #include <time.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <stdint.h>
 
 #define MAX_PROCESSES 1000
 #define STRESS_DURATION_SEC 60
@@ -33,7 +34,7 @@ static void* stress_process_lifecycle(void *arg) {
         if (pid == 0) {
             // Child process - do minimal work and exit
             usleep(1000);
-            exit(0);
+            _exit(0);
         } else if (pid > 0) {
             // Parent process
             atomic_fetch_add(&processes_created, 1);
@@ -68,7 +69,7 @@ static void* stress_process_tree(void *arg) {
             usleep(10000);
             
             if (current_depth >= max_depth) {
-                exit(0);
+                _exit(0);
             }
         } else if (pid > 0) {
             atomic_fetch_add(&processes_created, 1);
@@ -106,7 +107,7 @@ static void* stress_pipe_ipc(void *arg) {
                 write(pipefd[1], buffer, sizeof(buffer));
             }
             close(pipefd[1]);
-            exit(0);
+            _exit(0);
         } else if (pid > 0) {
             // Parent - read from pipe
             close(pipefd[1]);
@@ -147,7 +148,7 @@ static void* stress_signals(void *arg) {
         if (pid == 0) {
             // Child - wait for signal
             pause();
-            exit(0);
+            _exit(0);
         } else if (pid > 0) {
             atomic_fetch_add(&processes_created, 1);
             
@@ -182,6 +183,7 @@ int run_process_stress_test(int duration_sec) {
     printf("=== Process Stress Test ===\n");
     printf("Duration: %d seconds\n", duration_sec);
     printf("\n");
+    fflush(stdout);  // Flush before forking to prevent duplicate output
     
     pthread_t threads[8];
     int thread_ids[8];
@@ -231,10 +233,24 @@ int run_process_stress_test(int duration_sec) {
     printf("Processes destroyed: %lu\n", atomic_load(&processes_destroyed));
     printf("Fork failures: %lu\n", atomic_load(&fork_failures));
     
+    // Bug Fix: Add zero-check before division to prevent division by zero
     uint64_t failures = atomic_load(&fork_failures);
-    if (failures > atomic_load(&processes_created) * 0.1) {
+    uint64_t created = atomic_load(&processes_created);
+    
+    if (created == 0) {
+        // All fork attempts failed
+        if (failures > 0) {
+            printf("\nERROR: All fork attempts failed (%lu failures)\n", failures);
+            printf("This may indicate resource limits (ulimit -u) or system constraints.\n");
+            return 1;
+        }
+        // No processes created and no failures - unusual but not an error
+        printf("\nWARNING: No processes were created during the test.\n");
+        return 0;
+    } else if (failures > created * 0.1) {
+        // High failure rate (>10%)
         printf("\nWARNING: High fork failure rate (%.2f%%)\n", 
-               (failures * 100.0) / atomic_load(&processes_created));
+               (failures * 100.0) / created);
         return 1;
     }
     
@@ -243,6 +259,7 @@ int run_process_stress_test(int duration_sec) {
 }
 
 // Entry point for standalone execution
+#ifndef TEST_RUNNER_BUILD
 int main(int argc, char *argv[]) {
     int duration = STRESS_DURATION_SEC;
     
@@ -252,3 +269,4 @@ int main(int argc, char *argv[]) {
     
     return run_process_stress_test(duration);
 }
+#endif

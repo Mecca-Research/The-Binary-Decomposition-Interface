@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -285,6 +286,9 @@ int run_regression_tests(void) {
 }
 
 // Entry point
+#ifndef TEST_RUNNER_BUILD
 int main(void) {
     return run_regression_tests();
 }
+
+#endif
