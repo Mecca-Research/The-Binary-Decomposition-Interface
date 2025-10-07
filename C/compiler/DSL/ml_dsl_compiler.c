@@ -126,6 +126,53 @@ void dsl_compiler_report_error(DSLCompiler* compiler, const char* message) {
     fprintf(stderr, "Compilation error: %s\n", message);
 }
 
+// Helper function to parse discrete[n] format
+static bool parse_discrete_space(const char* space_str, size_t* out_size) {
+    if (!space_str || !out_size) return false;
+    
+    // Expected format: "discrete[n]" where n is a positive integer
+    const char* prefix = "discrete[";
+    size_t prefix_len = strlen(prefix);
+    
+    if (strncmp(space_str, prefix, prefix_len) != 0) {
+        return false;
+    }
+    
+    // Find the closing bracket
+    const char* bracket_pos = strchr(space_str + prefix_len, ']');
+    if (!bracket_pos) {
+        return false;
+    }
+    
+    // Verify nothing comes after the closing bracket
+    if (*(bracket_pos + 1) != '\0') {
+        return false;
+    }
+    
+    // Extract the number between brackets
+    char num_str[32];
+    size_t num_len = bracket_pos - (space_str + prefix_len);
+    
+    if (num_len == 0 || num_len >= sizeof(num_str)) {
+        return false;
+    }
+    
+    strncpy(num_str, space_str + prefix_len, num_len);
+    num_str[num_len] = '\0';
+    
+    // Parse the number
+    char* endptr;
+    long value = strtol(num_str, &endptr, 10);
+    
+    // Check if parsing was successful and value is valid
+    if (*endptr != '\0' || value <= 0 || value > 1000000) {
+        return false;
+    }
+    
+    *out_size = (size_t)value;
+    return true;
+}
+
 // Semantic analysis
 
 bool dsl_compiler_validate_model_decl(DSLCompiler* compiler, ASTNode* node) {
@@ -288,9 +335,57 @@ bool dsl_compiler_compile_model_decl(DSLCompiler* compiler, ASTNode* node) {
             return false;
         }
         
-        // Parse discrete[n] format
-        size_t n_states = 100;  // Default
-        size_t n_actions = 4;   // Default
+        // Parse discrete[n] format from parameter values
+        size_t n_states = 100;  // Default fallback
+        size_t n_actions = 4;   // Default fallback
+        
+        // Parse state_space parameter
+        if (state_param->value_type == PARAM_STRING && state_param->value.string) {
+            if (!parse_discrete_space(state_param->value.string, &n_states)) {
+                char error[256];
+                snprintf(error, sizeof(error), 
+                    "Invalid state_space format: '%s'. Expected 'discrete[n]' where n > 0",
+                    state_param->value.string);
+                dsl_compiler_report_error(compiler, error);
+                return false;
+            }
+        } else {
+            dsl_compiler_report_error(compiler, 
+                "state_space parameter must be a string in format 'discrete[n]'");
+            return false;
+        }
+        
+        // Parse action_space parameter
+        if (action_param->value_type == PARAM_STRING && action_param->value.string) {
+            if (!parse_discrete_space(action_param->value.string, &n_actions)) {
+                char error[256];
+                snprintf(error, sizeof(error), 
+                    "Invalid action_space format: '%s'. Expected 'discrete[n]' where n > 0",
+                    action_param->value.string);
+                dsl_compiler_report_error(compiler, error);
+                return false;
+            }
+        } else {
+            dsl_compiler_report_error(compiler, 
+                "action_space parameter must be a string in format 'discrete[n]'");
+            return false;
+        }
+        
+        // Validate parsed values are reasonable
+        if (n_states == 0 || n_actions == 0) {
+            dsl_compiler_report_error(compiler, 
+                "State and action space sizes must be greater than 0");
+            return false;
+        }
+        
+        if (n_states > 100000 || n_actions > 10000) {
+            char error[256];
+            snprintf(error, sizeof(error), 
+                "State/action space too large: states=%zu, actions=%zu. Maximum: 100000/10000",
+                n_states, n_actions);
+            dsl_compiler_report_error(compiler, error);
+            return false;
+        }
         
         QLearningConfig config = qlearning_default_config();
         

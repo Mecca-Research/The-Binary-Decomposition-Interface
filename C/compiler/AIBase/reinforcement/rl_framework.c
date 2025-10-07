@@ -239,15 +239,36 @@ void rl_metrics_add_episode(RLMetrics* metrics, double reward, size_t length, do
     if (!metrics) return;
     
     if (metrics->num_episodes >= metrics->capacity) {
-        // Resize arrays
+        // Resize arrays - use temporary variables to ensure all succeed before updating
         size_t new_capacity = metrics->capacity * 2;
         
         double* new_rewards = realloc(metrics->episode_rewards, new_capacity * sizeof(double));
         size_t* new_lengths = realloc(metrics->episode_lengths, new_capacity * sizeof(size_t));
         double* new_values = realloc(metrics->episode_values, new_capacity * sizeof(double));
         
-        if (!new_rewards || !new_lengths || !new_values) return;
+        // Check if ALL reallocs succeeded
+        if (!new_rewards || !new_lengths || !new_values) {
+            // If any failed, we need to handle cleanup carefully
+            // Note: realloc frees the original pointer only on success
+            // If realloc fails, the original pointer is still valid
+            // However, if one succeeded and another failed, we have a problem
+            
+            // Free any successful allocations that are different from originals
+            if (new_rewards && new_rewards != metrics->episode_rewards) {
+                free(new_rewards);
+            }
+            if (new_lengths && new_lengths != metrics->episode_lengths) {
+                free(new_lengths);
+            }
+            if (new_values && new_values != metrics->episode_values) {
+                free(new_values);
+            }
+            
+            // Cannot resize, skip this episode recording
+            return;
+        }
         
+        // All reallocs succeeded, safe to update pointers
         metrics->episode_rewards = new_rewards;
         metrics->episode_lengths = new_lengths;
         metrics->episode_values = new_values;
