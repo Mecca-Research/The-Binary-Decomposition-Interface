@@ -35,7 +35,6 @@ typedef struct {
     size_t min_samples_split;
     size_t min_samples_leaf;
     double min_impurity_decrease;
-    size_t n_features;     // Number of features (set during fit)
     bool fitted;
 } DecisionTreeModel;
 
