@@ -63,7 +63,9 @@ static bool parse_unicode_data_line(const char *line, unicode_char_props_t *prop
         if (*p == ';') p++;
     }
     
-    if (field_count < 15) return false;
+    // UnicodeData.txt has 15 fields, but the last field (field 15) is often empty
+    // So we accept lines with 14 or 15 fields
+    if (field_count < 14) return false;
     
     // Parse fields
     props->codepoint = parse_hex(fields[0]);
@@ -114,6 +116,8 @@ bool parse_unicode_data(const char *filename, unicode_char_props_t **props_out, 
     
     size_t count = 0;
     char line[4096];
+    unicode_char_props_t range_start;
+    bool in_range = false;
     
     while (fgets(line, sizeof(line), file)) {
         // Remove newline
@@ -123,6 +127,7 @@ bool parse_unicode_data(const char *filename, unicode_char_props_t **props_out, 
         // Skip empty lines and comments
         if (line[0] == '\0' || line[0] == '#') continue;
         
+        // Check capacity
         if (count >= capacity) {
             capacity *= 2;
             unicode_char_props_t *new_props = realloc(props, capacity * sizeof(unicode_char_props_t));
@@ -134,8 +139,62 @@ bool parse_unicode_data(const char *filename, unicode_char_props_t **props_out, 
             props = new_props;
         }
         
-        if (parse_unicode_data_line(line, &props[count])) {
-            count++;
+        // Parse the line
+        unicode_char_props_t current;
+        if (!parse_unicode_data_line(line, &current)) {
+            continue;
+        }
+        
+        // Extract name field (field 1) to check for range markers
+        char name[256];
+        const char *p = line;
+        // Skip codepoint field (field 0)
+        while (*p && *p != ';') p++;
+        if (*p == ';') p++;
+        // Extract name field (field 1)
+        int name_len = 0;
+        while (*p && *p != ';' && name_len < 255) {
+            name[name_len++] = *p++;
+        }
+        name[name_len] = '\0';
+        
+        // Check for range markers
+        if (strstr(name, "First>")) {
+            // Start of a range
+            range_start = current;
+            in_range = true;
+            props[count++] = current;
+        } else if (strstr(name, "Last>") && in_range) {
+            // End of a range - expand all code points between First and Last
+            uint32_t start_cp = range_start.codepoint;
+            uint32_t end_cp = current.codepoint;
+            
+            // Generate entries for all code points in the range (start+1 to end inclusive)
+            for (uint32_t cp = start_cp + 1; cp <= end_cp; cp++) {
+                // Check capacity for large ranges
+                if (count >= capacity) {
+                    capacity *= 2;
+                    unicode_char_props_t *new_props = realloc(props, capacity * sizeof(unicode_char_props_t));
+                    if (!new_props) {
+                        free(props);
+                        fclose(file);
+                        return false;
+                    }
+                    props = new_props;
+                }
+                
+                // Copy properties from range_start and update codepoint
+                props[count] = range_start;
+                props[count].codepoint = cp;
+                count++;
+            }
+            
+            in_range = false;
+            printf("Expanded range U+%04X..U+%04X (%u code points)\n", 
+                   start_cp, end_cp, end_cp - start_cp + 1);
+        } else {
+            // Regular entry (not part of a range)
+            props[count++] = current;
         }
     }
     
