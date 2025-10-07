@@ -1,0 +1,77 @@
+
+# BTL (Binary Translation Layer) Specification for ML Primitives
+# This file defines the binary encoding format for ML operations
+
+# Token Format:
+# [BTL_TOKEN_START][ML_MODEL][ALGORITHM_TYPE][PARAMS][...][BTL_TOKEN_END]
+
+# Token Definitions
+BTL_TOKEN_START = 0xFF
+BTL_TOKEN_END = 0xFE
+
+# ML Model Types
+ML_MODEL_LINEAR_REG = 0x10
+ML_MODEL_DECISION_TREE = 0x11
+ML_MODEL_SVM = 0x12
+ML_MODEL_KMEANS = 0x13
+
+# Operation Types
+ML_OP_TRAIN = 0x01
+ML_OP_PREDICT = 0x02
+ML_OP_EVALUATE = 0x03
+
+# Linear Regression Tokens
+# Format: [START][LINEAR_REG][OP][N_FEATURES][LEARNING_RATE][...][END]
+LINEAR_REG_PREDICT_TOKEN = [0xFF, 0x10, 0x02]
+LINEAR_REG_TRAIN_TOKEN = [0xFF, 0x10, 0x01]
+
+# Decision Tree Tokens
+# Format: [START][TREE][OP][MAX_DEPTH][MIN_SAMPLES][...][END]
+TREE_PREDICT_TOKEN = [0xFF, 0x11, 0x02]
+TREE_TRAIN_TOKEN = [0xFF, 0x11, 0x01]
+TREE_SPLIT_TOKEN = [0xFF, 0x11, 0x04]  # Internal split operation
+
+# SVM Tokens
+# Format: [START][SVM][OP][KERNEL_TYPE][C][GAMMA][...][END]
+SVM_PREDICT_TOKEN = [0xFF, 0x12, 0x02]
+SVM_TRAIN_TOKEN = [0xFF, 0x12, 0x01]
+SVM_KERNEL_LINEAR = [0xFF, 0x12, 0x10]
+SVM_KERNEL_RBF = [0xFF, 0x12, 0x11]
+
+# K-means Tokens
+# Format: [START][KMEANS][OP][N_CLUSTERS][N_FEATURES][...][END]
+KMEANS_PREDICT_TOKEN = [0xFF, 0x13, 0x02]
+KMEANS_TRAIN_TOKEN = [0xFF, 0x13, 0x01]
+KMEANS_ASSIGN_TOKEN = [0xFF, 0x13, 0x04]  # Cluster assignment
+KMEANS_UPDATE_TOKEN = [0xFF, 0x13, 0x05]  # Centroid update
+
+# Parameter Encoding
+# Integers: 4 bytes (little-endian)
+# Floats: 8 bytes (IEEE 754 double precision)
+# Arrays: [LENGTH (4 bytes)][DATA...]
+
+# Example Token Sequences:
+
+# Linear Regression Prediction:
+# [0xFF][0x10][0x02][n_features (4 bytes)][feature_1 (8 bytes)]...[feature_n (8 bytes)][0xFE]
+
+# Decision Tree Training:
+# [0xFF][0x11][0x01][max_depth (4 bytes)][n_samples (4 bytes)][n_features (4 bytes)]
+# [X_data (n_samples * n_features * 8 bytes)][y_data (n_samples * 8 bytes)][0xFE]
+
+# SVM with RBF Kernel Prediction:
+# [0xFF][0x12][0x02][0x11][gamma (8 bytes)][n_features (4 bytes)]
+# [feature_1 (8 bytes)]...[feature_n (8 bytes)][0xFE]
+
+# K-means Clustering:
+# [0xFF][0x13][0x01][n_clusters (4 bytes)][n_samples (4 bytes)][n_features (4 bytes)]
+# [X_data (n_samples * n_features * 8 bytes)][0xFE]
+
+# Integration with BTL ISA:
+# These tokens can be embedded in BTL instruction streams and will be
+# recognized by the BTL decoder to invoke ML-specific execution paths.
+
+# Optimization Hints:
+# - Use BTL_PEEPHOLE for common ML operation patterns
+# - BTL_SCHEDULER can optimize ML operation ordering
+# - BTL_REGALLOC handles temporary storage for ML computations
