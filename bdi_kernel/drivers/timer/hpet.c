@@ -1,4 +1,5 @@
 
+#include <stdlib.h>       // For calloc/free
 #include "../../include/bdi/drivers/hpet.h"
 #include <string.h>
 #include <stdio.h>

@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <termios.h>      // For struct termios
+#include <sys/types.h>    // For ssize_t
 
 /* TTY buffer sizes */
 #define TTY_BUF_SIZE        4096
