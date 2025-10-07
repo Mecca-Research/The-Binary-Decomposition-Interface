@@ -239,36 +239,36 @@ void rl_metrics_add_episode(RLMetrics* metrics, double reward, size_t length, do
     if (!metrics) return;
     
     if (metrics->num_episodes >= metrics->capacity) {
-        // Resize arrays - use temporary variables to ensure all succeed before updating
+        // Resize arrays using malloc+memcpy+free strategy to avoid realloc issues
         size_t new_capacity = metrics->capacity * 2;
         
-        double* new_rewards = realloc(metrics->episode_rewards, new_capacity * sizeof(double));
-        size_t* new_lengths = realloc(metrics->episode_lengths, new_capacity * sizeof(size_t));
-        double* new_values = realloc(metrics->episode_values, new_capacity * sizeof(double));
+        // Allocate new buffers
+        double* new_rewards = malloc(new_capacity * sizeof(double));
+        size_t* new_lengths = malloc(new_capacity * sizeof(size_t));
+        double* new_values = malloc(new_capacity * sizeof(double));
         
-        // Check if ALL reallocs succeeded
+        // Check if ALL allocations succeeded
         if (!new_rewards || !new_lengths || !new_values) {
-            // If any failed, we need to handle cleanup carefully
-            // Note: realloc frees the original pointer only on success
-            // If realloc fails, the original pointer is still valid
-            // However, if one succeeded and another failed, we have a problem
-            
-            // Free any successful allocations that are different from originals
-            if (new_rewards && new_rewards != metrics->episode_rewards) {
-                free(new_rewards);
-            }
-            if (new_lengths && new_lengths != metrics->episode_lengths) {
-                free(new_lengths);
-            }
-            if (new_values && new_values != metrics->episode_values) {
-                free(new_values);
-            }
-            
+            // Clean up any successful allocations
+            free(new_rewards);
+            free(new_lengths);
+            free(new_values);
             // Cannot resize, skip this episode recording
+            // Original pointers are still valid
             return;
         }
         
-        // All reallocs succeeded, safe to update pointers
+        // Copy old data to new buffers
+        memcpy(new_rewards, metrics->episode_rewards, metrics->capacity * sizeof(double));
+        memcpy(new_lengths, metrics->episode_lengths, metrics->capacity * sizeof(size_t));
+        memcpy(new_values, metrics->episode_values, metrics->capacity * sizeof(double));
+        
+        // Free old buffers
+        free(metrics->episode_rewards);
+        free(metrics->episode_lengths);
+        free(metrics->episode_values);
+        
+        // Update struct with new pointers
         metrics->episode_rewards = new_rewards;
         metrics->episode_lengths = new_lengths;
         metrics->episode_values = new_values;
