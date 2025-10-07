@@ -1,0 +1,102 @@
+# Makefile for Phase 3 (Q-learning + RL) and Phase 4 (DSL)
+# BDI ML Primitives Extension
+
+CC = gcc
+CFLAGS = -std=c2x -Wall -Wextra -O2 -g -I. -I..
+LDFLAGS = -lm
+
+# Directories
+RL_DIR = AIBase/reinforcement
+DSL_DIR = DSL
+CODEGEN_DIR = CodeGen
+VM_DIR = VM
+TEST_DIR = tests
+
+# Source files
+RL_SOURCES = $(RL_DIR)/q_learning.c $(RL_DIR)/rl_framework.c
+DSL_SOURCES = $(DSL_DIR)/ml_dsl_lexer.c $(DSL_DIR)/ml_dsl_parser.c \
+              $(DSL_DIR)/ml_dsl_ast.c $(DSL_DIR)/ml_dsl_compiler.c
+CODEGEN_SOURCES = $(CODEGEN_DIR)/ml_codegen_qlearning.c
+VM_SOURCES = $(VM_DIR)/ml_ops_qlearning.c
+
+# Object files
+RL_OBJECTS = $(RL_SOURCES:.c=.o)
+DSL_OBJECTS = $(DSL_SOURCES:.c=.o)
+CODEGEN_OBJECTS = $(CODEGEN_SOURCES:.c=.o)
+VM_OBJECTS = $(VM_SOURCES:.c=.o)
+
+# Test executables
+TESTS = $(TEST_DIR)/ml_qlearning_test \
+        $(TEST_DIR)/ml_rl_framework_test \
+        $(TEST_DIR)/ml_dsl_test
+
+# Existing ML libraries (from Phase 1+2)
+ML_LIBS = AIBase/linear/linear_regression.o \
+          AIBase/tree/decision_tree.o \
+          AIBase/kernel/svm.o \
+          AIBase/clustering/kmeans.o \
+          CodeGen/ml_codegen.o \
+          VM/ml_ops.o
+
+.PHONY: all clean test phase3 phase4
+
+all: phase3 phase4 test
+
+# Phase 3: Q-learning and RL Framework
+phase3: $(RL_OBJECTS) $(CODEGEN_OBJECTS) $(VM_OBJECTS)
+	@echo "Phase 3 (Q-learning + RL Framework) compiled successfully"
+
+# Phase 4: DSL
+phase4: $(DSL_OBJECTS)
+	@echo "Phase 4 (DSL) compiled successfully"
+
+# Build tests
+test: $(TESTS)
+	@echo "Running tests..."
+	@./$(TEST_DIR)/ml_qlearning_test
+	@./$(TEST_DIR)/ml_rl_framework_test
+	@./$(TEST_DIR)/ml_dsl_test
+
+# Q-learning test
+$(TEST_DIR)/ml_qlearning_test: $(TEST_DIR)/ml_qlearning_test.o $(RL_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# RL framework test
+$(TEST_DIR)/ml_rl_framework_test: $(TEST_DIR)/ml_rl_framework_test.o $(RL_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# DSL test
+$(TEST_DIR)/ml_dsl_test: $(TEST_DIR)/ml_dsl_test.o $(DSL_OBJECTS) $(RL_OBJECTS) $(ML_LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Pattern rules
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Clean
+clean:
+	rm -f $(RL_OBJECTS) $(DSL_OBJECTS) $(CODEGEN_OBJECTS) $(VM_OBJECTS)
+	rm -f $(TEST_DIR)/*.o $(TESTS)
+	@echo "Cleaned build artifacts"
+
+# Install headers (optional)
+install-headers:
+	@echo "Installing headers..."
+	@mkdir -p /usr/local/include/bdi/ml/reinforcement
+	@mkdir -p /usr/local/include/bdi/ml/dsl
+	@cp $(RL_DIR)/*.h /usr/local/include/bdi/ml/reinforcement/
+	@cp $(DSL_DIR)/*.h /usr/local/include/bdi/ml/dsl/
+	@echo "Headers installed"
+
+# Help
+help:
+	@echo "BDI ML Primitives - Phase 3 & 4 Build System"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all              - Build everything (default)"
+	@echo "  phase3           - Build Q-learning and RL framework"
+	@echo "  phase4           - Build DSL components"
+	@echo "  test             - Build and run all tests"
+	@echo "  clean            - Remove build artifacts"
+	@echo "  install-headers  - Install headers to system"
+	@echo "  help             - Show this help message"
