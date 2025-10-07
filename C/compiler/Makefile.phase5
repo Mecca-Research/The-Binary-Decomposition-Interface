@@ -1,0 +1,121 @@
+# Makefile for Phase 5: ML-Infused Compiler
+
+CC = gcc
+CFLAGS = -std=gnu2x -Wall -Wextra -Wpedantic -O2 -march=native -I. -I..
+LDFLAGS = -lm
+
+# Directories
+PROFILING_DIR = Profiling
+AUTOTUNING_DIR = AutoTuning
+MODELFORMAT_DIR = ModelFormat
+MLLAYERS_DIR = MLLayers
+APPLICATIONS_DIR = Applications
+SEMANTICTAGS_DIR = SemanticTags
+FEEDBACKLOOP_DIR = FeedbackLoop
+TESTS_DIR = tests
+
+# Source files
+PROFILING_SRCS = $(PROFILING_DIR)/profiler.c \
+                 $(PROFILING_DIR)/profile_data.c \
+                 $(PROFILING_DIR)/profile_serializer.c \
+                 $(PROFILING_DIR)/profile_analyzer.c
+
+AUTOTUNING_SRCS = $(AUTOTUNING_DIR)/autotuner.c \
+                  $(AUTOTUNING_DIR)/optimizer_selector.c \
+                  $(AUTOTUNING_DIR)/hardware_detector.c \
+                  $(AUTOTUNING_DIR)/recompiler.c
+
+MODELFORMAT_SRCS = $(MODELFORMAT_DIR)/bdi_model.c \
+                   $(MODELFORMAT_DIR)/model_serializer.c \
+                   $(MODELFORMAT_DIR)/model_metadata.c
+
+MLLAYERS_SRCS = $(MLLAYERS_DIR)/lexer_ml.c \
+                $(MLLAYERS_DIR)/ast_ml.c \
+                $(MLLAYERS_DIR)/semantic_ml.c
+
+APPLICATIONS_SRCS = $(APPLICATIONS_DIR)/autorewrite.c \
+                    $(APPLICATIONS_DIR)/register_predictor.c \
+                    $(APPLICATIONS_DIR)/trap_detector.c
+
+SEMANTICTAGS_SRCS = $(SEMANTICTAGS_DIR)/semantic_tags.c
+
+FEEDBACKLOOP_SRCS = $(FEEDBACKLOOP_DIR)/feedback_collector.c \
+                    $(FEEDBACKLOOP_DIR)/model_retrainer.c
+
+ALL_SRCS = $(PROFILING_SRCS) $(AUTOTUNING_SRCS) $(MODELFORMAT_SRCS) \
+           $(MLLAYERS_SRCS) $(APPLICATIONS_SRCS) $(SEMANTICTAGS_SRCS) \
+           $(FEEDBACKLOOP_SRCS)
+
+ALL_OBJS = $(ALL_SRCS:.c=.o)
+
+# Library
+LIBPHASE5 = libphase5.a
+
+# Test executables
+TESTS = $(TESTS_DIR)/test_profiler \
+        $(TESTS_DIR)/test_autotuner \
+        $(TESTS_DIR)/test_model_format
+
+.PHONY: all clean test help
+
+all: $(LIBPHASE5)
+
+$(LIBPHASE5): $(ALL_OBJS)
+	ar rcs $@ $^
+	@echo "✓ Built Phase 5 library: $(LIBPHASE5)"
+
+%.o: %.c
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Tests
+$(TESTS_DIR)/test_profiler: $(TESTS_DIR)/test_profiler.c $(LIBPHASE5)
+	@echo "Building profiler test..."
+	$(CC) $(CFLAGS) -o $@ $< $(LIBPHASE5) $(LDFLAGS)
+
+$(TESTS_DIR)/test_autotuner: $(TESTS_DIR)/test_autotuner.c $(LIBPHASE5)
+	@echo "Building auto-tuner test..."
+	$(CC) $(CFLAGS) -o $@ $< $(LIBPHASE5) $(LDFLAGS)
+
+$(TESTS_DIR)/test_model_format: $(TESTS_DIR)/test_model_format.c $(LIBPHASE5)
+	@echo "Building model format test..."
+	$(CC) $(CFLAGS) -o $@ $< $(LIBPHASE5) $(LDFLAGS)
+
+test: $(TESTS)
+	@echo ""
+	@echo "=========================================="
+	@echo "Running Phase 5 Test Suite"
+	@echo "=========================================="
+	@echo ""
+	@for test in $(TESTS); do \
+		if [ -f $$test ]; then \
+			echo ">>> Running $$test..."; \
+			$$test || exit 1; \
+			echo ""; \
+		fi \
+	done
+	@echo "=========================================="
+	@echo "✓ All Phase 5 tests passed!"
+	@echo "=========================================="
+
+clean:
+	rm -f $(ALL_OBJS) $(LIBPHASE5) $(TESTS)
+	@echo "✓ Cleaned Phase 5 build artifacts"
+
+help:
+	@echo "Phase 5: ML-Infused Compiler Build System"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all      - Build Phase 5 library (libphase5.a)"
+	@echo "  test     - Build and run all Phase 5 tests"
+	@echo "  clean    - Remove all build artifacts"
+	@echo "  help     - Show this help message"
+	@echo ""
+	@echo "Components:"
+	@echo "  - Profiling Infrastructure"
+	@echo "  - Auto-Tuning System"
+	@echo "  - Model Format (.bdi-model)"
+	@echo "  - ML Layers (lexer, parser, AST, semantic, codegen)"
+	@echo "  - Applications (autorewrite, register predictor, trap detector)"
+	@echo "  - Semantic Tags"
+	@echo "  - Feedback Loop"
