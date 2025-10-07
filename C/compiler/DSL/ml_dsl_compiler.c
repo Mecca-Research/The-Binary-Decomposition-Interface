@@ -340,34 +340,48 @@ bool dsl_compiler_compile_model_decl(DSLCompiler* compiler, ASTNode* node) {
         size_t n_actions = 4;   // Default fallback
         
         // Parse state_space parameter
+        const char* state_space_str = NULL;
         if (state_param->value_type == PARAM_STRING && state_param->value.string) {
-            if (!parse_discrete_space(state_param->value.string, &n_states)) {
+            state_space_str = state_param->value.string;
+        } else if (state_param->value_type == PARAM_TYPE && state_param->value.string) {
+            state_space_str = state_param->value.string;
+        }
+        
+        if (state_space_str) {
+            if (!parse_discrete_space(state_space_str, &n_states)) {
                 char error[256];
                 snprintf(error, sizeof(error), 
                     "Invalid state_space format: '%s'. Expected 'discrete[n]' where n > 0",
-                    state_param->value.string);
+                    state_space_str);
                 dsl_compiler_report_error(compiler, error);
                 return false;
             }
         } else {
             dsl_compiler_report_error(compiler, 
-                "state_space parameter must be a string in format 'discrete[n]'");
+                "state_space parameter must be in format 'discrete[n]'");
             return false;
         }
         
         // Parse action_space parameter
+        const char* action_space_str = NULL;
         if (action_param->value_type == PARAM_STRING && action_param->value.string) {
-            if (!parse_discrete_space(action_param->value.string, &n_actions)) {
+            action_space_str = action_param->value.string;
+        } else if (action_param->value_type == PARAM_TYPE && action_param->value.string) {
+            action_space_str = action_param->value.string;
+        }
+        
+        if (action_space_str) {
+            if (!parse_discrete_space(action_space_str, &n_actions)) {
                 char error[256];
                 snprintf(error, sizeof(error), 
                     "Invalid action_space format: '%s'. Expected 'discrete[n]' where n > 0",
-                    action_param->value.string);
+                    action_space_str);
                 dsl_compiler_report_error(compiler, error);
                 return false;
             }
         } else {
             dsl_compiler_report_error(compiler, 
-                "action_space parameter must be a string in format 'discrete[n]'");
+                "action_space parameter must be in format 'discrete[n]'");
             return false;
         }
         

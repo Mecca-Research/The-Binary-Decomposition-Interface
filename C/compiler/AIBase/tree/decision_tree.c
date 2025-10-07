@@ -45,6 +45,7 @@ DecisionTreeModel* decision_tree_create(DecisionTreeConfig config) {
     model->min_samples_split = config.min_samples_split;
     model->min_samples_leaf = config.min_samples_leaf;
     model->min_impurity_decrease = config.min_impurity_decrease;
+    model->n_features = 0;
     model->fitted = false;
     
     return model;
@@ -256,6 +257,7 @@ bool decision_tree_fit(DecisionTreeModel* model,
         return false;
     }
     
+    model->n_features = n_features;
     model->fitted = true;
     return true;
 }
