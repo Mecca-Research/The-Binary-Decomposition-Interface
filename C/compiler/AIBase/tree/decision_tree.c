@@ -45,6 +45,7 @@ DecisionTreeModel* decision_tree_create(DecisionTreeConfig config) {
     model->min_samples_split = config.min_samples_split;
     model->min_samples_leaf = config.min_samples_leaf;
     model->min_impurity_decrease = config.min_impurity_decrease;
+    model->n_features = 0;  // Will be set during fit
     model->fitted = false;
     
     return model;
@@ -239,6 +240,9 @@ bool decision_tree_fit(DecisionTreeModel* model,
     if (!model || !X || !y || n_samples == 0 || n_features == 0) {
         return false;
     }
+    
+    // Store number of features
+    model->n_features = n_features;
     
     // Create indices array
     size_t* indices = malloc(n_samples * sizeof(size_t));
