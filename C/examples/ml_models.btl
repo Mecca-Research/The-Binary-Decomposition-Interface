@@ -1,0 +1,180 @@
+
+// BDI ML DSL Example - Complete Model Declarations
+// This file demonstrates the syntax for all supported ML algorithms
+
+// ============================================================================
+// LINEAR REGRESSION
+// ============================================================================
+
+ml model house_price_predictor {
+    type: linear_regression;
+    input: vector[5];
+    output: scalar;
+    loss: mse;
+    optimizer: gradient_descent;
+    learning_rate: 0.01;
+    max_iterations: 1000;
+    tolerance: 0.0001;
+}
+
+train house_price_predictor with dataset "data/housing_prices.csv" {
+    epochs: 500;
+    batch_size: 32;
+};
+
+// Predict house price given: [square_feet, bedrooms, bathrooms, age, location_score]
+predict house_price_predictor on input [2500.0, 4.0, 3.0, 10.0, 8.5];
+
+// ============================================================================
+// DECISION TREE
+// ============================================================================
+
+ml model iris_classifier {
+    type: decision_tree;
+    input: vector[4];
+    output: class;
+    max_depth: 10;
+    min_samples_split: 2;
+    criterion: gini;
+}
+
+train iris_classifier with dataset "data/iris.csv" {
+    epochs: 1;
+};
+
+// Predict iris species given: [sepal_length, sepal_width, petal_length, petal_width]
+predict iris_classifier on input [5.1, 3.5, 1.4, 0.2];
+
+// ============================================================================
+// SUPPORT VECTOR MACHINE (SVM)
+// ============================================================================
+
+ml model spam_detector {
+    type: svm;
+    input: vector[20];
+    output: class;
+    kernel: rbf;
+    C: 1.0;
+    gamma: 0.1;
+    max_iterations: 1000;
+}
+
+train spam_detector with dataset "data/spam_features.csv" {
+    epochs: 100;
+};
+
+// Predict spam/not-spam given feature vector
+predict spam_detector on input [0.5, 0.3, 0.8, 0.1, 0.9, 0.2, 0.7, 0.4, 0.6, 0.3,
+                                0.1, 0.8, 0.5, 0.2, 0.9, 0.4, 0.7, 0.3, 0.6, 0.5];
+
+// ============================================================================
+// K-MEANS CLUSTERING
+// ============================================================================
+
+ml model customer_segmentation {
+    type: kmeans;
+    input: vector[8];
+    output: cluster;
+    n_clusters: 4;
+    max_iterations: 100;
+    tolerance: 0.0001;
+}
+
+train customer_segmentation with dataset "data/customer_data.csv" {
+    epochs: 50;
+};
+
+// Predict customer segment given: [age, income, spending_score, tenure, ...]
+predict customer_segmentation on input [35.0, 75000.0, 65.0, 5.0, 3.5, 12.0, 1.0, 0.0];
+
+// ============================================================================
+// Q-LEARNING (REINFORCEMENT LEARNING)
+// ============================================================================
+
+ml model game_agent {
+    type: qlearning;
+    state_space: discrete[64];
+    action_space: discrete[4];
+    learning_rate: 0.1;
+    discount_factor: 0.99;
+    epsilon: 1.0;
+    epsilon_decay: 0.995;
+    epsilon_min: 0.01;
+}
+
+train game_agent with dataset "data/game_environment.json" {
+    epochs: 2000;
+    max_steps_per_episode: 200;
+};
+
+// Predict best action given current state
+predict game_agent on input [42.0];
+
+// ============================================================================
+// ADVANCED EXAMPLES
+// ============================================================================
+
+// Multi-model pipeline example
+ml model feature_extractor {
+    type: linear_regression;
+    input: vector[100];
+    output: scalar;
+    learning_rate: 0.001;
+}
+
+ml model classifier {
+    type: decision_tree;
+    input: vector[10];
+    output: class;
+    max_depth: 15;
+}
+
+// Financial prediction model
+ml model stock_predictor {
+    type: linear_regression;
+    input: vector[30];
+    output: scalar;
+    learning_rate: 0.005;
+    max_iterations: 2000;
+}
+
+train stock_predictor with dataset "data/stock_prices.csv" {
+    epochs: 1000;
+    batch_size: 64;
+};
+
+// Image clustering
+ml model image_clusters {
+    type: kmeans;
+    input: vector[512];
+    output: cluster;
+    n_clusters: 10;
+    max_iterations: 200;
+}
+
+train image_clusters with dataset "data/image_features.csv";
+
+// Autonomous agent
+ml model robot_controller {
+    type: qlearning;
+    state_space: discrete[256];
+    action_space: discrete[8];
+    learning_rate: 0.05;
+    discount_factor: 0.95;
+    epsilon: 0.5;
+}
+
+train robot_controller with dataset "data/robot_sim.json" {
+    epochs: 5000;
+};
+
+// ============================================================================
+// NOTES
+// ============================================================================
+
+// 1. Dataset paths are relative to the execution directory
+// 2. Input dimensions must match the training data
+// 3. Q-learning requires environment configuration in JSON format
+// 4. All models are automatically registered in the VM context
+// 5. Predictions can be made immediately after training
+// 6. Models can be serialized and loaded for later use

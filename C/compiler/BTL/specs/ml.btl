@@ -67,6 +67,32 @@ KMEANS_UPDATE_TOKEN = [0xFF, 0x13, 0x05]  # Centroid update
 # [0xFF][0x13][0x01][n_clusters (4 bytes)][n_samples (4 bytes)][n_features (4 bytes)]
 # [X_data (n_samples * n_features * 8 bytes)][0xFE]
 
+# Q-learning Tokens
+# Format: [START][QLEARNING][OP][N_STATES][N_ACTIONS][PARAMS][...][END]
+ML_MODEL_QLEARNING = 0x14
+QLEARNING_SELECT_ACTION_TOKEN = [0xFF, 0x14, 0x02]
+QLEARNING_UPDATE_TOKEN = [0xFF, 0x14, 0x01]
+QLEARNING_GET_Q_VALUE_TOKEN = [0xFF, 0x14, 0x03]
+QLEARNING_TRAIN_EPISODE_TOKEN = [0xFF, 0x14, 0x04]
+
+# Q-learning Parameter Encoding:
+# [START][QLEARNING][OP][n_states (4 bytes)][n_actions (4 bytes)]
+# [alpha (8 bytes)][gamma (8 bytes)][epsilon (8 bytes)]
+# [state (4 bytes)][action (4 bytes)][reward (8 bytes)]
+# [next_state (4 bytes)][done (1 byte)][END]
+
+# Q-learning Action Selection:
+# [0xFF][0x14][0x02][state (4 bytes)][0xFE]
+# Returns: action (4 bytes)
+
+# Q-learning Update:
+# [0xFF][0x14][0x01][state (4 bytes)][action (4 bytes)][reward (8 bytes)]
+# [next_state (4 bytes)][done (1 byte)][0xFE]
+
+# Q-learning Get Q-value:
+# [0xFF][0x14][0x03][state (4 bytes)][action (4 bytes)][0xFE]
+# Returns: q_value (8 bytes)
+
 # Integration with BTL ISA:
 # These tokens can be embedded in BTL instruction streams and will be
 # recognized by the BTL decoder to invoke ML-specific execution paths.
@@ -75,3 +101,4 @@ KMEANS_UPDATE_TOKEN = [0xFF, 0x13, 0x05]  # Centroid update
 # - Use BTL_PEEPHOLE for common ML operation patterns
 # - BTL_SCHEDULER can optimize ML operation ordering
 # - BTL_REGALLOC handles temporary storage for ML computations
+# - Q-learning Q-table lookups can be optimized with caching
