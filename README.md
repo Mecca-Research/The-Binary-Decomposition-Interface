@@ -2,6 +2,17 @@
 
 **A Modular Kernel and Operating System with Native AI Processes**
 
+![CI Build](https://github.com/Mecca-Research/The-Binary-Decomposition-Interface/workflows/CI%20Build%20%26%20Test/badge.svg)
+![Sanitizers](https://github.com/Mecca-Research/The-Binary-Decomposition-Interface/workflows/Sanitizer%20Tests/badge.svg)
+![Coverage](https://github.com/Mecca-Research/The-Binary-Decomposition-Interface/workflows/Code%20Coverage/badge.svg)
+![Stress Tests](https://github.com/Mecca-Research/The-Binary-Decomposition-Interface/workflows/Stress%20Tests/badge.svg)
+
+![CI Build](https://github.com/Mecca-Research/The-Binary-Decomposition-Interface/workflows/CI%20Build%20%26%20Test/badge.svg)
+![Sanitizers](https://github.com/Mecca-Research/The-Binary-Decomposition-Interface/workflows/Sanitizer%20Tests/badge.svg)
+![Coverage](https://github.com/Mecca-Research/The-Binary-Decomposition-Interface/workflows/Code%20Coverage/badge.svg)
+![Stress Tests](https://github.com/Mecca-Research/The-Binary-Decomposition-Interface/workflows/Stress%20Tests/badge.svg)
+
+---
 ---
 
 ## 🎯 Overview and Vision
