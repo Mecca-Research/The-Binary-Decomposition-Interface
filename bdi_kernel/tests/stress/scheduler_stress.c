@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdatomic.h>
@@ -286,6 +287,7 @@ int run_scheduler_stress_test(int duration_sec) {
 }
 
 // Entry point for standalone execution
+#ifndef TEST_RUNNER_BUILD
 int main(int argc, char *argv[]) {
     int duration = STRESS_DURATION_SEC;
     
@@ -296,3 +298,5 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
     return run_scheduler_stress_test(duration);
 }
+
+#endif
