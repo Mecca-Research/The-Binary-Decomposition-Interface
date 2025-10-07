@@ -4,6 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include "tables/unicode_tables.h"
+#include "embeddings/unicode_embed.h"
 
 // Test character properties
 void test_char_properties(void) {

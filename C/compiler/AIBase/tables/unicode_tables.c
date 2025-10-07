@@ -1,5 +1,6 @@
 
 #include "unicode_tables.h"
+#include "../../../tools/build_tables/unicode_types.h"
 #include "../embeddings/unicode_embed.h"
 #include <string.h>
 #include <stdlib.h>

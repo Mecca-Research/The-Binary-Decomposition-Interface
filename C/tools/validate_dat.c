@@ -202,9 +202,43 @@ bool validate_header(const unicode_file_header_t* header, validation_result_t* r
 
 // Validate checksum
 bool validate_checksum(const uint8_t* data, size_t size, const unicode_file_header_t* header, validation_result_t* result) {
-    // Calculate checksum of data after header
-    uint32_t calculated = calculate_crc32(data + sizeof(unicode_file_header_t), 
-                                          size - sizeof(unicode_file_header_t));
+    const uint8_t* payload = data + sizeof(unicode_file_header_t);
+    size_t payload_size = size - sizeof(unicode_file_header_t);
+    uint32_t calculated;
+    
+    // Check if data is compressed
+    bool is_compressed = (header->compressed_size != header->uncompressed_size);
+    
+    if (is_compressed) {
+        // Decompress data first, then calculate checksum on uncompressed payload
+        uint8_t* decompressed = malloc(header->uncompressed_size);
+        if (!decompressed) {
+            snprintf(result->error_msg + strlen(result->error_msg),
+                     sizeof(result->error_msg) - strlen(result->error_msg),
+                     "Failed to allocate decompression buffer for checksum validation\n");
+            result->checksum_valid = false;
+            return false;
+        }
+        
+        uLongf dest_len = header->uncompressed_size;
+        int ret = uncompress(decompressed, &dest_len, payload, payload_size);
+        
+        if (ret != Z_OK) {
+            snprintf(result->error_msg + strlen(result->error_msg),
+                     sizeof(result->error_msg) - strlen(result->error_msg),
+                     "Failed to decompress data for checksum validation (error: %d)\n", ret);
+            free(decompressed);
+            result->checksum_valid = false;
+            return false;
+        }
+        
+        // Calculate checksum on decompressed data
+        calculated = calculate_crc32(decompressed, dest_len);
+        free(decompressed);
+    } else {
+        // Calculate checksum on uncompressed data directly
+        calculated = calculate_crc32(payload, payload_size);
+    }
     
     result->expected_checksum = header->checksum;
     result->actual_checksum = calculated;
@@ -302,9 +336,9 @@ void estimate_coverage(const unicode_file_header_t* header, validation_result_t*
             result->coverage_percent = (float)header->num_entries / 5000.0f * 100.0f; // ~5000 emoji
             break;
         case UNICODE_TYPE_COLLATION:
-            // Collation keys
+            // Collation keys (DUCET allkeys-17.0.0.txt has ~39,757 entries)
             result->coverage_count = header->num_entries;
-            result->coverage_percent = (float)header->num_entries / 100000.0f * 100.0f; // ~100k entries
+            result->coverage_percent = (float)header->num_entries / 39757.0f * 100.0f;
             break;
         case UNICODE_TYPE_IDNA:
             // IDNA mappings
@@ -312,9 +346,9 @@ void estimate_coverage(const unicode_file_header_t* header, validation_result_t*
             result->coverage_percent = (float)header->num_entries / 150000.0f * 100.0f; // ~150k mappings
             break;
         case UNICODE_TYPE_HAN:
-            // CJK characters
+            // CJK characters (Unihan_Readings.txt has 67,916 unique codepoints)
             result->coverage_count = header->num_entries;
-            result->coverage_percent = (float)header->num_entries / 100000.0f * 100.0f; // ~100k CJK
+            result->coverage_percent = (float)header->num_entries / 67916.0f * 100.0f;
             break;
     }
     
