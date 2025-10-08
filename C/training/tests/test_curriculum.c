@@ -415,6 +415,90 @@ void test_time_metrics_consistency() {
     printf("✓ Time metrics consistency test passed\n");
 }
 
+void test_concurrent_sessions() {
+    printf("Testing concurrent sessions with separate topic tracking...\n");
+    
+    progress_tracker_t *tracker = progress_tracker_create("test_concurrent");
+    assert(tracker != NULL);
+    
+    // Start Phase 0 session
+    progress_tracker_start_session(tracker, PHASE_0_FOUNDATIONS);
+    time_t phase0_start = time(NULL);
+    
+    // Record attempts for Phase 0 with TOPIC_MATH
+    for (int i = 0; i < 50; i++) {
+        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true);
+    }
+    
+    // Sleep 2 seconds
+    sleep(2);
+    
+    // Start Phase 1 session (Phase 0 still active!)
+    progress_tracker_start_session(tracker, PHASE_1_ELEMENTARY);
+    time_t phase1_start = time(NULL);
+    
+    // Record attempts for Phase 1 with TOPIC_LOGIC
+    for (int i = 0; i < 30; i++) {
+        progress_tracker_record_attempt(tracker, PHASE_1_ELEMENTARY, TOPIC_LOGIC, true);
+    }
+    
+    // Sleep 1 second
+    sleep(1);
+    
+    // End Phase 0 session (duration ~3 seconds)
+    progress_tracker_end_session(tracker, PHASE_0_FOUNDATIONS);
+    time_t phase0_end = time(NULL);
+    time_t phase0_duration = phase0_end - phase0_start;
+    
+    // Get metrics after Phase 0 ends
+    topic_metrics_t math_after_p0;
+    topic_metrics_t logic_after_p0;
+    progress_tracker_get_topic_metrics(tracker, TOPIC_MATH, &math_after_p0);
+    progress_tracker_get_topic_metrics(tracker, TOPIC_LOGIC, &logic_after_p0);
+    
+    printf("  Phase 0 duration: %ld seconds\n", phase0_duration);
+    printf("  TOPIC_MATH time after Phase 0: %ld seconds\n", math_after_p0.time_spent);
+    printf("  TOPIC_LOGIC time after Phase 0: %ld seconds\n", logic_after_p0.time_spent);
+    
+    // CRITICAL: Verify Phase 0 duration applied to TOPIC_MATH only (not TOPIC_LOGIC)
+    assert(labs((long)(math_after_p0.time_spent - phase0_duration)) <= 1);
+    assert(logic_after_p0.time_spent == 0);  // Phase 1 not ended yet - this is the key test!
+    
+    // Sleep 1 second
+    sleep(1);
+    
+    // End Phase 1 session (duration ~2 seconds)
+    progress_tracker_end_session(tracker, PHASE_1_ELEMENTARY);
+    time_t phase1_end = time(NULL);
+    time_t phase1_duration = phase1_end - phase1_start;
+    
+    // Get final metrics
+    topic_metrics_t math_final;
+    topic_metrics_t logic_final;
+    progress_tracker_get_topic_metrics(tracker, TOPIC_MATH, &math_final);
+    progress_tracker_get_topic_metrics(tracker, TOPIC_LOGIC, &logic_final);
+    
+    printf("  Phase 1 duration: %ld seconds\n", phase1_duration);
+    printf("  TOPIC_MATH final time: %ld seconds\n", math_final.time_spent);
+    printf("  TOPIC_LOGIC final time: %ld seconds\n", logic_final.time_spent);
+    
+    // CRITICAL: Verify Phase 1 duration applied to TOPIC_LOGIC only (not TOPIC_MATH)
+    assert(labs((long)(math_final.time_spent - phase0_duration)) <= 1);  // Unchanged from Phase 0
+    assert(labs((long)(logic_final.time_spent - phase1_duration)) <= 1);
+    
+    // CRITICAL: Verify topics have different times (proving no cross-contamination)
+    // Phase 0 was ~3 seconds, Phase 1 was ~2 seconds, so they should differ
+    assert(labs((long)(math_final.time_spent - logic_final.time_spent)) >= 1);
+    
+    printf("  ✓ Topics tracked independently per phase\n");
+    printf("  ✓ No cross-contamination between concurrent sessions\n");
+    printf("  ✓ TOPIC_MATH has Phase 0 duration only (%ld seconds)\n", math_final.time_spent);
+    printf("  ✓ TOPIC_LOGIC has Phase 1 duration only (%ld seconds)\n", logic_final.time_spent);
+    
+    progress_tracker_destroy(tracker);
+    printf("✓ Concurrent sessions test passed\n");
+}
+
 int main() {
     printf("=== Running Curriculum System Tests ===\n\n");
     
@@ -435,6 +519,9 @@ int main() {
     
     printf("\n=== Running Time Metrics Tests ===\n\n");
     test_time_metrics_consistency();
+    
+    printf("\n=== Running Concurrent Session Tests ===\n\n");
+    test_concurrent_sessions();
     
     printf("\n=== All tests passed! ===\n");
     return 0;
