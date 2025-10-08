@@ -73,7 +73,7 @@ void test_progress_tracking() {
     // Record some attempts
     for (int i = 0; i < 100; i++) {
         bool correct = (i % 5) != 0; // 80% correct
-        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, correct, 1);
+        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, correct);
     }
     
     phase_metrics_t metrics;
@@ -132,7 +132,7 @@ void test_persistence() {
     
     // Record some data
     for (int i = 0; i < 50; i++) {
-        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true, 1);
+        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true);
     }
     
     // Save
@@ -168,7 +168,7 @@ void test_session_tracking() {
     
     // Record some attempts
     for (int i = 0; i < 50; i++) {
-        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true, 1);
+        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true);
     }
     
     // End the session
@@ -183,7 +183,7 @@ void test_session_tracking() {
     // Start and end another session
     progress_tracker_start_session(tracker, PHASE_0_FOUNDATIONS);
     for (int i = 0; i < 50; i++) {
-        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true, 1);
+        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true);
     }
     progress_tracker_end_session(tracker, PHASE_0_FOUNDATIONS);
     
@@ -329,7 +329,7 @@ void test_consistency_gate_with_sessions() {
         progress_tracker_start_session(tracker, PHASE_0_FOUNDATIONS);
         
         for (int i = 0; i < 60; i++) {
-            progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true, 1);
+            progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true);
         }
         
         progress_tracker_end_session(tracker, PHASE_0_FOUNDATIONS);
@@ -342,7 +342,7 @@ void test_consistency_gate_with_sessions() {
     // Add one more session
     progress_tracker_start_session(tracker, PHASE_0_FOUNDATIONS);
     for (int i = 0; i < 60; i++) {
-        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true, 1);
+        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true);
     }
     progress_tracker_end_session(tracker, PHASE_0_FOUNDATIONS);
     
@@ -353,6 +353,66 @@ void test_consistency_gate_with_sessions() {
     accuracy_gate_destroy(gate);
     progress_tracker_destroy(tracker);
     printf("✓ Consistency gate with sessions test passed\n");
+}
+
+void test_time_metrics_consistency() {
+    printf("Testing time metrics consistency...\n");
+    
+    progress_tracker_t *tracker = progress_tracker_create("test_time_consistency");
+    assert(tracker != NULL);
+    
+    // Start session
+    progress_tracker_start_session(tracker, PHASE_0_FOUNDATIONS);
+    time_t start_time = time(NULL);
+    
+    // Record attempts for multiple topics
+    for (int i = 0; i < 50; i++) {
+        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, true);
+    }
+    for (int i = 0; i < 30; i++) {
+        progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_LOGIC, true);
+    }
+    
+    // Sleep to simulate time passing
+    sleep(2);
+    
+    // End session
+    progress_tracker_end_session(tracker, PHASE_0_FOUNDATIONS);
+    time_t end_time = time(NULL);
+    time_t expected_duration = end_time - start_time;
+    
+    // Get metrics
+    phase_metrics_t phase_metrics;
+    topic_metrics_t math_metrics;
+    topic_metrics_t logic_metrics;
+    overall_metrics_t overall_metrics;
+    
+    progress_tracker_get_phase_metrics(tracker, PHASE_0_FOUNDATIONS, &phase_metrics);
+    progress_tracker_get_topic_metrics(tracker, TOPIC_MATH, &math_metrics);
+    progress_tracker_get_topic_metrics(tracker, TOPIC_LOGIC, &logic_metrics);
+    progress_tracker_get_overall_metrics(tracker, &overall_metrics);
+    
+    printf("  Expected duration: %ld seconds\n", expected_duration);
+    printf("  Phase time: %ld seconds\n", phase_metrics.time_spent);
+    printf("  Math topic time: %ld seconds\n", math_metrics.time_spent);
+    printf("  Logic topic time: %ld seconds\n", logic_metrics.time_spent);
+    printf("  Overall time: %ld seconds\n", overall_metrics.total_time);
+    
+    // Verify all times are approximately equal (within 1 second tolerance)
+    assert(labs((long)(phase_metrics.time_spent - expected_duration)) <= 1);
+    assert(labs((long)(math_metrics.time_spent - expected_duration)) <= 1);
+    assert(labs((long)(logic_metrics.time_spent - expected_duration)) <= 1);
+    assert(labs((long)(overall_metrics.total_time - expected_duration)) <= 1);
+    
+    // Verify times are consistent (all should be equal)
+    assert(phase_metrics.time_spent == math_metrics.time_spent);
+    assert(phase_metrics.time_spent == logic_metrics.time_spent);
+    assert(phase_metrics.time_spent == overall_metrics.total_time);
+    
+    printf("  ✓ All time metrics are consistent (linear growth, not quadratic)\n");
+    
+    progress_tracker_destroy(tracker);
+    printf("✓ Time metrics consistency test passed\n");
 }
 
 int main() {
@@ -372,6 +432,9 @@ int main() {
     test_session_double_end_prevention();
     test_phase_advancement_with_sessions();
     test_consistency_gate_with_sessions();
+    
+    printf("\n=== Running Time Metrics Tests ===\n\n");
+    test_time_metrics_consistency();
     
     printf("\n=== All tests passed! ===\n");
     return 0;
