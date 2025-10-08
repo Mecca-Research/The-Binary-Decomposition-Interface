@@ -98,6 +98,11 @@ void curriculum_unregister_process(curriculum_controller_t *ctrl, curriculum_pro
     
     pthread_mutex_lock(&process->lock);
     
+    // End any active session before cleanup
+    if (process->in_session) {
+        progress_tracker_end_session(process->tracker, process->current_phase);
+    }
+    
     if (process->tracker) {
         progress_tracker_destroy(process->tracker);
     }
@@ -126,6 +131,9 @@ int curriculum_start_session(curriculum_process_t *process) {
     process->in_session = true;
     process->session_start = time(NULL);
     
+    // Start session tracking in progress tracker
+    progress_tracker_start_session(process->tracker, process->current_phase);
+    
     pthread_mutex_unlock(&process->lock);
     return 0;
 }
@@ -141,6 +149,9 @@ int curriculum_end_session(curriculum_process_t *process) {
     }
     
     process->in_session = false;
+    
+    // End session tracking in progress tracker (increments num_sessions!)
+    progress_tracker_end_session(process->tracker, process->current_phase);
     
     // Save progress
     char filename[1024];

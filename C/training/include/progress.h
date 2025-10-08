@@ -46,6 +46,28 @@ typedef struct progress_tracker progress_tracker_t;
 progress_tracker_t *progress_tracker_create(const char *process_id);
 void progress_tracker_destroy(progress_tracker_t *tracker);
 
+// Session management
+// A "session" is a continuous training period for a specific phase.
+// Sessions must be explicitly started and ended to track num_sessions correctly.
+// The num_sessions counter is incremented when progress_tracker_end_session() is called.
+// This is critical for consistency gates to function properly.
+//
+// Session lifecycle:
+// 1. Call progress_tracker_start_session() to begin a training session
+// 2. Record training attempts using progress_tracker_record_attempt()
+// 3. Call progress_tracker_end_session() to complete the session (increments num_sessions)
+//
+// Example usage:
+//   progress_tracker_start_session(tracker, PHASE_0_FOUNDATIONS);
+//   for (int i = 0; i < 100; i++) {
+//       bool correct = train_and_check();
+//       progress_tracker_record_attempt(tracker, PHASE_0_FOUNDATIONS, TOPIC_MATH, correct, 1);
+//   }
+//   progress_tracker_end_session(tracker, PHASE_0_FOUNDATIONS);  // num_sessions++
+void progress_tracker_start_session(progress_tracker_t *tracker, uint8_t phase);
+void progress_tracker_end_session(progress_tracker_t *tracker, uint8_t phase);
+bool progress_tracker_is_session_active(progress_tracker_t *tracker, uint8_t phase);
+
 // Record attempts
 void progress_tracker_record_attempt(progress_tracker_t *tracker, curriculum_phase_t phase, topic_type_t topic, bool correct, time_t duration);
 

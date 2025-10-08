@@ -10,6 +10,8 @@ struct progress_tracker {
     phase_metrics_t phase_metrics[PHASE_MAX];
     topic_metrics_t topic_metrics[TOPIC_MAX];
     overall_metrics_t overall_metrics;
+    bool session_active[PHASE_MAX];  // Track active sessions per phase
+    time_t session_start_time[PHASE_MAX];  // Track session start times
     pthread_mutex_t lock;
 };
 
@@ -25,6 +27,12 @@ progress_tracker_t *progress_tracker_create(const char *process_id) {
     tracker->overall_metrics.started_at = time(NULL);
     tracker->overall_metrics.last_updated = time(NULL);
     
+    // Initialize session state for all phases
+    for (int i = 0; i < PHASE_MAX; i++) {
+        tracker->session_active[i] = false;
+        tracker->session_start_time[i] = 0;
+    }
+    
     return tracker;
 }
 
@@ -33,6 +41,72 @@ void progress_tracker_destroy(progress_tracker_t *tracker) {
     
     pthread_mutex_destroy(&tracker->lock);
     free(tracker);
+}
+
+void progress_tracker_start_session(progress_tracker_t *tracker, uint8_t phase) {
+    if (!tracker || phase >= PHASE_MAX) return;
+    
+    pthread_mutex_lock(&tracker->lock);
+    
+    // Prevent starting a session if one is already active
+    if (tracker->session_active[phase]) {
+        pthread_mutex_unlock(&tracker->lock);
+        fprintf(stderr, "Warning: Session already active for phase %d\n", phase);
+        return;
+    }
+    
+    // Mark session as active
+    tracker->session_active[phase] = true;
+    tracker->session_start_time[phase] = time(NULL);
+    
+    // Update first_attempt timestamp if this is the first session
+    if (tracker->phase_metrics[phase].first_attempt == 0) {
+        tracker->phase_metrics[phase].first_attempt = time(NULL);
+    }
+    
+    pthread_mutex_unlock(&tracker->lock);
+}
+
+void progress_tracker_end_session(progress_tracker_t *tracker, uint8_t phase) {
+    if (!tracker || phase >= PHASE_MAX) return;
+    
+    pthread_mutex_lock(&tracker->lock);
+    
+    // Prevent ending a session if none is active
+    if (!tracker->session_active[phase]) {
+        pthread_mutex_unlock(&tracker->lock);
+        fprintf(stderr, "Warning: No active session to end for phase %d\n", phase);
+        return;
+    }
+    
+    // Mark session as inactive
+    tracker->session_active[phase] = false;
+    
+    // **CRITICAL FIX: Increment num_sessions**
+    tracker->phase_metrics[phase].num_sessions++;
+    
+    // Calculate and add session duration
+    time_t session_end = time(NULL);
+    time_t session_duration = session_end - tracker->session_start_time[phase];
+    tracker->phase_metrics[phase].time_spent += session_duration;
+    
+    // Update last_attempt timestamp
+    tracker->phase_metrics[phase].last_attempt = session_end;
+    
+    // Clear session start time
+    tracker->session_start_time[phase] = 0;
+    
+    pthread_mutex_unlock(&tracker->lock);
+}
+
+bool progress_tracker_is_session_active(progress_tracker_t *tracker, uint8_t phase) {
+    if (!tracker || phase >= PHASE_MAX) return false;
+    
+    pthread_mutex_lock(&tracker->lock);
+    bool active = tracker->session_active[phase];
+    pthread_mutex_unlock(&tracker->lock);
+    
+    return active;
 }
 
 void progress_tracker_record_attempt(progress_tracker_t *tracker, curriculum_phase_t phase, 
@@ -50,7 +124,6 @@ void progress_tracker_record_attempt(progress_tracker_t *tracker, curriculum_pha
         pm->incorrect_answers++;
     }
     pm->accuracy = (double)pm->correct_answers / pm->total_attempts;
-    pm->time_spent += duration;
     pm->last_attempt = time(NULL);
     
     if (pm->first_attempt == 0) {
