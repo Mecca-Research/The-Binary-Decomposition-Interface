@@ -208,10 +208,9 @@ int curriculum_submit_answer(curriculum_process_t *process, const void *answer, 
     // Check answer (simplified)
     *correct = (rand() % 100) < 80; // 80% correct for testing
     
-    // Record attempt
-    time_t duration = time(NULL) - process->session_start;
+    // Record attempt (no duration parameter needed!)
     progress_tracker_record_attempt(process->tracker, process->current_phase, 
-                                    process->current_topic, *correct, duration);
+                                    process->current_topic, *correct);
     
     pthread_mutex_unlock(&process->lock);
     return 0;

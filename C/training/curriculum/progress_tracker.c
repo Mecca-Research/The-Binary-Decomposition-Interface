@@ -12,6 +12,7 @@ struct progress_tracker {
     overall_metrics_t overall_metrics;
     bool session_active[PHASE_MAX];  // Track active sessions per phase
     time_t session_start_time[PHASE_MAX];  // Track session start times
+    bool topics_used_in_session[TOPIC_MAX];  // Track which topics used in current session
     pthread_mutex_t lock;
 };
 
@@ -32,6 +33,9 @@ progress_tracker_t *progress_tracker_create(const char *process_id) {
         tracker->session_active[i] = false;
         tracker->session_start_time[i] = 0;
     }
+    
+    // Initialize topic tracking
+    memset(tracker->topics_used_in_session, 0, sizeof(tracker->topics_used_in_session));
     
     return tracker;
 }
@@ -58,6 +62,9 @@ void progress_tracker_start_session(progress_tracker_t *tracker, uint8_t phase) 
     // Mark session as active
     tracker->session_active[phase] = true;
     tracker->session_start_time[phase] = time(NULL);
+    
+    // Clear topic tracking for new session
+    memset(tracker->topics_used_in_session, 0, sizeof(tracker->topics_used_in_session));
     
     // Update first_attempt timestamp if this is the first session
     if (tracker->phase_metrics[phase].first_attempt == 0) {
@@ -90,6 +97,19 @@ void progress_tracker_end_session(progress_tracker_t *tracker, uint8_t phase) {
     time_t session_duration = session_end - tracker->session_start_time[phase];
     tracker->phase_metrics[phase].time_spent += session_duration;
     
+    // **NEW: Update topic times for all topics used in this session**
+    for (int topic = 0; topic < TOPIC_MAX; topic++) {
+        if (tracker->topics_used_in_session[topic]) {
+            tracker->topic_metrics[topic].time_spent += session_duration;
+        }
+    }
+    
+    // **NEW: Update overall time**
+    tracker->overall_metrics.total_time += session_duration;
+    
+    // **NEW: Clear topic tracking for next session**
+    memset(tracker->topics_used_in_session, 0, sizeof(tracker->topics_used_in_session));
+    
     // Update last_attempt timestamp
     tracker->phase_metrics[phase].last_attempt = session_end;
     
@@ -110,7 +130,7 @@ bool progress_tracker_is_session_active(progress_tracker_t *tracker, uint8_t pha
 }
 
 void progress_tracker_record_attempt(progress_tracker_t *tracker, curriculum_phase_t phase, 
-                                     topic_type_t topic, bool correct, time_t duration) {
+                                     topic_type_t topic, bool correct) {
     if (!tracker || phase >= PHASE_MAX || topic >= TOPIC_MAX) return;
     
     pthread_mutex_lock(&tracker->lock);
@@ -130,23 +150,24 @@ void progress_tracker_record_attempt(progress_tracker_t *tracker, curriculum_pha
         pm->first_attempt = time(NULL);
     }
     
-    // Update topic metrics
+    // Update topic metrics (attempts and accuracy only, NOT time)
     topic_metrics_t *tm = &tracker->topic_metrics[topic];
     tm->total_attempts++;
     if (correct) {
         tm->correct_answers++;
     }
     tm->accuracy = (double)tm->correct_answers / tm->total_attempts;
-    tm->time_spent += duration;
     
-    // Update overall metrics
+    // **NEW: Mark this topic as used in the current session**
+    tracker->topics_used_in_session[topic] = true;
+    
+    // Update overall metrics (attempts and accuracy only, NOT time)
     overall_metrics_t *om = &tracker->overall_metrics;
     om->total_attempts++;
     if (correct) {
         om->total_correct++;
     }
     om->overall_accuracy = (double)om->total_correct / om->total_attempts;
-    om->total_time += duration;
     om->last_updated = time(NULL);
     
     // Calculate learning velocity
