@@ -75,7 +75,7 @@ static bool parse_unicode_data_line(const char *line, unicode_char_props_t *prop
     // Parse case mappings
     props->uppercase = fields[12][0] ? parse_hex(fields[12]) : props->codepoint;
     props->lowercase = fields[13][0] ? parse_hex(fields[13]) : props->codepoint;
-    props->titlecase = fields[14][0] ? parse_hex(fields[14]) : props->codepoint;
+    props->titlecase = (field_count >= 15 && fields[14][0]) ? parse_hex(fields[14]) : props->codepoint;
     
     // Parse decomposition
     props->decomp_len = 0;
