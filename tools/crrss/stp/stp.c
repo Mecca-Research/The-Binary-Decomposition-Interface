@@ -290,6 +290,10 @@ static stp_issue_t create_struct_issue(
 static bool is_conversion_safe(const type_info_t* src, const type_info_t* dst) {
     // Pointer conversions
     if (src->is_pointer && dst->is_pointer) {
+        // Check if base types are NULL first (treat as incompatible)
+        if (src->base_type == NULL || dst->base_type == NULL) {
+            return false;
+        }
         // Check if base types are compatible
         if (strcmp(src->base_type, dst->base_type) == 0) {
             return true;
@@ -1161,53 +1165,78 @@ crrss_status_t stp_analyze_file(
     *num_issues = 0;
     uint32_t temp_issues = 0;
     uint32_t total_issues = 0;
+    crrss_status_t status;
     
-    // Run all enabled checks
+    // Run all enabled checks - propagate errors
     if (ctx->config.check_type_mismatches) {
-        stp_detect_type_mismatches(ctx, file_path, issues + total_issues, 
-                                   max_issues - total_issues, &temp_issues);
+        status = stp_detect_type_mismatches(ctx, file_path, issues + total_issues, 
+                                           max_issues - total_issues, &temp_issues);
+        if (status != CRRSS_SUCCESS) {
+            return status;
+        }
         total_issues += temp_issues;
     }
     
     if (ctx->config.check_implicit_conversions && total_issues < max_issues) {
-        stp_detect_implicit_conversions(ctx, file_path, issues + total_issues,
-                                       max_issues - total_issues, &temp_issues);
+        status = stp_detect_implicit_conversions(ctx, file_path, issues + total_issues,
+                                                max_issues - total_issues, &temp_issues);
+        if (status != CRRSS_SUCCESS) {
+            return status;
+        }
         total_issues += temp_issues;
     }
     
     if (ctx->config.check_signed_unsigned_mix && total_issues < max_issues) {
-        stp_detect_signed_unsigned_mix(ctx, file_path, issues + total_issues,
-                                      max_issues - total_issues, &temp_issues);
+        status = stp_detect_signed_unsigned_mix(ctx, file_path, issues + total_issues,
+                                               max_issues - total_issues, &temp_issues);
+        if (status != CRRSS_SUCCESS) {
+            return status;
+        }
         total_issues += temp_issues;
     }
     
     if (ctx->config.check_type_punning && total_issues < max_issues) {
-        stp_detect_type_punning(ctx, file_path, issues + total_issues,
-                               max_issues - total_issues, &temp_issues);
+        status = stp_detect_type_punning(ctx, file_path, issues + total_issues,
+                                        max_issues - total_issues, &temp_issues);
+        if (status != CRRSS_SUCCESS) {
+            return status;
+        }
         total_issues += temp_issues;
     }
     
     if (ctx->config.check_struct_padding && total_issues < max_issues) {
-        stp_detect_struct_padding_issues(ctx, file_path, issues + total_issues,
-                                        max_issues - total_issues, &temp_issues);
+        status = stp_detect_struct_padding_issues(ctx, file_path, issues + total_issues,
+                                                  max_issues - total_issues, &temp_issues);
+        if (status != CRRSS_SUCCESS) {
+            return status;
+        }
         total_issues += temp_issues;
     }
     
     if (ctx->config.check_struct_packing && total_issues < max_issues) {
-        stp_detect_packing_issues(ctx, file_path, issues + total_issues,
-                                 max_issues - total_issues, &temp_issues);
+        status = stp_detect_packing_issues(ctx, file_path, issues + total_issues,
+                                          max_issues - total_issues, &temp_issues);
+        if (status != CRRSS_SUCCESS) {
+            return status;
+        }
         total_issues += temp_issues;
     }
     
     if (ctx->config.check_unsafe_casts && total_issues < max_issues) {
-        stp_detect_unsafe_casts(ctx, file_path, issues + total_issues,
-                               max_issues - total_issues, &temp_issues);
+        status = stp_detect_unsafe_casts(ctx, file_path, issues + total_issues,
+                                        max_issues - total_issues, &temp_issues);
+        if (status != CRRSS_SUCCESS) {
+            return status;
+        }
         total_issues += temp_issues;
     }
     
     if (ctx->config.check_const_correctness && total_issues < max_issues) {
-        stp_detect_const_violations(ctx, file_path, issues + total_issues,
-                                   max_issues - total_issues, &temp_issues);
+        status = stp_detect_const_violations(ctx, file_path, issues + total_issues,
+                                            max_issues - total_issues, &temp_issues);
+        if (status != CRRSS_SUCCESS) {
+            return status;
+        }
         total_issues += temp_issues;
     }
     
