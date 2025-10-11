@@ -125,6 +125,8 @@ crrss_command_t crrss_cli_parse_command(
     int argc,
     char** argv
 ) {
+    (void)ctx;  // Reserved for future use
+    
     if (argc < 2) {
         return CMD_HELP;
     }
@@ -343,7 +345,6 @@ crrss_status_t crrss_cli_execute_msm(
     printf("=== CRRSS Memory Safety Maniac (MSM) Analysis ===\n\n");
     
     crrss_status_t status = CRRSS_SUCCESS;
-    uint32_t total_issues = 0;
     msm_issue_t issues[1000];
     uint32_t num_issues = 0;
     
@@ -356,7 +357,6 @@ crrss_status_t crrss_cli_execute_msm(
         
         if (status == CRRSS_SUCCESS) {
             printf("Found %u memory safety issues\n\n", num_issues);
-            total_issues = num_issues;
             
             // Display issues by type
             printf("Issue Breakdown:\n");
@@ -430,8 +430,6 @@ crrss_status_t crrss_cli_execute_msm(
             
             printf("Safety Score: %.2f/1.0\n", report.safety_score);
             printf("Overall Risk: %s\n\n", risk_level_to_string(report.overall_risk));
-            
-            total_issues = report.issue_count;
             
             // Free report resources
             if (report.issues) free(report.issues);
