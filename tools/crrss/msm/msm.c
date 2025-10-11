@@ -525,6 +525,24 @@ crrss_status_t msm_reset(msm_context_t* ctx) {
     clock_gettime(CLOCK_MONOTONIC, &ctx->stats.analysis_start_time);
     pthread_mutex_unlock(&ctx->stats_lock);
     
+    // Reset leak counting flags for all tracked allocations
+    if (ctx->allocation_table) {
+        for (int i = 0; i < MSM_HASH_TABLE_SIZE; i++) {
+            pthread_mutex_lock(&ctx->allocation_table->locks[i]);
+            
+            hash_node_t* node = ctx->allocation_table->buckets[i];
+            while (node) {
+                allocation_metadata_t* meta = (allocation_metadata_t*)node->value;
+                if (meta) {
+                    meta->counted_as_leak = false;
+                }
+                node = node->next;
+            }
+            
+            pthread_mutex_unlock(&ctx->allocation_table->locks[i]);
+        }
+    }
+    
     // Clear issues
     pthread_mutex_lock(&ctx->issue_lock);
     for (uint32_t i = 0; i < ctx->issue_count; i++) {
