@@ -611,9 +611,14 @@ crrss_status_t sciv_calculate_complexity(
         return CRRSS_ERROR_MEMORY_ALLOCATION;
     }
     
-    fread(content, 1, file_size, fp);
-    content[file_size] = '\0';
+    size_t bytes_read = fread(content, 1, file_size, fp);
+    content[bytes_read] = '\0';
     fclose(fp);
+    
+    if (bytes_read != (size_t)file_size) {
+        free(content);
+        return CRRSS_ERROR_FILE_ACCESS;
+    }
     
     *complexity = calculate_cyclomatic_complexity(content);
     

@@ -1578,8 +1578,13 @@ crrss_status_t msm_analyze_snippet(
     int fd = mkstemp(temp_file);
     if (fd == -1) return CRRSS_ERROR_FILE_ACCESS;
     
-    write(fd, code_snippet, snippet_length);
+    ssize_t bytes_written = write(fd, code_snippet, snippet_length);
     close(fd);
+    
+    if (bytes_written != (ssize_t)snippet_length) {
+        unlink(temp_file);
+        return CRRSS_ERROR_FILE_ACCESS;
+    }
     
     crrss_status_t status = msm_analyze_file(ctx, temp_file, issues, max_issues, num_issues);
     
