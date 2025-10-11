@@ -11,7 +11,8 @@ CRRSS (Code Review, Reliability, and Static Safety System) is a comprehensive to
 - **Bug Prior Mapping Engine (BPME)**: Analyzes code patterns and predicts potential bugs based on historical data
 - **Self-Check Internal Validator (SCIV)**: Validates code correctness, consistency, and adherence to coding standards
 - **Memory Integration Layer**: Integrates with BDI's memory subsystems (HAM, PMM, VMM) for comprehensive memory analysis
-- **Command-Line Tools**: `crrss query` and `crrss stats` for querying predictions and displaying statistics
+- **Memory-Safety Maniac Profile (MSM)**: Advanced memory safety analysis with real-time tracking and static code analysis
+- **Command-Line Tools**: `crrss query`, `crrss stats`, and `crrss msm` for comprehensive code analysis
 
 ## Architecture
 
@@ -29,6 +30,10 @@ tools/crrss/
 ├── memory_layer/   # Memory Integration Layer
 │   ├── memory_integration.h
 │   └── memory_integration.c
+├── msm/            # Memory-Safety Maniac Profile
+│   ├── msm.h
+│   ├── msm.c
+│   └── README.md
 ├── cli/            # Command-Line Interface
 │   ├── crrss_cli.h
 │   ├── crrss_cli.c
@@ -36,7 +41,8 @@ tools/crrss/
 ├── tests/          # Comprehensive Test Suite
 │   ├── test_bpme.c
 │   ├── test_sciv.c
-│   └── test_memory.c
+│   ├── test_memory.c
+│   └── test_msm.c
 └── docs/           # Documentation
 ```
 
@@ -103,6 +109,50 @@ Provides tooling access to BDI's memory management systems with comprehensive me
 - Memory efficiency calculation
 - Pattern validation
 - Integration with HAM, PMM, VMM
+
+### 4. Memory-Safety Maniac Profile (MSM)
+
+**Phase 1B Stage 3 Implementation**
+
+The MSM provides comprehensive memory safety analysis combining real-time tracking with advanced static analysis.
+
+**Key Capabilities:**
+- Real-time allocation/deallocation tracking with metadata
+- Pointer lifecycle management and validation
+- Use-after-free detection (runtime + static)
+- Double-free detection (runtime + static)
+- Memory leak detection and analysis
+- NULL-check enforcement and analysis
+- Buffer overflow detection
+- Stack trace capture for debugging
+- Comprehensive reporting (text, JSON, HTML)
+- Integration with BPME, SCIV, and Memory Layer
+
+**Detected Issue Types:**
+- Memory leaks
+- Use-after-free
+- Double-free
+- NULL pointer dereference
+- Buffer overflow/underflow
+- Uninitialized pointers
+- Dangling pointers
+- Invalid free operations
+- Missing NULL checks
+- Unsafe pointer arithmetic
+
+**CLI Usage:**
+```bash
+# Analyze single file
+crrss msm -f kernel/memory.c
+
+# Analyze directory
+crrss msm -d moduler_kernel/
+
+# Generate report
+crrss msm -d moduler_kernel/ --report msm_report.txt --format text
+```
+
+See `msm/README.md` for detailed documentation and API reference.
 
 ## Building
 

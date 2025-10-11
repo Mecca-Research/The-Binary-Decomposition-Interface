@@ -65,6 +65,11 @@ set(CRRSS_MEMORY_SOURCES
     memory_layer/memory_integration.c
 )
 
+# MSM (Memory-Safety Maniac Profile) sources
+set(CRRSS_MSM_SOURCES
+    msm/msm.c
+)
+
 # CLI sources
 set(CRRSS_CLI_SOURCES
     cli/crrss_cli.c
@@ -76,6 +81,7 @@ set(CRRSS_LIB_SOURCES
     ${CRRSS_BPME_SOURCES}
     ${CRRSS_SCIV_SOURCES}
     ${CRRSS_MEMORY_SOURCES}
+    ${CRRSS_MSM_SOURCES}
     ${CRRSS_CLI_SOURCES}
 )
 
@@ -125,10 +131,15 @@ if(CRRSS_BUILD_TESTS)
     target_link_libraries(test_memory crrss)
     add_test(NAME memory_tests COMMAND test_memory)
     
+    # MSM tests
+    add_executable(test_msm tests/test_msm.c)
+    target_link_libraries(test_msm crrss)
+    add_test(NAME msm_tests COMMAND test_msm)
+    
     # Add custom test target
     add_custom_target(check
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-        DEPENDS test_bpme test_sciv test_memory
+        DEPENDS test_bpme test_sciv test_memory test_msm
         COMMENT "Running CRRSS test suite"
     )
 endif()
@@ -152,6 +163,8 @@ install(DIRECTORY bpme/ DESTINATION include/crrss/bpme
 install(DIRECTORY sciv/ DESTINATION include/crrss/sciv
     FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY memory_layer/ DESTINATION include/crrss/memory_layer
+    FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY msm/ DESTINATION include/crrss/msm
     FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY cli/ DESTINATION include/crrss/cli
     FILES_MATCHING PATTERN "*.h")

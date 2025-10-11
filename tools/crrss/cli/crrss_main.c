@@ -106,6 +106,56 @@ static void parse_stats_options(int argc, char** argv, stats_options_t* options)
     }
 }
 
+static void parse_msm_options(int argc, char** argv, msm_options_t* options) {
+    // Set defaults
+    options->file_path = NULL;
+    options->directory = NULL;
+    options->enable_tracking = true;
+    options->detect_use_after_free = true;
+    options->detect_double_free = true;
+    options->detect_leaks = true;
+    options->detect_null_deref = true;
+    options->detect_buffer_overflow = true;
+    options->generate_report = false;
+    options->report_output = NULL;
+    options->report_format = "text";
+    options->max_issues = 1000;
+    
+    static struct option long_options[] = {
+        {"file", required_argument, 0, 'f'},
+        {"directory", required_argument, 0, 'd'},
+        {"report", required_argument, 0, 'r'},
+        {"format", required_argument, 0, 'F'},
+        {"max-issues", required_argument, 0, 'n'},
+        {0, 0, 0, 0}
+    };
+    
+    int opt;
+    int option_index = 0;
+    optind = 2;  // Skip "crrss msm"
+    
+    while ((opt = getopt_long(argc, argv, "f:d:r:F:n:", long_options, &option_index)) != -1) {
+        switch (opt) {
+            case 'f':
+                options->file_path = optarg;
+                break;
+            case 'd':
+                options->directory = optarg;
+                break;
+            case 'r':
+                options->report_output = optarg;
+                options->generate_report = true;
+                break;
+            case 'F':
+                options->report_format = optarg;
+                break;
+            case 'n':
+                options->max_issues = atoi(optarg);
+                break;
+        }
+    }
+}
+
 int main(int argc, char** argv) {
     // Initialize CLI
     crrss_cli_context_t* ctx = crrss_cli_initialize();
@@ -131,6 +181,13 @@ int main(int argc, char** argv) {
             stats_options_t options;
             parse_stats_options(argc, argv, &options);
             status = crrss_cli_execute_stats(ctx, &options);
+            break;
+        }
+        
+        case CMD_MSM: {
+            msm_options_t options;
+            parse_msm_options(argc, argv, &options);
+            status = crrss_cli_execute_msm(ctx, &options);
             break;
         }
         

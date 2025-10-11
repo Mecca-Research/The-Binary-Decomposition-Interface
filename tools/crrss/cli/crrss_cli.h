@@ -20,9 +20,10 @@ typedef enum {
     CMD_ANALYZE = 2,
     CMD_VALIDATE = 3,
     CMD_REPORT = 4,
-    CMD_HELP = 5,
-    CMD_VERSION = 6,
-    CMD_UNKNOWN = 7
+    CMD_MSM = 5,           // Memory Safety Maniac command
+    CMD_HELP = 6,
+    CMD_VERSION = 7,
+    CMD_UNKNOWN = 8
 } crrss_command_t;
 
 // Query options
@@ -43,6 +44,22 @@ typedef struct {
     bool show_validation_stats;
     const char* output_format;  // "text", "json", "csv"
 } stats_options_t;
+
+// MSM options
+typedef struct {
+    const char* file_path;
+    const char* directory;
+    bool enable_tracking;
+    bool detect_use_after_free;
+    bool detect_double_free;
+    bool detect_leaks;
+    bool detect_null_deref;
+    bool detect_buffer_overflow;
+    bool generate_report;
+    const char* report_output;
+    const char* report_format;  // "text", "json", "html"
+    uint32_t max_issues;
+} msm_options_t;
 
 // CLI context
 typedef struct crrss_cli_context crrss_cli_context_t;
@@ -92,6 +109,17 @@ crrss_status_t crrss_cli_execute_query(
 crrss_status_t crrss_cli_execute_stats(
     crrss_cli_context_t* ctx,
     const stats_options_t* options
+);
+
+/**
+ * @brief Execute MSM command
+ * @param ctx CLI context
+ * @param options MSM options
+ * @return Status code
+ */
+crrss_status_t crrss_cli_execute_msm(
+    crrss_cli_context_t* ctx,
+    const msm_options_t* options
 );
 
 /**
