@@ -290,6 +290,7 @@ static allocation_metadata_t* create_allocation_metadata(
     meta->address = address;
     meta->size = size;
     meta->is_freed = false;
+    meta->counted_as_leak = false;  // Initialize leak tracking flag
     
     meta->allocation_site_file = file ? strdup(file) : NULL;
     meta->allocation_site_line = line;
@@ -1276,9 +1277,15 @@ crrss_status_t msm_detect_leaks(
                 leaks[*num_leaks] = *meta;  // Copy metadata
                 (*num_leaks)++;
                 
-                pthread_mutex_lock(&ctx->stats_lock);
-                ctx->stats.memory_leaks_detected++;
-                pthread_mutex_unlock(&ctx->stats_lock);
+                // Only increment the counter if this leak hasn't been counted yet
+                if (!meta->counted_as_leak) {
+                    pthread_mutex_lock(&ctx->stats_lock);
+                    ctx->stats.memory_leaks_detected++;
+                    pthread_mutex_unlock(&ctx->stats_lock);
+                    
+                    // Mark as counted to prevent double-counting in future calls
+                    meta->counted_as_leak = true;
+                }
             }
             
             node = node->next;

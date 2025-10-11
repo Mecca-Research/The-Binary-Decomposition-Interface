@@ -650,6 +650,131 @@ static void test_snippet_analysis(void) {
     TEST_PASS();
 }
 
+// ==================== Double-Counting Bug Test ====================
+
+static void test_leak_double_counting_prevention(void) {
+    TEST_START("Leak Double-Counting Prevention");
+    
+    msm_config_t config = create_default_config();
+    msm_context_t* ctx = msm_initialize(&config);
+    ASSERT_NOT_NULL(ctx, "Failed to initialize MSM context");
+    
+    // Track multiple allocations but don't free them (simulating leaks)
+    void* addr1 = (void*)0x1000;
+    void* addr2 = (void*)0x2000;
+    void* addr3 = (void*)0x3000;
+    
+    msm_track_allocation(ctx, addr1, 100, "test.c", 10, "test_func");
+    msm_track_allocation(ctx, addr2, 200, "test.c", 20, "test_func");
+    msm_track_allocation(ctx, addr3, 300, "test.c", 30, "test_func");
+    
+    // First leak detection
+    allocation_metadata_t leaks[10];
+    uint32_t num_leaks = 0;
+    crrss_status_t status = msm_detect_leaks(ctx, leaks, 10, &num_leaks);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "First leak detection failed");
+    ASSERT_EQUAL(num_leaks, 3, "Should detect 3 leaks");
+    
+    // Get statistics after first detection
+    msm_statistics_t stats1;
+    msm_get_statistics(ctx, &stats1);
+    uint32_t first_leak_count = stats1.memory_leaks_detected;
+    ASSERT_EQUAL(first_leak_count, 3, "Should have 3 leaks counted");
+    
+    // Second leak detection (e.g., via report generation)
+    num_leaks = 0;
+    status = msm_detect_leaks(ctx, leaks, 10, &num_leaks);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Second leak detection failed");
+    ASSERT_EQUAL(num_leaks, 3, "Should still detect 3 leaks");
+    
+    // Get statistics after second detection
+    msm_statistics_t stats2;
+    msm_get_statistics(ctx, &stats2);
+    uint32_t second_leak_count = stats2.memory_leaks_detected;
+    
+    // BUG FIX VERIFICATION: Count should NOT increase on repeated detection
+    ASSERT_EQUAL(second_leak_count, first_leak_count, 
+                 "Leak count should not increase on repeated detection");
+    
+    // Third detection to be extra sure
+    num_leaks = 0;
+    status = msm_detect_leaks(ctx, leaks, 10, &num_leaks);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Third leak detection failed");
+    
+    msm_statistics_t stats3;
+    msm_get_statistics(ctx, &stats3);
+    ASSERT_EQUAL(stats3.memory_leaks_detected, first_leak_count,
+                 "Leak count should remain constant across multiple detections");
+    
+    msm_shutdown(ctx);
+    
+    TEST_PASS();
+}
+
+static void test_leak_counting_with_report_generation(void) {
+    TEST_START("Leak Counting with Multiple Report Generations");
+    
+    msm_config_t config = create_default_config();
+    msm_context_t* ctx = msm_initialize(&config);
+    ASSERT_NOT_NULL(ctx, "Failed to initialize MSM context");
+    
+    // Track allocations without freeing
+    void* addr1 = (void*)0x1000;
+    void* addr2 = (void*)0x2000;
+    
+    msm_track_allocation(ctx, addr1, 100, "test.c", 10, "test_func");
+    msm_track_allocation(ctx, addr2, 200, "test.c", 20, "test_func");
+    
+    // Generate first report - this will detect leaks and update statistics
+    msm_report_t report1;
+    crrss_status_t status = msm_generate_report(ctx, &report1);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "First report generation failed");
+    ASSERT_EQUAL(report1.leak_count, 2, "Should detect 2 leaks in first report");
+    
+    // Get statistics AFTER first report generation
+    msm_statistics_t stats1;
+    msm_get_statistics(ctx, &stats1);
+    uint32_t first_leak_count = stats1.memory_leaks_detected;
+    ASSERT_EQUAL(first_leak_count, 2, "Should have 2 leaks counted after first report");
+    
+    // Generate second report (this would trigger the bug before the fix)
+    msm_report_t report2;
+    status = msm_generate_report(ctx, &report2);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Second report generation failed");
+    ASSERT_EQUAL(report2.leak_count, 2, "Should still detect 2 leaks in second report");
+    
+    // Get statistics after second report
+    msm_statistics_t stats2;
+    msm_get_statistics(ctx, &stats2);
+    uint32_t second_leak_count = stats2.memory_leaks_detected;
+    
+    // BUG FIX VERIFICATION: Count should NOT double
+    ASSERT_EQUAL(second_leak_count, first_leak_count,
+                 "Leak count should not inflate on repeated report generation");
+    
+    // Generate third report to be extra sure
+    msm_report_t report3;
+    status = msm_generate_report(ctx, &report3);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Third report generation failed");
+    
+    msm_statistics_t stats3;
+    msm_get_statistics(ctx, &stats3);
+    ASSERT_EQUAL(stats3.memory_leaks_detected, first_leak_count,
+                 "Leak count should remain stable across all reports");
+    
+    // Cleanup
+    if (report1.issues) free(report1.issues);
+    if (report1.leak_records) free(report1.leak_records);
+    if (report2.issues) free(report2.issues);
+    if (report2.leak_records) free(report2.leak_records);
+    if (report3.issues) free(report3.issues);
+    if (report3.leak_records) free(report3.leak_records);
+    
+    msm_shutdown(ctx);
+    
+    TEST_PASS();
+}
+
 // ==================== Reporting Tests ====================
 
 static void test_statistics_generation(void) {
@@ -891,6 +1016,10 @@ int main(void) {
     // Memory leak tests
     test_memory_leak_detection();
     test_memory_leak_static_analysis();
+    
+    // Double-counting bug tests
+    test_leak_double_counting_prevention();
+    test_leak_counting_with_report_generation();
     
     // Comprehensive analysis tests
     test_file_analysis();
