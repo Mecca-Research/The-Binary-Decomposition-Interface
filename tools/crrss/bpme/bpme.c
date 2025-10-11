@@ -264,6 +264,58 @@ static risk_level_t score_to_risk_level(double score) {
     return RISK_LEVEL_NONE;
 }
 
+// ==================== Cache Management ====================
+
+/**
+ * @brief Add predictions to the internal cache
+ * @param ctx BPME context
+ * @param predictions Array of predictions to cache
+ * @param num_predictions Number of predictions to cache
+ * @return Number of predictions successfully cached
+ */
+static uint32_t cache_predictions(
+    bpme_context_t* ctx,
+    const bug_prediction_t* predictions,
+    uint32_t num_predictions
+) {
+    if (!ctx || !predictions || num_predictions == 0) {
+        return 0;
+    }
+    
+    uint32_t cached = 0;
+    uint32_t current_cache_count = 0;
+    
+    // Find current number of cached predictions
+    // (ctx->total_predictions tracks all predictions, including those not cached)
+    for (uint32_t i = 0; i < ctx->cache_size; i++) {
+        if (ctx->prediction_cache[i].file_path != NULL) {
+            current_cache_count++;
+        } else {
+            break;  // Assume cache is contiguous
+        }
+    }
+    
+    // Cache as many predictions as possible
+    for (uint32_t i = 0; i < num_predictions && current_cache_count < ctx->cache_size; i++) {
+        // Deep copy the prediction
+        ctx->prediction_cache[current_cache_count].file_path = 
+            predictions[i].file_path ? strdup(predictions[i].file_path) : NULL;
+        ctx->prediction_cache[current_cache_count].line_number = predictions[i].line_number;
+        ctx->prediction_cache[current_cache_count].category = predictions[i].category;
+        ctx->prediction_cache[current_cache_count].priority = predictions[i].priority;
+        ctx->prediction_cache[current_cache_count].risk_level = predictions[i].risk_level;
+        ctx->prediction_cache[current_cache_count].confidence = predictions[i].confidence;
+        ctx->prediction_cache[current_cache_count].description = predictions[i].description;
+        ctx->prediction_cache[current_cache_count].recommendation = predictions[i].recommendation;
+        ctx->prediction_cache[current_cache_count].pattern_detected = predictions[i].pattern_detected;
+        
+        current_cache_count++;
+        cached++;
+    }
+    
+    return cached;
+}
+
 // ==================== Pattern Detection ====================
 
 static crrss_status_t detect_patterns_in_file(
@@ -433,6 +485,9 @@ crrss_status_t bpme_analyze_file(
     if (status == CRRSS_SUCCESS) {
         ctx->total_scans++;
         ctx->total_predictions += *num_predictions;
+        
+        // Cache the predictions for later queries
+        cache_predictions(ctx, predictions, *num_predictions);
     }
     
     return status;
@@ -531,6 +586,10 @@ crrss_status_t bpme_analyze_snippet(
         *num_predictions = 1;
         
         ctx->total_predictions++;
+        
+        // Cache the prediction for later queries
+        cache_predictions(ctx, predictions, *num_predictions);
+        
         return CRRSS_SUCCESS;
     }
     
