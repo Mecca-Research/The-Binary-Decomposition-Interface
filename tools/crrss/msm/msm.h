@@ -167,6 +167,9 @@ typedef struct {
     uint64_t read_count;
     uint64_t write_count;
     struct timespec last_access_time;
+    
+    // Leak tracking
+    bool counted_as_leak;  // Flag to prevent double-counting in statistics
 } allocation_metadata_t;
 
 /**
