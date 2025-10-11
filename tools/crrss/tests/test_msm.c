@@ -590,6 +590,139 @@ static void test_memory_leak_static_analysis(void) {
     TEST_PASS();
 }
 
+// ==================== MSM Reset Leak Counting Bug Test ====================
+
+static void test_reset_clears_leak_counting_flags(void) {
+    TEST_START("MSM Reset Clears Leak Counting Flags");
+    
+    msm_config_t config = create_default_config();
+    msm_context_t* ctx = msm_initialize(&config);
+    ASSERT_NOT_NULL(ctx, "Failed to initialize MSM context");
+    
+    // Track allocations without freeing (simulating leaks)
+    void* addr1 = (void*)0x1000;
+    void* addr2 = (void*)0x2000;
+    void* addr3 = (void*)0x3000;
+    
+    msm_track_allocation(ctx, addr1, 100, "test.c", 10, "test_func");
+    msm_track_allocation(ctx, addr2, 200, "test.c", 20, "test_func");
+    msm_track_allocation(ctx, addr3, 300, "test.c", 30, "test_func");
+    
+    // First leak detection - should count 3 leaks
+    allocation_metadata_t leaks[10];
+    uint32_t num_leaks = 0;
+    crrss_status_t status = msm_detect_leaks(ctx, leaks, 10, &num_leaks);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "First leak detection failed");
+    ASSERT_EQUAL(num_leaks, 3, "Should detect 3 leaks");
+    
+    // Get statistics after first detection
+    msm_statistics_t stats1;
+    msm_get_statistics(ctx, &stats1);
+    ASSERT_EQUAL(stats1.memory_leaks_detected, 3, "Should have 3 leaks counted");
+    
+    // Second leak detection WITHOUT reset - should NOT increment count
+    num_leaks = 0;
+    status = msm_detect_leaks(ctx, leaks, 10, &num_leaks);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Second leak detection failed");
+    ASSERT_EQUAL(num_leaks, 3, "Should still detect 3 leaks");
+    
+    msm_statistics_t stats2;
+    msm_get_statistics(ctx, &stats2);
+    ASSERT_EQUAL(stats2.memory_leaks_detected, 3, 
+                 "Leak count should stay at 3 (no double counting)");
+    
+    // NOW RESET - this should clear counted_as_leak flags
+    status = msm_reset(ctx);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Failed to reset MSM");
+    
+    // Verify statistics are reset
+    msm_statistics_t stats3;
+    msm_get_statistics(ctx, &stats3);
+    ASSERT_EQUAL(stats3.memory_leaks_detected, 0, "Statistics should be reset to 0");
+    
+    // Third leak detection AFTER reset - should count leaks again
+    // BUG FIX VERIFICATION: This is where the bug was - leaks wouldn't be counted
+    // because counted_as_leak flags weren't cleared by msm_reset()
+    num_leaks = 0;
+    status = msm_detect_leaks(ctx, leaks, 10, &num_leaks);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Third leak detection (after reset) failed");
+    ASSERT_EQUAL(num_leaks, 3, "Should still detect 3 leaks after reset");
+    
+    // Get statistics after third detection
+    msm_statistics_t stats4;
+    msm_get_statistics(ctx, &stats4);
+    ASSERT_EQUAL(stats4.memory_leaks_detected, 3, 
+                 "After reset, leaks should be counted again");
+    
+    // Fourth detection - should NOT increment again
+    num_leaks = 0;
+    status = msm_detect_leaks(ctx, leaks, 10, &num_leaks);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Fourth leak detection failed");
+    
+    msm_statistics_t stats5;
+    msm_get_statistics(ctx, &stats5);
+    ASSERT_EQUAL(stats5.memory_leaks_detected, 3,
+                 "Leak count should stay at 3 after fourth detection");
+    
+    msm_shutdown(ctx);
+    
+    TEST_PASS();
+}
+
+static void test_reset_preserves_allocation_tracking(void) {
+    TEST_START("MSM Reset Preserves Allocation Tracking");
+    
+    msm_config_t config = create_default_config();
+    msm_context_t* ctx = msm_initialize(&config);
+    ASSERT_NOT_NULL(ctx, "Failed to initialize MSM context");
+    
+    // Track allocations
+    void* addr1 = (void*)0x1000;
+    void* addr2 = (void*)0x2000;
+    
+    msm_track_allocation(ctx, addr1, 100, "test.c", 10, "test_func");
+    msm_track_allocation(ctx, addr2, 200, "test.c", 20, "test_func");
+    
+    // Detect leaks before reset
+    allocation_metadata_t leaks_before[10];
+    uint32_t num_leaks_before = 0;
+    msm_detect_leaks(ctx, leaks_before, 10, &num_leaks_before);
+    ASSERT_EQUAL(num_leaks_before, 2, "Should detect 2 leaks before reset");
+    
+    // Reset
+    crrss_status_t status = msm_reset(ctx);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Failed to reset MSM");
+    
+    // Allocations should still be tracked (not freed)
+    allocation_metadata_t meta1, meta2;
+    status = msm_get_allocation_metadata(ctx, addr1, &meta1);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Should still track addr1 after reset");
+    
+    status = msm_get_allocation_metadata(ctx, addr2, &meta2);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Should still track addr2 after reset");
+    
+    // Allocations should not be marked as freed
+    ASSERT_FALSE(meta1.is_freed, "addr1 should not be marked as freed");
+    ASSERT_FALSE(meta2.is_freed, "addr2 should not be marked as freed");
+    
+    // Detect leaks after reset - should work correctly
+    allocation_metadata_t leaks_after[10];
+    uint32_t num_leaks_after = 0;
+    status = msm_detect_leaks(ctx, leaks_after, 10, &num_leaks_after);
+    ASSERT_STATUS(status, CRRSS_SUCCESS, "Leak detection after reset should work");
+    ASSERT_EQUAL(num_leaks_after, 2, "Should still detect 2 leaks after reset");
+    
+    // Verify leak statistics are correctly updated
+    msm_statistics_t stats;
+    msm_get_statistics(ctx, &stats);
+    ASSERT_EQUAL(stats.memory_leaks_detected, 2, 
+                 "Leak statistics should be correctly rebuilt after reset");
+    
+    msm_shutdown(ctx);
+    
+    TEST_PASS();
+}
+
 // ==================== Comprehensive Analysis Tests ====================
 
 static void test_file_analysis(void) {
@@ -1020,6 +1153,10 @@ int main(void) {
     // Double-counting bug tests
     test_leak_double_counting_prevention();
     test_leak_counting_with_report_generation();
+    
+    // MSM Reset leak counting bug tests
+    test_reset_clears_leak_counting_flags();
+    test_reset_preserves_allocation_tracking();
     
     // Comprehensive analysis tests
     test_file_analysis();
