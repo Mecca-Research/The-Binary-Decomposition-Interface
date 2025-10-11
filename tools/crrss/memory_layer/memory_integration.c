@@ -50,6 +50,7 @@ static bool contains_free_pattern(const char* line) {
 }
 
 static bool has_paired_free(FILE* fp, const char* var_name, long start_pos) {
+    (void)start_pos;  // Parameter reserved for future use
     char line[1024];
     long current_pos = ftell(fp);
     
@@ -132,6 +133,7 @@ crrss_status_t memory_integration_analyze(
     memory_subsystem_t subsystem,
     memory_analysis_t* analysis
 ) {
+    (void)subsystem;  // Parameter reserved for future use
     if (!ctx || !ctx->initialized) {
         return CRRSS_ERROR_NOT_INITIALIZED;
     }
@@ -170,6 +172,7 @@ crrss_status_t memory_integration_get_pool_info(
     memory_subsystem_t subsystem,
     memory_pool_info_t* pool_info
 ) {
+    (void)subsystem;  // Parameter reserved for future use
     if (!ctx || !ctx->initialized) {
         return CRRSS_ERROR_NOT_INITIALIZED;
     }
@@ -458,6 +461,7 @@ crrss_status_t memory_integration_get_statistics(
     uint64_t* total_frees,
     uint64_t* current_usage
 ) {
+    (void)subsystem;  // Parameter reserved for future use
     if (!ctx || !ctx->initialized) {
         return CRRSS_ERROR_NOT_INITIALIZED;
     }

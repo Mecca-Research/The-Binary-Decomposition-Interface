@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 void test_sciv_initialization() {
     printf("Testing SCIV initialization...\n");
@@ -52,6 +53,7 @@ void test_sciv_validate_snippet() {
     crrss_status_t status = sciv_validate_snippet(
         ctx, code, strlen(code), issues, 10, &num_issues
     );
+    (void)status;  // Suppress unused warning in some configurations
     
     assert(status == CRRSS_SUCCESS);
     printf("  Found %u validation issues\n", num_issues);
@@ -85,6 +87,7 @@ void test_sciv_rule_configuration() {
     
     // Disable a rule
     crrss_status_t status = sciv_configure_rule(ctx, RULE_MEMORY_SAFETY, false);
+    (void)status;  // Suppress unused warning in some configurations
     assert(status == CRRSS_SUCCESS);
     
     // Enable it again
@@ -118,6 +121,7 @@ void test_sciv_statistics() {
     crrss_status_t status = sciv_get_statistics(
         ctx, &total_validations, &total_issues, &avg_compliance
     );
+    (void)status;  // Suppress unused warning in some configurations
     assert(status == CRRSS_SUCCESS);
     
     printf("  Total validations: %u\n", total_validations);

@@ -170,8 +170,8 @@ SYSCALL_SRCS := bdi_kernel/syscalls/aeon_api.c
 
 # Userland
 USERLAND_SRCS := bdi_kernel/userland/bdi_shell.c \
-	         bdi_kernel/userland/shell_commands.c \
-	         bdi_kernel/userland/shell_integration.c
+		 bdi_kernel/userland/shell_commands.c \
+		 bdi_kernel/userland/shell_integration.c
 
 # Process and scheduler
 PROCESS_SRCS := bdi_kernel/process/process_manager.c
@@ -223,11 +223,11 @@ pgo-generate:
 pgo-merge:
 	@echo "==> Merging PGO profiles..."
 	@if [ -d pgo-data ]; then \
-	        find pgo-data -name "*.gcda" | wc -l | xargs echo "Found profile files:"; \
-	        echo "Profile data ready for optimization"; \
+		find pgo-data -name "*.gcda" | wc -l | xargs echo "Found profile files:"; \
+		echo "Profile data ready for optimization"; \
 	else \
-	        echo "ERROR: No PGO data found. Run pgo-generate first."; \
-	        exit 1; \
+		echo "ERROR: No PGO data found. Run pgo-generate first."; \
+		exit 1; \
 	fi
 
 pgo-optimize: pgo-merge
@@ -255,14 +255,14 @@ check-optimization:
 validate-build: $(TARGET)
 	@echo "==> Validating build..."
 	@if [ -f $(TARGET) ]; then \
-	        echo "✓ Binary exists"; \
-	        size $(TARGET) | tail -1; \
-	        echo "✓ Size check passed"; \
-	        file $(TARGET); \
-	        echo "✓ File type check passed"; \
+		echo "✓ Binary exists"; \
+		size $(TARGET) | tail -1; \
+		echo "✓ Size check passed"; \
+		file $(TARGET); \
+		echo "✓ File type check passed"; \
 	else \
-	        echo "✗ Build validation failed"; \
-	        exit 1; \
+		echo "✗ Build validation failed"; \
+		exit 1; \
 	fi
 
 # ============================================================================
@@ -338,9 +338,19 @@ info:
 	@echo "  make benchmark              - Run benchmarks"
 	@echo "  make check-optimization     - Check optimization settings"
 	@echo "  make validate-build         - Validate build output"
+	@echo ""
+	@echo "CRRSS Tooling System:"
+	@echo "  make crrss                  - Build CRRSS tools"
+	@echo "  make crrss-test             - Run CRRSS tests"
+	@echo "  make crrss-check            - Analyze BDI codebase"
+	@echo "  make crrss-install          - Install CRRSS"
+	@echo "  make crrss-info             - Show CRRSS details"
 	@echo "========================================"
 
 help: info
+	@echo ""
+	@echo "For detailed CRRSS help, run: make crrss-help"
+	@echo "For fuzzing help, run: make fuzz-help"
 
 # ============================================================================
 # Dependencies
@@ -401,9 +411,9 @@ define AFL_HARNESS_RULE
 $(FUZZING_BUILD_DIR)/afl_$(1): $(FUZZING_DIR)/harnesses/$(1)_fuzz.c $(FUZZING_BUILD_DIR)
 	@echo "==> Building AFL++ harness: $(1)"
 	@$(AFL_CC) $(AFL_CFLAGS) $(FUZZ_INCLUDES) \
-	        $(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
-	        -o $(FUZZING_BUILD_DIR)/afl_$(1) \
-	        2>/dev/null || echo "Warning: AFL++ build failed for $(1)"
+		$(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
+		-o $(FUZZING_BUILD_DIR)/afl_$(1) \
+		2>/dev/null || echo "Warning: AFL++ build failed for $(1)"
 endef
 
 # LibFuzzer Harness Compilation
@@ -411,9 +421,9 @@ define LIBFUZZER_HARNESS_RULE
 $(FUZZING_BUILD_DIR)/libfuzzer_$(1): $(FUZZING_DIR)/harnesses/$(1)_fuzz.c $(FUZZING_BUILD_DIR)
 	@echo "==> Building LibFuzzer harness: $(1)"
 	@$(LIBFUZZER_CC) $(LIBFUZZER_CFLAGS) $(FUZZ_INCLUDES) \
-	        $(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
-	        -o $(FUZZING_BUILD_DIR)/libfuzzer_$(1) \
-	        2>/dev/null || echo "Warning: LibFuzzer build failed for $(1)"
+		$(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
+		-o $(FUZZING_BUILD_DIR)/libfuzzer_$(1) \
+		2>/dev/null || echo "Warning: LibFuzzer build failed for $(1)"
 endef
 
 # Sanitizer Harness Compilation
@@ -421,9 +431,9 @@ define SANITIZER_HARNESS_RULE
 $(FUZZING_BUILD_DIR)/sanitizer_$(1): $(FUZZING_DIR)/harnesses/$(1)_fuzz.c $(FUZZING_BUILD_DIR)
 	@echo "==> Building Sanitizer harness: $(1)"
 	@$(SANITIZER_CC) $(SANITIZER_CFLAGS) $(FUZZ_INCLUDES) \
-	        $(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
-	        -o $(FUZZING_BUILD_DIR)/sanitizer_$(1) \
-	        2>/dev/null || echo "Warning: Sanitizer build failed for $(1)"
+		$(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
+		-o $(FUZZING_BUILD_DIR)/sanitizer_$(1) \
+		2>/dev/null || echo "Warning: Sanitizer build failed for $(1)"
 endef
 
 # Coverage Harness Compilation
@@ -431,10 +441,10 @@ define COVERAGE_HARNESS_RULE
 $(FUZZING_BUILD_DIR)/coverage_$(1): $(FUZZING_DIR)/harnesses/$(1)_fuzz.c $(FUZZING_BUILD_DIR)
 	@echo "==> Building Coverage harness: $(1)"
 	@$(COVERAGE_CC) $(COVERAGE_CFLAGS) $(FUZZ_INCLUDES) \
-	        $(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
-	        -o $(FUZZING_BUILD_DIR)/coverage_$(1) \
-	        $(COVERAGE_LDFLAGS) \
-	        2>/dev/null || echo "Warning: Coverage build failed for $(1)"
+		$(FUZZING_DIR)/harnesses/$(1)_fuzz.c \
+		-o $(FUZZING_BUILD_DIR)/coverage_$(1) \
+		$(COVERAGE_LDFLAGS) \
+		2>/dev/null || echo "Warning: Coverage build failed for $(1)"
 endef
 
 # Generate rules for all harnesses
@@ -568,8 +578,8 @@ fuzz-clean-coverage:
 fuzz-reproduce:
 	@echo "==> Reproducing crash (specify CRASH_FILE=path/to/crash)..."
 	@if [ -z "$(CRASH_FILE)" ]; then \
-	        echo "Error: Please specify CRASH_FILE=path/to/crash"; \
-	        exit 1; \
+		echo "Error: Please specify CRASH_FILE=path/to/crash"; \
+		exit 1; \
 	fi
 	@chmod +x scripts/crash_analysis.sh
 	@./scripts/crash_analysis.sh --crash "$(CRASH_FILE)"
@@ -584,7 +594,7 @@ fuzz-info:
 	@echo "========================================"
 	@echo "Harnesses Available:"
 	@for harness in $(FUZZING_HARNESSES); do \
-	        echo "  - $$harness"; \
+		echo "  - $$harness"; \
 	done
 	@echo ""
 	@echo "Build Targets:"
@@ -630,8 +640,8 @@ fuzz-help: fuzz-info
 # Add fuzzing to main help
 help: info fuzz-info
 
-# Add fuzzing clean to main clean
-clean: fuzz-clean-coverage
+# Add fuzzing and CRRSS clean to main clean
+clean: fuzz-clean-coverage crrss-clean
 	@echo "==> Cleaning build artifacts..."
 	@rm -rf build/
 	@rm -rf $(TARGET)
@@ -657,3 +667,85 @@ all: $(TARGET) fuzz-corpus-generate
 .PHONY: fuzz-corpus-generate fuzz-corpus-minimize
 .PHONY: fuzz-clean fuzz-clean-crashes fuzz-clean-coverage fuzz-reproduce
 .PHONY: fuzz-info fuzz-help security-test
+
+# ============================================================================
+# CRRSS Tooling System Integration - Phase 1B Stage 4
+# ============================================================================
+
+# CRRSS directories
+CRRSS_DIR := tools/crrss
+CRRSS_BUILD_DIR := $(CRRSS_DIR)/build
+
+# CRRSS phony targets
+.PHONY: crrss crrss-lib crrss-tool crrss-tests crrss-test
+.PHONY: crrss-install crrss-uninstall crrss-clean
+.PHONY: crrss-check crrss-analyze crrss-info crrss-help
+
+# Build all CRRSS components
+crrss:
+	@echo "========================================"
+	@echo "Building CRRSS Tooling System"
+	@echo "========================================"
+	@$(MAKE) -C $(CRRSS_DIR) all
+	@echo "==> CRRSS build complete"
+
+# Build CRRSS library only
+crrss-lib:
+	@echo "==> Building CRRSS library..."
+	@$(MAKE) -C $(CRRSS_DIR) lib
+
+# Build CRRSS tool only
+crrss-tool:
+	@echo "==> Building CRRSS command-line tool..."
+	@$(MAKE) -C $(CRRSS_DIR) tool
+
+# Build CRRSS tests
+crrss-tests:
+	@echo "==> Building CRRSS test suite..."
+	@$(MAKE) -C $(CRRSS_DIR) tests
+
+# Run CRRSS tests
+crrss-test:
+	@echo "========================================"
+	@echo "Running CRRSS Test Suite"
+	@echo "========================================"
+	@$(MAKE) -C $(CRRSS_DIR) test
+
+# Install CRRSS to system
+crrss-install:
+	@echo "==> Installing CRRSS..."
+	@$(MAKE) -C $(CRRSS_DIR) install
+
+# Uninstall CRRSS from system
+crrss-uninstall:
+	@echo "==> Uninstalling CRRSS..."
+	@$(MAKE) -C $(CRRSS_DIR) uninstall
+
+# Clean CRRSS build artifacts
+crrss-clean:
+	@echo "==> Cleaning CRRSS build artifacts..."
+	@$(MAKE) -C $(CRRSS_DIR) clean
+
+# Run CRRSS checks on BDI codebase
+crrss-check:
+	@echo "========================================"
+	@echo "Running CRRSS Analysis on BDI Codebase"
+	@echo "========================================"
+	@$(MAKE) -C $(CRRSS_DIR) check-codebase
+
+# Analyze specific file with CRRSS
+crrss-analyze:
+	@if [ -z "$(FILE)" ]; then \
+		echo "Error: Please specify FILE=<path>"; \
+		echo "Example: make crrss-analyze FILE=moduler_kernel/memory.c"; \
+		exit 1; \
+	fi
+	@$(MAKE) -C $(CRRSS_DIR) analyze-file FILE=$(FILE)
+
+# Show CRRSS information
+crrss-info:
+	@$(MAKE) -C $(CRRSS_DIR) info
+
+# Show CRRSS help
+crrss-help:
+	@$(MAKE) -C $(CRRSS_DIR) help

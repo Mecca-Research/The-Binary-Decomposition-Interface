@@ -104,6 +104,7 @@ static uint32_t calculate_cyclomatic_complexity(const char* code) {
     return complexity;
 }
 
+__attribute__((unused))
 static bool has_null_check(const char* line, const char* var_name) {
     char pattern1[256], pattern2[256];
     snprintf(pattern1, sizeof(pattern1), "%s == NULL", var_name);
@@ -120,6 +121,7 @@ static bool has_error_check(const char* line) {
     ));
 }
 
+__attribute__((unused))
 static bool is_proper_function_name(const char* name) {
     if (!name || !*name) return false;
     
@@ -137,6 +139,7 @@ static bool is_proper_function_name(const char* name) {
 }
 
 static validation_result_t check_memory_safety_line(const char* line, uint32_t line_num) {
+    (void)line_num;  // Parameter reserved for future use
     // Check for malloc without NULL check
     if (strstr(line, "malloc") || strstr(line, "calloc") || strstr(line, "realloc")) {
         // This is a simplified check - proper implementation would track across lines
@@ -446,6 +449,7 @@ crrss_status_t sciv_validate_snippet(
     uint32_t max_issues,
     uint32_t* num_issues
 ) {
+    (void)snippet_length;  // Parameter reserved for future use
     if (!ctx || !ctx->initialized) {
         return CRRSS_ERROR_NOT_INITIALIZED;
     }

@@ -48,6 +48,7 @@ void test_memory_tracking() {
     crrss_status_t status = memory_integration_track_allocation(
         ctx, fake_addr, 100, "test.c:42"
     );
+    (void)status;  // Suppress unused warning in some configurations
     assert(status == CRRSS_SUCCESS);
     
     // Track deallocation
@@ -86,6 +87,9 @@ void test_leak_detection() {
     
     crrss_status_t status = memory_integration_detect_leaks(ctx, &report);
     assert(status == CRRSS_SUCCESS);
+    if (status != CRRSS_SUCCESS) {
+        printf("  ERROR: memory_integration_detect_leaks failed with status %d\n", status);
+    }
     
     printf("  Potential leaks: %u\n", report.potential_leaks);
     printf("  Leaked bytes: %lu\n", report.total_leaked_bytes);
@@ -122,6 +126,9 @@ void test_memory_statistics() {
         &total_allocs, &total_frees, &current_usage
     );
     assert(status == CRRSS_SUCCESS);
+    if (status != CRRSS_SUCCESS) {
+        printf("  ERROR: memory_integration_get_statistics failed with status %d\n", status);
+    }
     
     printf("  Total allocations: %lu\n", total_allocs);
     printf("  Total frees: %lu\n", total_frees);

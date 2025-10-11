@@ -6,6 +6,8 @@
  * Phase 1B Stage 3 Implementation
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "msm.h"
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +15,7 @@
 #include <pthread.h>
 #include <execinfo.h>
 #include <unistd.h>
+#include <time.h>
 
 // ==================== Internal Constants ====================
 
@@ -185,6 +188,7 @@ static void* hash_table_lookup(hash_table_t* table, void* key) {
     return NULL;
 }
 
+static crrss_status_t hash_table_remove(hash_table_t* table, void* key) __attribute__((unused));
 static crrss_status_t hash_table_remove(hash_table_t* table, void* key) {
     if (!table || !key) return CRRSS_ERROR_INVALID_PARAM;
     
@@ -244,7 +248,7 @@ static stack_trace_t* capture_stack_trace(uint32_t max_frames) {
     // Get symbols (function names)
     char** symbols = backtrace_symbols(buffer, frame_count);
     
-    for (int i = 0; i < frame_count && i < max_frames; i++) {
+    for (int i = 0; i < frame_count && (uint32_t)i < max_frames; i++) {
         trace->frames[i].instruction_pointer = buffer[i];
         if (symbols && symbols[i]) {
             // Parse symbol information
@@ -911,7 +915,7 @@ crrss_status_t msm_detect_use_after_free(
             if (start) {
                 start += 5;  // Skip "free("
                 const char* end = strchr(start, ')');
-                if (end && end - start < sizeof(freed_var)) {
+                if (end && (size_t)(end - start) < sizeof(freed_var)) {
                     strncpy(freed_var, start, end - start);
                     freed_var[end - start] = '\0';
                 }
@@ -1354,7 +1358,7 @@ crrss_status_t msm_analyze_memory_leaks(
                 const char* end = eq - 1;
                 while (end > start && (*end == ' ' || *end == '\t')) end--;
                 
-                if (end - start < sizeof(alloc_var)) {
+                if ((size_t)(end - start) < sizeof(alloc_var)) {
                     strncpy(alloc_var, start, end - start + 1);
                     alloc_var[end - start + 1] = '\0';
                 }

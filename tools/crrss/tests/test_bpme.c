@@ -50,6 +50,9 @@ void test_bpme_analyze_snippet() {
     );
     
     assert(status == CRRSS_SUCCESS);
+    if (status != CRRSS_SUCCESS) {
+        printf("  ERROR: bpme_analyze_snippet failed with status %d\n", status);
+    }
     printf("  Found %u predictions\n", num_predictions);
     
     bpme_shutdown(ctx);
@@ -74,6 +77,9 @@ void test_bpme_pattern_info() {
     crrss_status_t status = bpme_get_pattern_info(ctx, PATTERN_MEMORY_LEAK, &info);
     
     assert(status == CRRSS_SUCCESS);
+    if (status != CRRSS_SUCCESS) {
+        printf("  ERROR: bpme_get_pattern_info failed with status %d\n", status);
+    }
     assert(info.pattern_type == PATTERN_MEMORY_LEAK);
     printf("  Pattern: %s\n", info.pattern_name);
     
@@ -101,6 +107,9 @@ void test_bpme_statistics() {
     
     crrss_status_t status = bpme_get_statistics(ctx, &total_scans, &bugs_predicted, &accuracy);
     assert(status == CRRSS_SUCCESS);
+    if (status != CRRSS_SUCCESS) {
+        printf("  ERROR: bpme_get_statistics failed with status %d\n", status);
+    }
     
     printf("  Total scans: %u\n", total_scans);
     printf("  Bugs predicted: %u\n", bugs_predicted);

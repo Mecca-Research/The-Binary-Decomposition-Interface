@@ -150,11 +150,13 @@ static bool is_c_source_file(const char* filename) {
     ));
 }
 
+__attribute__((unused))
 static bool contains_keyword(const char* line, const char* keyword) {
     return (strstr(line, keyword) != NULL);
 }
 
 static bool detect_memory_leak_pattern(const char* code, size_t length) {
+    (void)length;  // Parameter reserved for future use
     bool has_alloc = false;
     bool has_free = false;
     
@@ -225,6 +227,7 @@ static bool detect_unchecked_return_pattern(const char* line) {
     return false;
 }
 
+__attribute__((unused))
 static double calculate_risk_score(code_pattern_t pattern, uint32_t occurrences) {
     double base_score = 0.5;
     
@@ -325,6 +328,7 @@ static crrss_status_t detect_patterns_in_file(
     uint32_t max_predictions,
     uint32_t* num_predictions
 ) {
+    (void)ctx;  // Parameter reserved for future use
     FILE* fp = fopen(file_path, "r");
     if (!fp) {
         return CRRSS_ERROR_FILE_ACCESS;
