@@ -18,7 +18,7 @@ CFLAGS := -std=c2x -Wall -Wextra -Wpedantic -Werror
 CFLAGS += -Wno-unknown-pragmas
 
 # Include paths
-CFLAGS += -I. -Icommon -Ibpme -Isciv -Imemory_layer -Imsm -Icli
+CFLAGS += -I. -Icommon -Ibpme -Isciv -Imemory_layer -Imsm -Istp -Icli
 
 # Default build mode (can be: debug, release)
 BUILD_MODE ?= release
@@ -80,6 +80,9 @@ MEMORY_SRCS := memory_layer/memory_integration.c
 # MSM sources
 MSM_SRCS := msm/msm.c
 
+# STP sources
+STP_SRCS := stp/stp.c
+
 # CLI sources
 CLI_SRCS := cli/crrss_cli.c
 
@@ -87,15 +90,16 @@ CLI_SRCS := cli/crrss_cli.c
 MAIN_SRC := cli/crrss_main.c
 
 # All library sources
-LIB_SRCS := $(COMMON_SRCS) $(BPME_SRCS) $(SCIV_SRCS) $(MEMORY_SRCS) $(MSM_SRCS) $(CLI_SRCS)
+LIB_SRCS := $(COMMON_SRCS) $(BPME_SRCS) $(SCIV_SRCS) $(MEMORY_SRCS) $(MSM_SRCS) $(STP_SRCS) $(CLI_SRCS)
 
 # Test sources
 TEST_BPME_SRC := tests/test_bpme.c
 TEST_SCIV_SRC := tests/test_sciv.c
 TEST_MEMORY_SRC := tests/test_memory.c
 TEST_MSM_SRC := tests/test_msm.c
+TEST_STP_SRC := tests/test_stp.c
 
-ALL_TEST_SRCS := $(TEST_BPME_SRC) $(TEST_SCIV_SRC) $(TEST_MEMORY_SRC) $(TEST_MSM_SRC)
+ALL_TEST_SRCS := $(TEST_BPME_SRC) $(TEST_SCIV_SRC) $(TEST_MEMORY_SRC) $(TEST_MSM_SRC) $(TEST_STP_SRC)
 
 # ============================================================================
 # Object Files
@@ -108,6 +112,7 @@ TEST_BPME_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_BPME_SRC))
 TEST_SCIV_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_SCIV_SRC))
 TEST_MEMORY_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_MEMORY_SRC))
 TEST_MSM_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_MSM_SRC))
+TEST_STP_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_STP_SRC))
 
 # ============================================================================
 # Output Files
@@ -120,8 +125,9 @@ TEST_BPME := $(TEST_DIR)/test_bpme
 TEST_SCIV := $(TEST_DIR)/test_sciv
 TEST_MEMORY := $(TEST_DIR)/test_memory
 TEST_MSM := $(TEST_DIR)/test_msm
+TEST_STP := $(TEST_DIR)/test_stp
 
-ALL_TESTS := $(TEST_BPME) $(TEST_SCIV) $(TEST_MEMORY) $(TEST_MSM)
+ALL_TESTS := $(TEST_BPME) $(TEST_SCIV) $(TEST_MEMORY) $(TEST_MSM) $(TEST_STP)
 
 # ============================================================================
 # Phony Targets
@@ -157,11 +163,11 @@ tests: $(ALL_TESTS)
 $(BUILD_DIR) $(OBJ_DIR) $(BIN_DIR) $(LIB_DIR) $(TEST_DIR):
 	@mkdir -p $@
 
-$(OBJ_DIR)/common $(OBJ_DIR)/bpme $(OBJ_DIR)/sciv $(OBJ_DIR)/memory_layer $(OBJ_DIR)/msm $(OBJ_DIR)/cli $(OBJ_DIR)/tests:
+$(OBJ_DIR)/common $(OBJ_DIR)/bpme $(OBJ_DIR)/sciv $(OBJ_DIR)/memory_layer $(OBJ_DIR)/msm $(OBJ_DIR)/stp $(OBJ_DIR)/cli $(OBJ_DIR)/tests:
 	@mkdir -p $@
 
 # Build object files
-$(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)/common $(OBJ_DIR)/bpme $(OBJ_DIR)/sciv $(OBJ_DIR)/memory_layer $(OBJ_DIR)/msm $(OBJ_DIR)/cli $(OBJ_DIR)/tests
+$(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)/common $(OBJ_DIR)/bpme $(OBJ_DIR)/sciv $(OBJ_DIR)/memory_layer $(OBJ_DIR)/msm $(OBJ_DIR)/stp $(OBJ_DIR)/cli $(OBJ_DIR)/tests
 	@echo "  CC  $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
@@ -193,6 +199,10 @@ $(TEST_MSM): $(TEST_MSM_OBJ) $(STATIC_LIB) | $(TEST_DIR)
 	@echo "==> Linking test: $@"
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -L$(LIB_DIR) -lcrrss $(LIBS)
 
+$(TEST_STP): $(TEST_STP_OBJ) $(STATIC_LIB) | $(TEST_DIR)
+	@echo "==> Linking test: $@"
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -L$(LIB_DIR) -lcrrss $(LIBS)
+
 # ============================================================================
 # Testing Targets
 # ============================================================================
@@ -216,6 +226,9 @@ run-tests: tests
 	@echo "==> Running MSM tests..."
 	@$(TEST_MSM) && echo "✓ MSM tests passed" || echo "✗ MSM tests failed"
 	@echo ""
+	@echo "==> Running STP tests..."
+	@$(TEST_STP) && echo "✓ STP tests passed" || echo "✗ STP tests failed"
+	@echo ""
 	@echo "========================================"
 	@echo "CRRSS Test Suite Complete"
 	@echo "========================================"
@@ -235,6 +248,10 @@ test-memory: $(TEST_MEMORY)
 test-msm: $(TEST_MSM)
 	@echo "==> Running MSM tests..."
 	@$(TEST_MSM)
+
+test-stp: $(TEST_STP)
+	@echo "==> Running STP tests..."
+	@$(TEST_STP)
 
 check: run-tests
 
@@ -396,6 +413,7 @@ help: info
 -include $(TEST_SCIV_OBJ:.o=.d)
 -include $(TEST_MEMORY_OBJ:.o=.d)
 -include $(TEST_MSM_OBJ:.o=.d)
+-include $(TEST_STP_OBJ:.o=.d)
 
 %.d: %.c
 	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< -MF $@
