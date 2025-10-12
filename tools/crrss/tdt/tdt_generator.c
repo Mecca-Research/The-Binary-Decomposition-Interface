@@ -286,10 +286,16 @@ crrss_status_t tdt_generate_function_unit_test(
     memset(test_case, 0, sizeof(tdt_test_case_t));
     
     // Generate basic test case
-    static char test_name_buf[256];
+    char test_name_buf[256];
     snprintf(test_name_buf, sizeof(test_name_buf), "test_%s_basic",
              function_analysis->function_name);
-    test_case->test_name = test_name_buf;
+    
+    // Allocate memory for test name (caller must free)
+    char* test_name = strdup(test_name_buf);
+    if (!test_name) {
+        return CRRSS_ERROR_MEMORY_ALLOCATION;
+    }
+    test_case->test_name = test_name;
     
     test_case->function_under_test = function_analysis->function_name;
     test_case->test_description = "Basic functionality test";
@@ -341,11 +347,17 @@ crrss_status_t tdt_generate_edge_case_tests(
     if (*num_tests < max_tests) {
         memset(&test_cases[*num_tests], 0, sizeof(tdt_test_case_t));
         
-        static char test_name_buf[256];
+        char test_name_buf[256];
         snprintf(test_name_buf, sizeof(test_name_buf), "test_%s_edge_null_input",
                  function_analysis->function_name);
         
-        test_cases[*num_tests].test_name = test_name_buf;
+        // Allocate memory for test name (caller must free)
+        char* test_name = strdup(test_name_buf);
+        if (!test_name) {
+            return CRRSS_ERROR_MEMORY_ALLOCATION;
+        }
+        
+        test_cases[*num_tests].test_name = test_name;
         test_cases[*num_tests].function_under_test = function_analysis->function_name;
         test_cases[*num_tests].test_description = "Test with NULL input";
         test_cases[*num_tests].test_type = TDT_TEST_TYPE_UNIT;
@@ -357,8 +369,27 @@ crrss_status_t tdt_generate_edge_case_tests(
     
     // Add more edge cases
     if (*num_tests < max_tests && function_analysis->has_loops) {
-        test_cases[*num_tests] = test_cases[0]; // Copy template
+        memset(&test_cases[*num_tests], 0, sizeof(tdt_test_case_t));
+        
+        char test_name_buf[256];
+        snprintf(test_name_buf, sizeof(test_name_buf), "test_%s_edge_empty_input",
+                 function_analysis->function_name);
+        
+        // Allocate memory for test name (caller must free)
+        char* test_name = strdup(test_name_buf);
+        if (!test_name) {
+            // Free previously allocated test name
+            free((void*)test_cases[0].test_name);
+            return CRRSS_ERROR_MEMORY_ALLOCATION;
+        }
+        
+        test_cases[*num_tests].test_name = test_name;
+        test_cases[*num_tests].function_under_test = function_analysis->function_name;
         test_cases[*num_tests].test_description = "Test with empty input";
+        test_cases[*num_tests].test_type = TDT_TEST_TYPE_UNIT;
+        test_cases[*num_tests].is_edge_case = true;
+        test_cases[*num_tests].should_pass = true;
+        
         (*num_tests)++;
     }
     
@@ -386,11 +417,17 @@ crrss_status_t tdt_generate_error_handling_tests(
     if (*num_tests < max_tests) {
         memset(&test_cases[*num_tests], 0, sizeof(tdt_test_case_t));
         
-        static char test_name_buf[256];
+        char test_name_buf[256];
         snprintf(test_name_buf, sizeof(test_name_buf), "test_%s_error_handling",
                  function_analysis->function_name);
         
-        test_cases[*num_tests].test_name = test_name_buf;
+        // Allocate memory for test name (caller must free)
+        char* test_name = strdup(test_name_buf);
+        if (!test_name) {
+            return CRRSS_ERROR_MEMORY_ALLOCATION;
+        }
+        
+        test_cases[*num_tests].test_name = test_name;
         test_cases[*num_tests].function_under_test = function_analysis->function_name;
         test_cases[*num_tests].test_description = "Test error handling";
         test_cases[*num_tests].test_type = TDT_TEST_TYPE_UNIT;
@@ -422,11 +459,22 @@ crrss_status_t tdt_generate_boundary_tests(
     for (uint32_t i = 0; i < 3 && *num_tests < max_tests; i++) {
         memset(&test_cases[*num_tests], 0, sizeof(tdt_test_case_t));
         
-        static char test_name_buf[256];
+        char test_name_buf[256];
         snprintf(test_name_buf, sizeof(test_name_buf), "test_%s_boundary_%s",
                  function_analysis->function_name, boundaries[i]);
         
-        test_cases[*num_tests].test_name = test_name_buf;
+        // Allocate memory for test name (caller must free)
+        char* test_name = strdup(test_name_buf);
+        if (!test_name) {
+            // Free previously allocated test names on error
+            for (uint32_t j = 0; j < *num_tests; j++) {
+                free((void*)test_cases[j].test_name);
+            }
+            *num_tests = 0;
+            return CRRSS_ERROR_MEMORY_ALLOCATION;
+        }
+        
+        test_cases[*num_tests].test_name = test_name;
         test_cases[*num_tests].function_under_test = function_analysis->function_name;
         test_cases[*num_tests].test_type = TDT_TEST_TYPE_UNIT;
         test_cases[*num_tests].is_boundary_test = true;
