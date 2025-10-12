@@ -189,7 +189,18 @@ void tdt_cleanup(tdt_context_t* ctx) {
     }
     
     // Free generation result data
-    free_generation_result(&ctx->last_generation_result);
+    if (ctx->last_generation_result.test_cases) {
+        // Free dynamically allocated test names before freeing test_cases array
+        for (uint32_t i = 0; i < ctx->last_generation_result.test_case_count; i++) {
+            if (ctx->last_generation_result.test_cases[i].test_name) {
+                free((void*)ctx->last_generation_result.test_cases[i].test_name);
+            }
+        }
+        free(ctx->last_generation_result.test_cases);
+    }
+    if (ctx->last_generation_result.generated_test_files) {
+        free(ctx->last_generation_result.generated_test_files);
+    }
     
     printf("[TDT] Cleanup complete. Tests generated: %u\n",
            ctx->stats.total_tests_generated);
