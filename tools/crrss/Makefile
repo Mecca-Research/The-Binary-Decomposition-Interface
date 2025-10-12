@@ -18,7 +18,7 @@ CFLAGS := -std=c2x -Wall -Wextra -Wpedantic -Werror
 CFLAGS += -Wno-unknown-pragmas
 
 # Include paths
-CFLAGS += -I. -Icommon -Ibpme -Isciv -Imemory_layer -Imsm -Istp -Icli
+CFLAGS += -I. -Icommon -Ibpme -Isciv -Imemory_layer -Imsm -Istp -Itdt -Icli
 
 # Default build mode (can be: debug, release)
 BUILD_MODE ?= release
@@ -83,6 +83,9 @@ MSM_SRCS := msm/msm.c
 # STP sources
 STP_SRCS := stp/stp.c
 
+# TDT sources
+TDT_SRCS := tdt/tdt.c tdt/tdt_generator.c tdt/tdt_coverage.c tdt/tdt_templates.c tdt/tdt_integration.c
+
 # CLI sources
 CLI_SRCS := cli/crrss_cli.c
 
@@ -90,7 +93,7 @@ CLI_SRCS := cli/crrss_cli.c
 MAIN_SRC := cli/crrss_main.c
 
 # All library sources
-LIB_SRCS := $(COMMON_SRCS) $(BPME_SRCS) $(SCIV_SRCS) $(MEMORY_SRCS) $(MSM_SRCS) $(STP_SRCS) $(CLI_SRCS)
+LIB_SRCS := $(COMMON_SRCS) $(BPME_SRCS) $(SCIV_SRCS) $(MEMORY_SRCS) $(MSM_SRCS) $(STP_SRCS) $(TDT_SRCS) $(CLI_SRCS)
 
 # Test sources
 TEST_BPME_SRC := tests/test_bpme.c
@@ -98,8 +101,9 @@ TEST_SCIV_SRC := tests/test_sciv.c
 TEST_MEMORY_SRC := tests/test_memory.c
 TEST_MSM_SRC := tests/test_msm.c
 TEST_STP_SRC := tests/test_stp.c
+TEST_TDT_SRC := tests/test_tdt.c
 
-ALL_TEST_SRCS := $(TEST_BPME_SRC) $(TEST_SCIV_SRC) $(TEST_MEMORY_SRC) $(TEST_MSM_SRC) $(TEST_STP_SRC)
+ALL_TEST_SRCS := $(TEST_BPME_SRC) $(TEST_SCIV_SRC) $(TEST_MEMORY_SRC) $(TEST_MSM_SRC) $(TEST_STP_SRC) $(TEST_TDT_SRC)
 
 # ============================================================================
 # Object Files
@@ -113,6 +117,7 @@ TEST_SCIV_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_SCIV_SRC))
 TEST_MEMORY_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_MEMORY_SRC))
 TEST_MSM_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_MSM_SRC))
 TEST_STP_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_STP_SRC))
+TEST_TDT_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_TDT_SRC))
 
 # ============================================================================
 # Output Files
@@ -126,8 +131,9 @@ TEST_SCIV := $(TEST_DIR)/test_sciv
 TEST_MEMORY := $(TEST_DIR)/test_memory
 TEST_MSM := $(TEST_DIR)/test_msm
 TEST_STP := $(TEST_DIR)/test_stp
+TEST_TDT := $(TEST_DIR)/test_tdt
 
-ALL_TESTS := $(TEST_BPME) $(TEST_SCIV) $(TEST_MEMORY) $(TEST_MSM) $(TEST_STP)
+ALL_TESTS := $(TEST_BPME) $(TEST_SCIV) $(TEST_MEMORY) $(TEST_MSM) $(TEST_STP) $(TEST_TDT)
 
 # ============================================================================
 # Phony Targets
@@ -135,7 +141,7 @@ ALL_TESTS := $(TEST_BPME) $(TEST_SCIV) $(TEST_MEMORY) $(TEST_MSM) $(TEST_STP)
 
 .PHONY: all clean test install uninstall help info
 .PHONY: lib tool tests run-tests
-.PHONY: test-bpme test-sciv test-memory test-msm
+.PHONY: test-bpme test-sciv test-memory test-msm test-stp test-tdt
 .PHONY: check validate
 .PHONY: check-codebase analyze-bdi
 
@@ -163,11 +169,11 @@ tests: $(ALL_TESTS)
 $(BUILD_DIR) $(OBJ_DIR) $(BIN_DIR) $(LIB_DIR) $(TEST_DIR):
 	@mkdir -p $@
 
-$(OBJ_DIR)/common $(OBJ_DIR)/bpme $(OBJ_DIR)/sciv $(OBJ_DIR)/memory_layer $(OBJ_DIR)/msm $(OBJ_DIR)/stp $(OBJ_DIR)/cli $(OBJ_DIR)/tests:
+$(OBJ_DIR)/common $(OBJ_DIR)/bpme $(OBJ_DIR)/sciv $(OBJ_DIR)/memory_layer $(OBJ_DIR)/msm $(OBJ_DIR)/stp $(OBJ_DIR)/tdt $(OBJ_DIR)/cli $(OBJ_DIR)/tests:
 	@mkdir -p $@
 
 # Build object files
-$(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)/common $(OBJ_DIR)/bpme $(OBJ_DIR)/sciv $(OBJ_DIR)/memory_layer $(OBJ_DIR)/msm $(OBJ_DIR)/stp $(OBJ_DIR)/cli $(OBJ_DIR)/tests
+$(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)/common $(OBJ_DIR)/bpme $(OBJ_DIR)/sciv $(OBJ_DIR)/memory_layer $(OBJ_DIR)/msm $(OBJ_DIR)/stp $(OBJ_DIR)/tdt $(OBJ_DIR)/cli $(OBJ_DIR)/tests
 	@echo "  CC  $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
@@ -203,6 +209,10 @@ $(TEST_STP): $(TEST_STP_OBJ) $(STATIC_LIB) | $(TEST_DIR)
 	@echo "==> Linking test: $@"
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -L$(LIB_DIR) -lcrrss $(LIBS)
 
+$(TEST_TDT): $(TEST_TDT_OBJ) $(STATIC_LIB) | $(TEST_DIR)
+	@echo "==> Linking test: $@"
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -L$(LIB_DIR) -lcrrss $(LIBS)
+
 # ============================================================================
 # Testing Targets
 # ============================================================================
@@ -229,6 +239,9 @@ run-tests: tests
 	@echo "==> Running STP tests..."
 	@$(TEST_STP) && echo "✓ STP tests passed" || echo "✗ STP tests failed"
 	@echo ""
+	@echo "==> Running TDT tests..."
+	@$(TEST_TDT) && echo "✓ TDT tests passed" || echo "✗ TDT tests failed"
+	@echo ""
 	@echo "========================================"
 	@echo "CRRSS Test Suite Complete"
 	@echo "========================================"
@@ -252,6 +265,10 @@ test-msm: $(TEST_MSM)
 test-stp: $(TEST_STP)
 	@echo "==> Running STP tests..."
 	@$(TEST_STP)
+
+test-tdt: $(TEST_TDT)
+	@echo "==> Running TDT tests..."
+	@$(TEST_TDT)
 
 check: run-tests
 
@@ -364,6 +381,8 @@ info:
 	@echo "  - SCIV:       Self-Check Internal Validator"
 	@echo "  - Memory:     Memory Integration Layer"
 	@echo "  - MSM:        Memory-Safety Maniac Profile"
+	@echo "  - STP:        Strategic Timmy Profile"
+	@echo "  - TDT:        Test-Driven Timmy Profile"
 	@echo "  - CLI:        Command-Line Interface"
 	@echo ""
 	@echo "Outputs:"
@@ -383,6 +402,8 @@ info:
 	@echo "  make test-sciv        - Run SCIV tests"
 	@echo "  make test-memory      - Run Memory tests"
 	@echo "  make test-msm         - Run MSM tests"
+	@echo "  make test-stp         - Run STP tests"
+	@echo "  make test-tdt         - Run TDT tests"
 	@echo ""
 	@echo "Analysis Targets:"
 	@echo "  make check-codebase   - Analyze BDI codebase"
@@ -414,6 +435,7 @@ help: info
 -include $(TEST_MEMORY_OBJ:.o=.d)
 -include $(TEST_MSM_OBJ:.o=.d)
 -include $(TEST_STP_OBJ:.o=.d)
+-include $(TEST_TDT_OBJ:.o=.d)
 
 %.d: %.c
 	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< -MF $@
