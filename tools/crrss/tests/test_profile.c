@@ -48,7 +48,7 @@ void test_profile_config(void) {
         ctx, PROFILE_CONSERVATIVE, &config
     );
     
-    assert(status == CRRSS_STATUS_SUCCESS);
+    assert(status == CRRSS_SUCCESS);
     assert(config.type == PROFILE_CONSERVATIVE);
     assert(config.safety_weight == 1.0);
     

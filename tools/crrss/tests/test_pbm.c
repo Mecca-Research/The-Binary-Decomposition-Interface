@@ -65,7 +65,7 @@ void test_pbm_risk_calculation(void) {
         ctx, &features, &risk_score, &confidence
     );
     
-    assert(status == CRRSS_STATUS_SUCCESS);
+    assert(status == CRRSS_SUCCESS);
     assert(risk_score >= 0.0 && risk_score <= 1.0);
     assert(confidence >= 0.0 && confidence <= 1.0);
     
