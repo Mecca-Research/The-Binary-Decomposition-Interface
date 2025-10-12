@@ -15,6 +15,7 @@
 #include <getopt.h>
 
 #define CRRSS_VERSION "1.0.0"
+#define CRRSS_MAX_BUFFER_CAPACITY 1000  // Maximum size for stack-allocated result buffers
 
 struct crrss_cli_context {
     bpme_context_t* bpme;
@@ -193,8 +194,16 @@ crrss_status_t crrss_cli_execute_query(
     
     printf("=== CRRSS Query Results ===\n\n");
     
-    bug_prediction_t predictions[1000];
+    bug_prediction_t predictions[CRRSS_MAX_BUFFER_CAPACITY];
     uint32_t num_predictions = 0;
+    
+    // Clamp max_results to prevent buffer overflow
+    uint32_t safe_max_results = options->max_results;
+    if (safe_max_results > CRRSS_MAX_BUFFER_CAPACITY) {
+        fprintf(stderr, "Warning: max_results (%u) exceeds buffer capacity (%u), clamping to %u\n",
+                options->max_results, CRRSS_MAX_BUFFER_CAPACITY, CRRSS_MAX_BUFFER_CAPACITY);
+        safe_max_results = CRRSS_MAX_BUFFER_CAPACITY;
+    }
     
     // Query by priority if specified
     if (options->priority != BUG_PRIORITY_UNKNOWN) {
@@ -203,7 +212,7 @@ crrss_status_t crrss_cli_execute_query(
         
         crrss_status_t status = bpme_query_by_priority(
             ctx->bpme, options->priority, predictions, 
-            options->max_results, &num_predictions
+            safe_max_results, &num_predictions
         );
         
         if (status == CRRSS_SUCCESS) {
@@ -218,7 +227,7 @@ crrss_status_t crrss_cli_execute_query(
         
         crrss_status_t status = bpme_query_by_category(
             ctx->bpme, options->category, predictions,
-            options->max_results, &num_predictions
+            safe_max_results, &num_predictions
         );
         
         if (status == CRRSS_SUCCESS) {
@@ -232,7 +241,7 @@ crrss_status_t crrss_cli_execute_query(
         
         crrss_status_t status = bpme_analyze_file(
             ctx->bpme, options->file_path, predictions,
-            options->max_results, &num_predictions
+            safe_max_results, &num_predictions
         );
         
         if (status == CRRSS_SUCCESS) {
@@ -368,15 +377,23 @@ crrss_status_t crrss_cli_execute_msm(
     printf("=== CRRSS Memory Safety Maniac (MSM) Analysis ===\n\n");
     
     crrss_status_t status = CRRSS_SUCCESS;
-    msm_issue_t issues[1000];
+    msm_issue_t issues[CRRSS_MAX_BUFFER_CAPACITY];
     uint32_t num_issues = 0;
+    
+    // Clamp max_issues to prevent buffer overflow
+    uint32_t safe_max_issues = options->max_issues;
+    if (safe_max_issues > CRRSS_MAX_BUFFER_CAPACITY) {
+        fprintf(stderr, "Warning: max_issues (%u) exceeds buffer capacity (%u), clamping to %u\n",
+                options->max_issues, CRRSS_MAX_BUFFER_CAPACITY, CRRSS_MAX_BUFFER_CAPACITY);
+        safe_max_issues = CRRSS_MAX_BUFFER_CAPACITY;
+    }
     
     // Analyze file if specified
     if (options->file_path) {
         printf("Analyzing file: %s\n", options->file_path);
         
         status = msm_analyze_file(ctx->msm, options->file_path, 
-                                  issues, options->max_issues, &num_issues);
+                                  issues, safe_max_issues, &num_issues);
         
         if (status == CRRSS_SUCCESS) {
             printf("Found %u memory safety issues\n\n", num_issues);
@@ -678,11 +695,19 @@ crrss_status_t crrss_cli_execute_stp(
         printf("Analyzing file: %s\n", options->file_path);
         printf("Strictness level: %u\n\n", options->strictness_level);
         
-        stp_issue_t issues[1000];
+        stp_issue_t issues[CRRSS_MAX_BUFFER_CAPACITY];
         uint32_t num_issues = 0;
         
+        // Clamp max_issues to prevent buffer overflow
+        uint32_t safe_max_issues = options->max_issues;
+        if (safe_max_issues > CRRSS_MAX_BUFFER_CAPACITY) {
+            fprintf(stderr, "Warning: max_issues (%u) exceeds buffer capacity (%u), clamping to %u\n",
+                    options->max_issues, CRRSS_MAX_BUFFER_CAPACITY, CRRSS_MAX_BUFFER_CAPACITY);
+            safe_max_issues = CRRSS_MAX_BUFFER_CAPACITY;
+        }
+        
         status = stp_analyze_file(stp_ctx, options->file_path,
-                                 issues, options->max_issues, &num_issues);
+                                 issues, safe_max_issues, &num_issues);
         
         if (status == CRRSS_SUCCESS) {
             printf("Found %u type safety issues\n\n", num_issues);
@@ -1489,15 +1514,23 @@ crrss_status_t crrss_cli_execute_validate(
     // Run BPME analysis
     printf("=== Running BPME Analysis ===\n");
     
-    bug_prediction_t predictions[1000];
+    bug_prediction_t predictions[CRRSS_MAX_BUFFER_CAPACITY];
     uint32_t num_predictions = 0;
+    
+    // Clamp max_issues to prevent buffer overflow
+    uint32_t safe_max_issues = options->max_issues;
+    if (safe_max_issues > CRRSS_MAX_BUFFER_CAPACITY) {
+        fprintf(stderr, "Warning: max_issues (%u) exceeds buffer capacity (%u), clamping to %u\n",
+                options->max_issues, CRRSS_MAX_BUFFER_CAPACITY, CRRSS_MAX_BUFFER_CAPACITY);
+        safe_max_issues = CRRSS_MAX_BUFFER_CAPACITY;
+    }
     
     if (options->file_path) {
         status = bpme_analyze_file(ctx->bpme, options->file_path,
-                                   predictions, options->max_issues, &num_predictions);
+                                   predictions, safe_max_issues, &num_predictions);
     } else {
         status = bpme_analyze_directory(ctx->bpme, options->directory,
-                                       predictions, options->max_issues, &num_predictions);
+                                       predictions, safe_max_issues, &num_predictions);
     }
     
     if (status == CRRSS_SUCCESS) {
