@@ -130,6 +130,10 @@ crrss_status_t tdt_generate_unit_tests(
  * @param function_analysis Function analysis
  * @param test_case Output test case
  * @return Status code
+ * 
+ * @note Memory Management: The test_name field in test_case is dynamically
+ *       allocated using strdup(). The caller is responsible for freeing this
+ *       memory when the test case is no longer needed.
  */
 crrss_status_t tdt_generate_function_unit_test(
     tdt_context_t* ctx,
@@ -164,6 +168,10 @@ crrss_status_t tdt_generate_integration_tests(
  * @param max_tests Maximum tests to generate
  * @param num_tests Number of tests generated
  * @return Status code
+ * 
+ * @note Memory Management: The test_name field in each test_case is dynamically
+ *       allocated using strdup(). The caller is responsible for freeing this
+ *       memory for each test case when no longer needed.
  */
 crrss_status_t tdt_generate_edge_case_tests(
     tdt_context_t* ctx,
@@ -181,6 +189,10 @@ crrss_status_t tdt_generate_edge_case_tests(
  * @param max_tests Maximum tests to generate
  * @param num_tests Number of tests generated
  * @return Status code
+ * 
+ * @note Memory Management: The test_name field in each test_case is dynamically
+ *       allocated using strdup(). The caller is responsible for freeing this
+ *       memory for each test case when no longer needed.
  */
 crrss_status_t tdt_generate_error_handling_tests(
     tdt_context_t* ctx,
@@ -198,6 +210,10 @@ crrss_status_t tdt_generate_error_handling_tests(
  * @param max_tests Maximum tests to generate
  * @param num_tests Number of tests generated
  * @return Status code
+ * 
+ * @note Memory Management: The test_name field in each test_case is dynamically
+ *       allocated using strdup(). The caller is responsible for freeing this
+ *       memory for each test case when no longer needed.
  */
 crrss_status_t tdt_generate_boundary_tests(
     tdt_context_t* ctx,
