@@ -144,9 +144,12 @@ ALL_TESTS := $(TEST_BPME) $(TEST_SCIV) $(TEST_MEMORY) $(TEST_MSM) $(TEST_STP) $(
 
 .PHONY: all clean test install uninstall help info
 .PHONY: lib tool tests run-tests
-.PHONY: test-bpme test-sciv test-memory test-msm test-stp test-tdt test-stp test-tdt
+.PHONY: test-bpme test-sciv test-memory test-msm test-stp test-tdt test-cli
+.PHONY: system-test integration-test
 .PHONY: check validate
-.PHONY: check-codebase analyze-bdi
+.PHONY: check-codebase analyze-bdi analyze-file
+.PHONY: ci-build ci-test ci-all
+.PHONY: format check-format
 
 # ============================================================================
 # Main Targets
@@ -433,6 +436,58 @@ info:
 	@echo "========================================"
 
 help: info
+
+# ============================================================================
+# System Test Targets (Phase 2 Stage 5)
+# ============================================================================
+
+system-test: tool
+	@echo "========================================"
+	@echo "Running CRRSS System Tests"
+	@echo "========================================"
+	@if [ -x tests/system_test.sh ]; then \
+	        ./tests/system_test.sh; \
+	else \
+	        echo "Error: System test script not found or not executable"; \
+	        exit 1; \
+	fi
+
+integration-test: tool
+	@echo "==> Running CRRSS integration tests..."
+	@echo "Testing CLI tool integration..."
+	@$(CRRSS_TOOL) --version > /dev/null 2>&1 && echo "✓ CLI version check passed" || exit 1
+	@$(CRRSS_TOOL) --help > /dev/null 2>&1 && echo "✓ CLI help check passed" || exit 1
+	@echo "✓ Integration tests passed"
+
+# ============================================================================
+# CI/CD Targets (Phase 2 Stage 5)
+# ============================================================================
+
+ci-build: clean
+	@echo "==> CI: Building CRRSS..."
+	@$(MAKE) all BUILD_MODE=$(BUILD_MODE)
+
+ci-test: ci-build
+	@echo "==> CI: Running tests..."
+	@$(MAKE) run-tests
+	@$(MAKE) system-test
+
+ci-all: ci-test
+	@echo "==> CI: All checks passed"
+
+# ============================================================================
+# Code Formatting Targets (Phase 2 Stage 5)
+# ============================================================================
+
+format:
+	@echo "==> Formatting code with clang-format..."
+	@find . -name '*.c' -o -name '*.h' | xargs clang-format -i -style=file
+	@echo "✓ Code formatting complete"
+
+check-format:
+	@echo "==> Checking code formatting..."
+	@find . -name '*.c' -o -name '*.h' | xargs clang-format -style=file --dry-run -Werror
+	@echo "✓ Code formatting check passed"
 
 # ============================================================================
 # Dependencies
