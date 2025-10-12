@@ -369,6 +369,7 @@ uninstall:
 # ============================================================================
 
 clean:
+	@$(MAKE) clean-phase3
 	@echo "==> Cleaning CRRSS build artifacts..."
 	@rm -rf $(BUILD_DIR)
 	@rm -f crrss_*.txt crrss_*.json crrss_*.html
@@ -506,3 +507,116 @@ check-format:
 
 %.d: %.c
 	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< -MF $@
+
+# ============================================================================
+# Phase 3: Complete Intelligence (Added October 2025)
+# ============================================================================
+
+# Phase 3 source files
+EHV_SRCS = ehv/ehv.c
+PBM_SRCS = pbm/pbm.c
+DEPS_SRCS = deps/deps.c
+FIX_SRCS = fix_suggestions/fix_suggestions.c
+PROFILE_SRCS = profiles/profile_rotation.c
+
+# Phase 3 object files
+EHV_OBJS = $(EHV_SRCS:.c=.o)
+PBM_OBJS = $(PBM_SRCS:.c=.o)
+DEPS_OBJS = $(DEPS_SRCS:.c=.o)
+FIX_OBJS = $(FIX_SRCS:.c=.o)
+PROFILE_OBJS = $(PROFILE_SRCS:.c=.o)
+
+PHASE3_OBJS = $(EHV_OBJS) $(PBM_OBJS) $(DEPS_OBJS) $(FIX_OBJS) $(PROFILE_OBJS)
+
+# Phase 3 test files
+TEST_EHV = tests/test_ehv
+TEST_PBM = tests/test_pbm
+TEST_DEPS = tests/test_deps
+TEST_FIX = tests/test_fix
+TEST_PROFILE = tests/test_profile
+
+PHASE3_TESTS = $(TEST_EHV) $(TEST_PBM) $(TEST_DEPS) $(TEST_FIX) $(TEST_PROFILE)
+
+# Update main library objects to include Phase 3
+LIB_OBJS += $(PHASE3_OBJS)
+
+# Phase 3 build target
+phase3: $(PHASE3_OBJS)
+	@echo "✓ Phase 3 components compiled"
+
+# Phase 3 test targets
+test-ehv: $(TEST_EHV)
+	@echo "==> Running EHV tests..."
+	@./$(TEST_EHV)
+
+test-pbm: $(TEST_PBM)
+	@echo "==> Running PBM tests..."
+	@./$(TEST_PBM)
+
+test-deps: $(TEST_DEPS)
+	@echo "==> Running DEPS tests..."
+	@./$(TEST_DEPS)
+
+test-fix: $(TEST_FIX)
+	@echo "==> Running Fix Suggestions tests..."
+	@./$(TEST_FIX)
+
+test-profile: $(TEST_PROFILE)
+	@echo "==> Running Profile Rotation tests..."
+	@./$(TEST_PROFILE)
+
+test-phase3: $(PHASE3_TESTS)
+	@echo "==> Running all Phase 3 tests..."
+	@$(MAKE) test-ehv
+	@$(MAKE) test-pbm
+	@$(MAKE) test-deps
+	@$(MAKE) test-fix
+	@$(MAKE) test-profile
+	@echo "✓ All Phase 3 tests passed"
+
+# Phase 3 test compilation
+$(TEST_EHV): tests/test_ehv.c $(EHV_OBJS) $(COMMON_OBJS)
+	@echo "  CC      $@"
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(TEST_PBM): tests/test_pbm.c $(PBM_OBJS) $(COMMON_OBJS)
+	@echo "  CC      $@"
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lm
+
+$(TEST_DEPS): tests/test_deps.c $(DEPS_OBJS) $(COMMON_OBJS)
+	@echo "  CC      $@"
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(TEST_FIX): tests/test_fix.c $(FIX_OBJS) $(COMMON_OBJS)
+	@echo "  CC      $@"
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(TEST_PROFILE): tests/test_profile.c $(PROFILE_OBJS) $(COMMON_OBJS)
+	@echo "  CC      $@"
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Phase 3 CLI integration
+CLI_PHASE3_SRCS = cli/crrss_cli_phase3.c
+CLI_PHASE3_OBJS = $(CLI_PHASE3_SRCS:.c=.o)
+
+# Update clean target
+clean-phase3:
+	@rm -f $(PHASE3_OBJS) $(PHASE3_TESTS)
+	@rm -f ehv/*.o ehv/*.d
+	@rm -f pbm/*.o pbm/*.d
+	@rm -f deps/*.o deps/*.d
+	@rm -f fix_suggestions/*.o fix_suggestions/*.d
+	@rm -f profiles/*.o profiles/*.d
+
+# Phase 3 help target
+help-phase3:
+	@echo "Phase 3 Targets:"
+	@echo "  phase3         - Build Phase 3 components"
+	@echo "  test-phase3    - Run all Phase 3 tests"
+	@echo "  test-ehv       - Test Error Heatmap Visualization"
+	@echo "  test-pbm       - Test Predictive Bug Modeling"
+	@echo "  test-deps      - Test Dependency Analysis"
+	@echo "  test-fix       - Test Fix Suggestions"
+	@echo "  test-profile   - Test Profile Rotation"
+
+.PHONY: phase3 test-phase3 test-ehv test-pbm test-deps test-fix test-profile help-phase3

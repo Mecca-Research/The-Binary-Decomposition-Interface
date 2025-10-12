@@ -1,0 +1,1025 @@
+  CC  cli/crrss_main.c
+  CC  tests/test_bpme.c
+  CC  tests/test_sciv.c
+  CC  tests/test_memory.c
+  CC  tests/test_msm.c
+  CC  tests/test_stp.c
+  CC  tests/test_tdt.c
+  CC  tests/test_rers.c
+In file included from tests/test_rers.c:7:
+tests/../rers/rers_replay.h:166:5: error: unknown type name ‘pid_t’
+  166 |     pid_t process_id;
+      |     ^~~~~
+tests/../rers/rers_replay.h:167:5: error: unknown type name ‘pid_t’
+  167 |     pid_t thread_id;
+      |     ^~~~~
+In file included from tests/test_rers.c:9:
+tests/../rers/rers_learning.h:251:16: error: conflicting types for ‘rers_learn_from_bug’; have ‘crrss_status_t(rers_learning_engine_t *, const bug_prediction_t *)’ {aka ‘crrss_status_t(struct rers_learning_engine *, const bug_prediction_t *)’}
+  251 | crrss_status_t rers_learn_from_bug(
+      |                ^~~~~~~~~~~~~~~~~~~
+In file included from tests/test_rers.c:6:
+tests/../rers/rers.h:217:16: note: previous declaration of ‘rers_learn_from_bug’ with type ‘crrss_status_t(rers_context_t *, const bug_prediction_t *)’ {aka ‘crrss_status_t(struct rers_context *, const bug_prediction_t *)’}
+  217 | crrss_status_t rers_learn_from_bug(
+      |                ^~~~~~~~~~~~~~~~~~~
+tests/../rers/rers_learning.h:347:16: error: conflicting types for ‘rers_rank_bugs’; have ‘crrss_status_t(rers_learning_engine_t *, bug_prediction_t *, uint32_t,  rers_ranking_criteria_t,  rers_bug_ranking_t *)’ {aka ‘crrss_status_t(struct rers_learning_engine *, bug_prediction_t *, unsigned int,  rers_ranking_criteria_t,  rers_bug_ranking_t *)’}
+  347 | crrss_status_t rers_rank_bugs(
+      |                ^~~~~~~~~~~~~~
+tests/../rers/rers.h:253:16: note: previous declaration of ‘rers_rank_bugs’ with type ‘crrss_status_t(rers_context_t *, bug_prediction_t *, uint32_t)’ {aka ‘crrss_status_t(struct rers_context *, bug_prediction_t *, unsigned int)’}
+  253 | crrss_status_t rers_rank_bugs(
+      |                ^~~~~~~~~~~~~~
+tests/../rers/rers_learning.h:388:16: error: conflicting types for ‘rers_update_knowledge_base’; have ‘crrss_status_t(rers_learning_engine_t *)’ {aka ‘crrss_status_t(struct rers_learning_engine *)’}
+  388 | crrss_status_t rers_update_knowledge_base(
+      |                ^~~~~~~~~~~~~~~~~~~~~~~~~~
+tests/../rers/rers.h:244:16: note: previous declaration of ‘rers_update_knowledge_base’ with type ‘crrss_status_t(rers_context_t *)’ {aka ‘crrss_status_t(struct rers_context *)’}
+  244 | crrss_status_t rers_update_knowledge_base(rers_context_t* ctx);
+      |                ^~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from tests/test_rers.c:10:
+tests/../rers/rers_integration.h:372:16: error: conflicting types for ‘rers_unified_analysis’; have ‘crrss_status_t(rers_integration_engine_t *, const char *, rers_unified_result_t *)’ {aka ‘crrss_status_t(struct rers_integration_engine *, const char *, rers_unified_result_t *)’}
+  372 | crrss_status_t rers_unified_analysis(
+      |                ^~~~~~~~~~~~~~~~~~~~~
+tests/../rers/rers.h:370:16: note: previous declaration of ‘rers_unified_analysis’ with type ‘crrss_status_t(rers_context_t *, const char *, void *)’ {aka ‘crrss_status_t(struct rers_context *, const char *, void *)’}
+  370 | crrss_status_t rers_unified_analysis(
+      |                ^~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:55:1: note: in expansion of macro ‘TEST’
+   55 | TEST(replay_engine_init) {
+      | ^~~~
+tests/test_rers.c:55:24: error: expected declaration specifiers or ‘...’ before string constant
+   55 | TEST(replay_engine_init) {
+      |                        ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:55:1: note: in expansion of macro ‘TEST’
+   55 | TEST(replay_engine_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_replay_engine_init’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:55:1: note: in expansion of macro ‘TEST’
+   55 | TEST(replay_engine_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_replay_engine_init’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:55:1: note: in expansion of macro ‘TEST’
+   55 | TEST(replay_engine_init) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_replay_engine_init’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:55:1: note: in expansion of macro ‘TEST’
+   55 | TEST(replay_engine_init) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:55:1: note: in expansion of macro ‘TEST’
+   55 | TEST(replay_engine_init) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_replay_engine_init’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:55:1: note: in expansion of macro ‘TEST’
+   55 | TEST(replay_engine_init) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_replay_engine_init’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:55:1: note: in expansion of macro ‘TEST’
+   55 | TEST(replay_engine_init) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:74:1: note: in expansion of macro ‘TEST’
+   74 | TEST(error_capture) {
+      | ^~~~
+tests/test_rers.c:74:19: error: expected declaration specifiers or ‘...’ before string constant
+   74 | TEST(error_capture) {
+      |                   ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:74:1: note: in expansion of macro ‘TEST’
+   74 | TEST(error_capture) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_error_capture’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:74:1: note: in expansion of macro ‘TEST’
+   74 | TEST(error_capture) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_error_capture’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:74:1: note: in expansion of macro ‘TEST’
+   74 | TEST(error_capture) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_error_capture’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:74:1: note: in expansion of macro ‘TEST’
+   74 | TEST(error_capture) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:74:1: note: in expansion of macro ‘TEST’
+   74 | TEST(error_capture) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_error_capture’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:74:1: note: in expansion of macro ‘TEST’
+   74 | TEST(error_capture) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_error_capture’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:74:1: note: in expansion of macro ‘TEST’
+   74 | TEST(error_capture) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:106:1: note: in expansion of macro ‘TEST’
+  106 | TEST(error_replay) {
+      | ^~~~
+tests/test_rers.c:106:18: error: expected declaration specifiers or ‘...’ before string constant
+  106 | TEST(error_replay) {
+      |                  ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:106:1: note: in expansion of macro ‘TEST’
+  106 | TEST(error_replay) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_error_replay’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:106:1: note: in expansion of macro ‘TEST’
+  106 | TEST(error_replay) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_error_replay’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:106:1: note: in expansion of macro ‘TEST’
+  106 | TEST(error_replay) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_error_replay’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:106:1: note: in expansion of macro ‘TEST’
+  106 | TEST(error_replay) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:106:1: note: in expansion of macro ‘TEST’
+  106 | TEST(error_replay) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_error_replay’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:106:1: note: in expansion of macro ‘TEST’
+  106 | TEST(error_replay) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_error_replay’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:106:1: note: in expansion of macro ‘TEST’
+  106 | TEST(error_replay) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:138:1: note: in expansion of macro ‘TEST’
+  138 | TEST(error_injection) {
+      | ^~~~
+tests/test_rers.c:138:21: error: expected declaration specifiers or ‘...’ before string constant
+  138 | TEST(error_injection) {
+      |                     ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:138:1: note: in expansion of macro ‘TEST’
+  138 | TEST(error_injection) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_error_injection’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:138:1: note: in expansion of macro ‘TEST’
+  138 | TEST(error_injection) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_error_injection’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:138:1: note: in expansion of macro ‘TEST’
+  138 | TEST(error_injection) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_error_injection’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:138:1: note: in expansion of macro ‘TEST’
+  138 | TEST(error_injection) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:138:1: note: in expansion of macro ‘TEST’
+  138 | TEST(error_injection) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_error_injection’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:138:1: note: in expansion of macro ‘TEST’
+  138 | TEST(error_injection) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_error_injection’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:138:1: note: in expansion of macro ‘TEST’
+  138 | TEST(error_injection) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:174:1: note: in expansion of macro ‘TEST’
+  174 | TEST(pattern_db_init) {
+      | ^~~~
+tests/test_rers.c:174:21: error: expected declaration specifiers or ‘...’ before string constant
+  174 | TEST(pattern_db_init) {
+      |                     ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:174:1: note: in expansion of macro ‘TEST’
+  174 | TEST(pattern_db_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_pattern_db_init’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:174:1: note: in expansion of macro ‘TEST’
+  174 | TEST(pattern_db_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_pattern_db_init’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:174:1: note: in expansion of macro ‘TEST’
+  174 | TEST(pattern_db_init) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_pattern_db_init’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:174:1: note: in expansion of macro ‘TEST’
+  174 | TEST(pattern_db_init) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:174:1: note: in expansion of macro ‘TEST’
+  174 | TEST(pattern_db_init) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_pattern_db_init’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:174:1: note: in expansion of macro ‘TEST’
+  174 | TEST(pattern_db_init) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_pattern_db_init’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:174:1: note: in expansion of macro ‘TEST’
+  174 | TEST(pattern_db_init) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:187:1: note: in expansion of macro ‘TEST’
+  187 | TEST(pattern_insert_and_retrieve) {
+      | ^~~~
+tests/test_rers.c:187:33: error: expected declaration specifiers or ‘...’ before string constant
+  187 | TEST(pattern_insert_and_retrieve) {
+      |                                 ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:187:1: note: in expansion of macro ‘TEST’
+  187 | TEST(pattern_insert_and_retrieve) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_pattern_insert_and_retrieve’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:187:1: note: in expansion of macro ‘TEST’
+  187 | TEST(pattern_insert_and_retrieve) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_pattern_insert_and_retrieve’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:187:1: note: in expansion of macro ‘TEST’
+  187 | TEST(pattern_insert_and_retrieve) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_pattern_insert_and_retrieve’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:187:1: note: in expansion of macro ‘TEST’
+  187 | TEST(pattern_insert_and_retrieve) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:187:1: note: in expansion of macro ‘TEST’
+  187 | TEST(pattern_insert_and_retrieve) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_pattern_insert_and_retrieve’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:187:1: note: in expansion of macro ‘TEST’
+  187 | TEST(pattern_insert_and_retrieve) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_pattern_insert_and_retrieve’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:187:1: note: in expansion of macro ‘TEST’
+  187 | TEST(pattern_insert_and_retrieve) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:217:1: note: in expansion of macro ‘TEST’
+  217 | TEST(pattern_matching) {
+      | ^~~~
+tests/test_rers.c:217:22: error: expected declaration specifiers or ‘...’ before string constant
+  217 | TEST(pattern_matching) {
+      |                      ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:217:1: note: in expansion of macro ‘TEST’
+  217 | TEST(pattern_matching) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_pattern_matching’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:217:1: note: in expansion of macro ‘TEST’
+  217 | TEST(pattern_matching) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_pattern_matching’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:217:1: note: in expansion of macro ‘TEST’
+  217 | TEST(pattern_matching) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_pattern_matching’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:217:1: note: in expansion of macro ‘TEST’
+  217 | TEST(pattern_matching) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:217:1: note: in expansion of macro ‘TEST’
+  217 | TEST(pattern_matching) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_pattern_matching’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:217:1: note: in expansion of macro ‘TEST’
+  217 | TEST(pattern_matching) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_pattern_matching’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:217:1: note: in expansion of macro ‘TEST’
+  217 | TEST(pattern_matching) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:258:1: note: in expansion of macro ‘TEST’
+  258 | TEST(pattern_similarity) {
+      | ^~~~
+tests/test_rers.c:258:24: error: expected declaration specifiers or ‘...’ before string constant
+  258 | TEST(pattern_similarity) {
+      |                        ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:258:1: note: in expansion of macro ‘TEST’
+  258 | TEST(pattern_similarity) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_pattern_similarity’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:258:1: note: in expansion of macro ‘TEST’
+  258 | TEST(pattern_similarity) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_pattern_similarity’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:258:1: note: in expansion of macro ‘TEST’
+  258 | TEST(pattern_similarity) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_pattern_similarity’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:258:1: note: in expansion of macro ‘TEST’
+  258 | TEST(pattern_similarity) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:258:1: note: in expansion of macro ‘TEST’
+  258 | TEST(pattern_similarity) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_pattern_similarity’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:258:1: note: in expansion of macro ‘TEST’
+  258 | TEST(pattern_similarity) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_pattern_similarity’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:258:1: note: in expansion of macro ‘TEST’
+  258 | TEST(pattern_similarity) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:296:1: note: in expansion of macro ‘TEST’
+  296 | TEST(learning_engine_init) {
+      | ^~~~
+tests/test_rers.c:296:26: error: expected declaration specifiers or ‘...’ before string constant
+  296 | TEST(learning_engine_init) {
+      |                          ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:296:1: note: in expansion of macro ‘TEST’
+  296 | TEST(learning_engine_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_learning_engine_init’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:296:1: note: in expansion of macro ‘TEST’
+  296 | TEST(learning_engine_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_learning_engine_init’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:296:1: note: in expansion of macro ‘TEST’
+  296 | TEST(learning_engine_init) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_learning_engine_init’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:296:1: note: in expansion of macro ‘TEST’
+  296 | TEST(learning_engine_init) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:296:1: note: in expansion of macro ‘TEST’
+  296 | TEST(learning_engine_init) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_learning_engine_init’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:296:1: note: in expansion of macro ‘TEST’
+  296 | TEST(learning_engine_init) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_learning_engine_init’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:296:1: note: in expansion of macro ‘TEST’
+  296 | TEST(learning_engine_init) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:315:1: note: in expansion of macro ‘TEST’
+  315 | TEST(learn_from_bug) {
+      | ^~~~
+tests/test_rers.c:315:20: error: expected declaration specifiers or ‘...’ before string constant
+  315 | TEST(learn_from_bug) {
+      |                    ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:315:1: note: in expansion of macro ‘TEST’
+  315 | TEST(learn_from_bug) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_learn_from_bug’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:315:1: note: in expansion of macro ‘TEST’
+  315 | TEST(learn_from_bug) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_learn_from_bug’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:315:1: note: in expansion of macro ‘TEST’
+  315 | TEST(learn_from_bug) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_learn_from_bug’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:315:1: note: in expansion of macro ‘TEST’
+  315 | TEST(learn_from_bug) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:315:1: note: in expansion of macro ‘TEST’
+  315 | TEST(learn_from_bug) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_learn_from_bug’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:315:1: note: in expansion of macro ‘TEST’
+  315 | TEST(learn_from_bug) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_learn_from_bug’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:315:1: note: in expansion of macro ‘TEST’
+  315 | TEST(learn_from_bug) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:349:1: note: in expansion of macro ‘TEST’
+  349 | TEST(pattern_extraction) {
+      | ^~~~
+tests/test_rers.c:349:24: error: expected declaration specifiers or ‘...’ before string constant
+  349 | TEST(pattern_extraction) {
+      |                        ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:349:1: note: in expansion of macro ‘TEST’
+  349 | TEST(pattern_extraction) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_pattern_extraction’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:349:1: note: in expansion of macro ‘TEST’
+  349 | TEST(pattern_extraction) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_pattern_extraction’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:349:1: note: in expansion of macro ‘TEST’
+  349 | TEST(pattern_extraction) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_pattern_extraction’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:349:1: note: in expansion of macro ‘TEST’
+  349 | TEST(pattern_extraction) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:349:1: note: in expansion of macro ‘TEST’
+  349 | TEST(pattern_extraction) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_pattern_extraction’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:349:1: note: in expansion of macro ‘TEST’
+  349 | TEST(pattern_extraction) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_pattern_extraction’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:349:1: note: in expansion of macro ‘TEST’
+  349 | TEST(pattern_extraction) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:385:1: note: in expansion of macro ‘TEST’
+  385 | TEST(bug_ranking) {
+      | ^~~~
+tests/test_rers.c:385:17: error: expected declaration specifiers or ‘...’ before string constant
+  385 | TEST(bug_ranking) {
+      |                 ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:385:1: note: in expansion of macro ‘TEST’
+  385 | TEST(bug_ranking) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_bug_ranking’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:385:1: note: in expansion of macro ‘TEST’
+  385 | TEST(bug_ranking) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_bug_ranking’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:385:1: note: in expansion of macro ‘TEST’
+  385 | TEST(bug_ranking) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_bug_ranking’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:385:1: note: in expansion of macro ‘TEST’
+  385 | TEST(bug_ranking) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:385:1: note: in expansion of macro ‘TEST’
+  385 | TEST(bug_ranking) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_bug_ranking’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:385:1: note: in expansion of macro ‘TEST’
+  385 | TEST(bug_ranking) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_bug_ranking’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:385:1: note: in expansion of macro ‘TEST’
+  385 | TEST(bug_ranking) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:437:1: note: in expansion of macro ‘TEST’
+  437 | TEST(integration_engine_init) {
+      | ^~~~
+tests/test_rers.c:437:29: error: expected declaration specifiers or ‘...’ before string constant
+  437 | TEST(integration_engine_init) {
+      |                             ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:437:1: note: in expansion of macro ‘TEST’
+  437 | TEST(integration_engine_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_integration_engine_init’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:437:1: note: in expansion of macro ‘TEST’
+  437 | TEST(integration_engine_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_integration_engine_init’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:437:1: note: in expansion of macro ‘TEST’
+  437 | TEST(integration_engine_init) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_integration_engine_init’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:437:1: note: in expansion of macro ‘TEST’
+  437 | TEST(integration_engine_init) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:437:1: note: in expansion of macro ‘TEST’
+  437 | TEST(integration_engine_init) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_integration_engine_init’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:437:1: note: in expansion of macro ‘TEST’
+  437 | TEST(integration_engine_init) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_integration_engine_init’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:437:1: note: in expansion of macro ‘TEST’
+  437 | TEST(integration_engine_init) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:453:1: note: in expansion of macro ‘TEST’
+  453 | TEST(profile_connection) {
+      | ^~~~
+tests/test_rers.c:453:24: error: expected declaration specifiers or ‘...’ before string constant
+  453 | TEST(profile_connection) {
+      |                        ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:453:1: note: in expansion of macro ‘TEST’
+  453 | TEST(profile_connection) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_profile_connection’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:453:1: note: in expansion of macro ‘TEST’
+  453 | TEST(profile_connection) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_profile_connection’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:453:1: note: in expansion of macro ‘TEST’
+  453 | TEST(profile_connection) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_profile_connection’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:453:1: note: in expansion of macro ‘TEST’
+  453 | TEST(profile_connection) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:453:1: note: in expansion of macro ‘TEST’
+  453 | TEST(profile_connection) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_profile_connection’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:453:1: note: in expansion of macro ‘TEST’
+  453 | TEST(profile_connection) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_profile_connection’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:453:1: note: in expansion of macro ‘TEST’
+  453 | TEST(profile_connection) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:481:1: note: in expansion of macro ‘TEST’
+  481 | TEST(rers_init) {
+      | ^~~~
+tests/test_rers.c:481:15: error: expected declaration specifiers or ‘...’ before string constant
+  481 | TEST(rers_init) {
+      |               ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:481:1: note: in expansion of macro ‘TEST’
+  481 | TEST(rers_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_rers_init’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:481:1: note: in expansion of macro ‘TEST’
+  481 | TEST(rers_init) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_rers_init’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:481:1: note: in expansion of macro ‘TEST’
+  481 | TEST(rers_init) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_rers_init’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:481:1: note: in expansion of macro ‘TEST’
+  481 | TEST(rers_init) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:481:1: note: in expansion of macro ‘TEST’
+  481 | TEST(rers_init) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_rers_init’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:481:1: note: in expansion of macro ‘TEST’
+  481 | TEST(rers_init) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_rers_init’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:481:1: note: in expansion of macro ‘TEST’
+  481 | TEST(rers_init) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:518:1: note: in expansion of macro ‘TEST’
+  518 | TEST(rers_error_workflow) {
+      | ^~~~
+tests/test_rers.c:518:25: error: expected declaration specifiers or ‘...’ before string constant
+  518 | TEST(rers_error_workflow) {
+      |                         ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:518:1: note: in expansion of macro ‘TEST’
+  518 | TEST(rers_error_workflow) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_rers_error_workflow’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:518:1: note: in expansion of macro ‘TEST’
+  518 | TEST(rers_error_workflow) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_rers_error_workflow’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:518:1: note: in expansion of macro ‘TEST’
+  518 | TEST(rers_error_workflow) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_rers_error_workflow’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:518:1: note: in expansion of macro ‘TEST’
+  518 | TEST(rers_error_workflow) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:518:1: note: in expansion of macro ‘TEST’
+  518 | TEST(rers_error_workflow) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_rers_error_workflow’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:518:1: note: in expansion of macro ‘TEST’
+  518 | TEST(rers_error_workflow) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_rers_error_workflow’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:518:1: note: in expansion of macro ‘TEST’
+  518 | TEST(rers_error_workflow) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:574:1: note: in expansion of macro ‘TEST’
+  574 | TEST(rers_pattern_workflow) {
+      | ^~~~
+tests/test_rers.c:574:27: error: expected declaration specifiers or ‘...’ before string constant
+  574 | TEST(rers_pattern_workflow) {
+      |                           ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:574:1: note: in expansion of macro ‘TEST’
+  574 | TEST(rers_pattern_workflow) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_rers_pattern_workflow’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:574:1: note: in expansion of macro ‘TEST’
+  574 | TEST(rers_pattern_workflow) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_rers_pattern_workflow’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:574:1: note: in expansion of macro ‘TEST’
+  574 | TEST(rers_pattern_workflow) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_rers_pattern_workflow’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:574:1: note: in expansion of macro ‘TEST’
+  574 | TEST(rers_pattern_workflow) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:574:1: note: in expansion of macro ‘TEST’
+  574 | TEST(rers_pattern_workflow) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_rers_pattern_workflow’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:574:1: note: in expansion of macro ‘TEST’
+  574 | TEST(rers_pattern_workflow) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_rers_pattern_workflow’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:574:1: note: in expansion of macro ‘TEST’
+  574 | TEST(rers_pattern_workflow) {
+      | ^~~~
+tests/test_rers.c:24:12: error: expected declaration specifiers or ‘...’ before string constant
+   24 |     printf("Running test_%s...\n", #name); \
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+tests/test_rers.c:628:1: note: in expansion of macro ‘TEST’
+  628 | TEST(rers_version_info) {
+      | ^~~~
+tests/test_rers.c:628:23: error: expected declaration specifiers or ‘...’ before string constant
+  628 | TEST(rers_version_info) {
+      |                       ^
+tests/test_rers.c:24:37: note: in definition of macro ‘TEST’
+   24 |     printf("Running test_%s...\n", #name); \
+      |                                     ^~~~
+tests/test_rers.c:25:5: error: data definition has no type or storage class [-Werror]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:628:1: note: in expansion of macro ‘TEST’
+  628 | TEST(rers_version_info) {
+      | ^~~~
+tests/test_rers.c:25:5: error: type defaults to ‘int’ in declaration of ‘test_rers_version_info’ [-Werror=implicit-int]
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:628:1: note: in expansion of macro ‘TEST’
+  628 | TEST(rers_version_info) {
+      | ^~~~
+tests/test_rers.c:25:5: error: conflicting types for ‘test_rers_version_info’; have ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:628:1: note: in expansion of macro ‘TEST’
+  628 | TEST(rers_version_info) {
+      | ^~~~
+tests/test_rers.c:23:17: note: previous declaration of ‘test_rers_version_info’ with type ‘void()’
+   23 |     static void test_##name(); \
+      |                 ^~~~~
+tests/test_rers.c:628:1: note: in expansion of macro ‘TEST’
+  628 | TEST(rers_version_info) {
+      | ^~~~
+tests/test_rers.c:26:14: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘++’ token
+   26 |     tests_run++; \
+      |              ^~
+tests/test_rers.c:628:1: note: in expansion of macro ‘TEST’
+  628 | TEST(rers_version_info) {
+      | ^~~~
+tests/test_rers.c:27:17: error: conflicting types for ‘test_rers_version_info’; have ‘void(void)’
+   27 |     static void test_##name()
+      |                 ^~~~~
+tests/test_rers.c:628:1: note: in expansion of macro ‘TEST’
+  628 | TEST(rers_version_info) {
+      | ^~~~
+tests/test_rers.c:25:5: note: previous declaration of ‘test_rers_version_info’ with type ‘int()’
+   25 |     test_##name(); \
+      |     ^~~~~
+tests/test_rers.c:628:1: note: in expansion of macro ‘TEST’
+  628 | TEST(rers_version_info) {
+      | ^~~~
+tests/test_rers.c: In function ‘main’:
+tests/test_rers.c:638:14: error: unused parameter ‘argc’ [-Werror=unused-parameter]
+  638 | int main(int argc, char** argv) {
+      |          ~~~~^~~~
+tests/test_rers.c:638:27: error: unused parameter ‘argv’ [-Werror=unused-parameter]
+  638 | int main(int argc, char** argv) {
+      |                    ~~~~~~~^~~~
+cc1: all warnings being treated as errors
+  CC  common/crrss_types.c
+make: *** [Makefile:184: build/obj/tests/test_rers.o] Error 1
+make: *** Waiting for unfinished jobs....

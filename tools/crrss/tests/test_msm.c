@@ -1055,7 +1055,7 @@ static void test_issue_query_by_priority(void) {
     // Query by priority
     msm_issue_t issues[10];
     uint32_t num_issues = 0;
-    crrss_status_t status = msm_query_issues_by_priority(ctx, BUG_PRIORITY_P0_CRITICAL,
+    crrss_status_t status = msm_query_issues_by_priority(ctx, BUG_PRIORITY_P0_CRITICAL_CRITICAL,
                                                           issues, 10, &num_issues);
     ASSERT_STATUS(status, CRRSS_SUCCESS, "Failed to query by priority");
     ASSERT_TRUE(num_issues > 0, "Should find critical issues");
