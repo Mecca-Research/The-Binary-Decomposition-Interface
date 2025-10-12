@@ -228,6 +228,150 @@ static void test_get_task_name(void) {
     printf("PASS\n");
 }
 
+/* Test: Output queue clearing after coordination (Bug fix verification) */
+static void test_output_queue_clearing(void) {
+    printf("  [TEST] Output queue clearing after coordination... ");
+    
+    setup();
+    
+    /* Test submitting more than 16 outputs across multiple coordination cycles */
+    const int TOTAL_CYCLES = 5;
+    const int OUTPUTS_PER_CYCLE = 10;
+    
+    for (int cycle = 0; cycle < TOTAL_CYCLES; cycle++) {
+        /* Submit multiple outputs for the same task */
+        for (int i = 0; i < OUTPUTS_PER_CYCLE; i++) {
+            rers_profile_output_t output = {
+                .profile = RERS_PROFILE_MSM,
+                .task = RERS_TASK_ERROR_ANALYSIS,
+                .data = NULL,
+                .data_size = 0,
+                .confidence = 0.85f,
+                .timestamp = 0
+            };
+            
+            rers_error_t err = rers_integration_submit_output(layer, &output);
+            assert(err == RERS_SUCCESS);
+        }
+        
+        /* Coordinate the task - this should clear the output queue */
+        rers_coordination_result_t result;
+        rers_error_t err = rers_integration_coordinate(layer, 
+                                                       RERS_TASK_ERROR_ANALYSIS,
+                                                       &result);
+        assert(err == RERS_SUCCESS);
+        assert(result.task == RERS_TASK_ERROR_ANALYSIS);
+        assert(result.overall_confidence > 0.0f);
+    }
+    
+    /* Verify we can still submit outputs after multiple cycles */
+    rers_profile_output_t final_output = {
+        .profile = RERS_PROFILE_STP,
+        .task = RERS_TASK_ERROR_ANALYSIS,
+        .data = NULL,
+        .data_size = 0,
+        .confidence = 0.90f,
+        .timestamp = 0
+    };
+    
+    rers_error_t err = rers_integration_submit_output(layer, &final_output);
+    assert(err == RERS_SUCCESS);
+    
+    teardown();
+    
+    printf("PASS\n");
+}
+
+/* Test: Output queue overflow protection */
+static void test_output_queue_overflow(void) {
+    printf("  [TEST] Output queue overflow protection... ");
+    
+    setup();
+    
+    /* Submit exactly 16 outputs (MAX_OUTPUTS_PER_TASK) */
+    for (int i = 0; i < 16; i++) {
+        rers_profile_output_t output = {
+            .profile = RERS_PROFILE_MSM,
+            .task = RERS_TASK_ERROR_ANALYSIS,
+            .data = NULL,
+            .data_size = 0,
+            .confidence = 0.85f,
+            .timestamp = 0
+        };
+        
+        rers_error_t err = rers_integration_submit_output(layer, &output);
+        assert(err == RERS_SUCCESS);
+    }
+    
+    /* Try to submit one more - should fail with COMPONENT_FAILED */
+    rers_profile_output_t overflow_output = {
+        .profile = RERS_PROFILE_STP,
+        .task = RERS_TASK_ERROR_ANALYSIS,
+        .data = NULL,
+        .data_size = 0,
+        .confidence = 0.90f,
+        .timestamp = 0
+    };
+    
+    rers_error_t err = rers_integration_submit_output(layer, &overflow_output);
+    assert(err == RERS_ERROR_COMPONENT_FAILED);
+    
+    /* Coordinate to clear the queue */
+    rers_coordination_result_t result;
+    err = rers_integration_coordinate(layer, RERS_TASK_ERROR_ANALYSIS, &result);
+    assert(err == RERS_SUCCESS);
+    
+    /* Now we should be able to submit again */
+    err = rers_integration_submit_output(layer, &overflow_output);
+    assert(err == RERS_SUCCESS);
+    
+    teardown();
+    
+    printf("PASS\n");
+}
+
+/* Test: Memory leak prevention with data copies */
+static void test_memory_leak_prevention(void) {
+    printf("  [TEST] Memory leak prevention with data copies... ");
+    
+    setup();
+    
+    const int CYCLES = 3;
+    const int OUTPUTS_PER_CYCLE = 8;
+    const int DATA_SIZE = 1024;
+    
+    for (int cycle = 0; cycle < CYCLES; cycle++) {
+        /* Submit outputs with data that needs to be copied */
+        for (int i = 0; i < OUTPUTS_PER_CYCLE; i++) {
+            char test_data[DATA_SIZE];
+            memset(test_data, 'A' + (i % 26), DATA_SIZE);
+            
+            rers_profile_output_t output = {
+                .profile = RERS_PROFILE_BPME,
+                .task = RERS_TASK_PATTERN_MATCHING,
+                .data = test_data,
+                .data_size = DATA_SIZE,
+                .confidence = 0.75f,
+                .timestamp = 0
+            };
+            
+            rers_error_t err = rers_integration_submit_output(layer, &output);
+            assert(err == RERS_SUCCESS);
+        }
+        
+        /* Coordinate - this should free all data copies */
+        rers_coordination_result_t result;
+        rers_error_t err = rers_integration_coordinate(layer,
+                                                       RERS_TASK_PATTERN_MATCHING,
+                                                       &result);
+        assert(err == RERS_SUCCESS);
+    }
+    
+    teardown();
+    
+    printf("PASS\n");
+}
+
 /* Main test runner */
 int main(void) {
     printf("\n=== RERS Integration Layer Tests ===\n\n");
@@ -240,6 +384,11 @@ int main(void) {
     test_multiple_task_coordination();
     test_get_profile_name();
     test_get_task_name();
+    
+    /* Bug fix verification tests */
+    test_output_queue_clearing();
+    test_output_queue_overflow();
+    test_memory_leak_prevention();
     
     printf("\n=== All Integration Layer Tests Passed ===\n\n");
     return 0;

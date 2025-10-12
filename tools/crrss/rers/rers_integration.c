@@ -205,6 +205,17 @@ rers_error_t rers_integration_coordinate(rers_integration_layer_t *layer,
              profile_names[result->primary_profile]);
     result->recommendation = recommendation_buffer;
 
+    /* Clear the output queue after successful coordination to prevent permanent filling */
+    for (size_t i = 0; i < task_state->output_count; i++) {
+        if (task_state->outputs[i].data_copy) {
+            free(task_state->outputs[i].data_copy);
+            task_state->outputs[i].data_copy = NULL;
+        }
+        task_state->outputs[i].valid = false;
+        memset(&task_state->outputs[i].output, 0, sizeof(rers_profile_output_t));
+    }
+    task_state->output_count = 0;
+
     return RERS_SUCCESS;
 }
 
