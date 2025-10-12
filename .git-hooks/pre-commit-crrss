@@ -2,7 +2,7 @@
 # ============================================================================
 # CRRSS Pre-Commit Hook
 # Automated code quality checks before commits
-# Phase 1B Stage 4: Build System Integration & Documentation
+# Phase 2 Stage 5: Enhanced Build System Integration
 # ============================================================================
 
 set -e
@@ -12,6 +12,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
@@ -20,6 +22,10 @@ CRRSS_TOOL="$CRRSS_DIR/build/bin/crrss"
 CRRSS_ENABLED="${CRRSS_ENABLED:-1}"
 CRRSS_STRICT="${CRRSS_STRICT:-0}"
 CRRSS_MAX_ISSUES="${CRRSS_MAX_ISSUES:-10}"
+CRRSS_BUILD_PROFILE="${CRRSS_BUILD_PROFILE:-release}"
+CRRSS_RUN_TESTS="${CRRSS_RUN_TESTS:-0}"
+CRRSS_CHECK_FORMAT="${CRRSS_CHECK_FORMAT:-1}"
+CRRSS_CHECK_SYNTAX="${CRRSS_CHECK_SYNTAX:-1}"
 
 # Check if CRRSS is disabled
 if [ "$CRRSS_ENABLED" = "0" ]; then
@@ -113,10 +119,85 @@ for file in $STAGED_FILES; do
     fi
 done
 
+# Run additional checks if enabled
+CHECK_FAILED=0
+
+# Check code formatting with clang-format if enabled
+if [ "$CRRSS_CHECK_FORMAT" = "1" ] && command -v clang-format &> /dev/null; then
+    echo -e "${CYAN}[CRRSS]${NC} Checking code formatting..."
+    FORMAT_ISSUES=0
+    for file in $STAGED_FILES; do
+        if [ ! -f "$file" ]; then
+            continue
+        fi
+        
+        # Check if file needs formatting
+        if ! clang-format -style=file --dry-run -Werror "$file" 2>/dev/null; then
+            FORMAT_ISSUES=$((FORMAT_ISSUES + 1))
+            echo -e "${YELLOW}[CRRSS]${NC} Format check failed: $file"
+        fi
+    done
+    
+    if [ "$FORMAT_ISSUES" -gt 0 ]; then
+        echo -e "${YELLOW}[CRRSS]${NC} Found $FORMAT_ISSUES file(s) with formatting issues"
+        echo -e "${YELLOW}[CRRSS]${NC} Run 'make format' to fix formatting"
+        if [ "$CRRSS_STRICT" = "1" ]; then
+            CHECK_FAILED=1
+        fi
+    else
+        echo -e "${GREEN}[CRRSS]${NC} ✓ Code formatting looks good"
+    fi
+fi
+
+# Check syntax with gcc if enabled
+if [ "$CRRSS_CHECK_SYNTAX" = "1" ]; then
+    echo -e "${CYAN}[CRRSS]${NC} Checking C syntax..."
+    SYNTAX_ISSUES=0
+    for file in $STAGED_FILES; do
+        if [ ! -f "$file" ]; then
+            continue
+        fi
+        
+        # Skip header files for syntax check
+        if [[ "$file" == *.h ]]; then
+            continue
+        fi
+        
+        # Basic syntax check
+        if ! gcc -std=c2x -fsyntax-only -I. -I"$CRRSS_DIR" "$file" 2>/dev/null; then
+            SYNTAX_ISSUES=$((SYNTAX_ISSUES + 1))
+            echo -e "${YELLOW}[CRRSS]${NC} Syntax check failed: $file"
+        fi
+    done
+    
+    if [ "$SYNTAX_ISSUES" -gt 0 ]; then
+        echo -e "${YELLOW}[CRRSS]${NC} Found $SYNTAX_ISSUES file(s) with syntax issues"
+        if [ "$CRRSS_STRICT" = "1" ]; then
+            CHECK_FAILED=1
+        fi
+    else
+        echo -e "${GREEN}[CRRSS]${NC} ✓ Syntax checks passed"
+    fi
+fi
+
+# Run CRRSS tests if enabled
+if [ "$CRRSS_RUN_TESTS" = "1" ]; then
+    echo -e "${CYAN}[CRRSS]${NC} Running CRRSS test suite..."
+    if ! make -C "$CRRSS_DIR" test 2>&1 | tail -5; then
+        echo -e "${RED}[CRRSS]${NC} Test suite failed"
+        if [ "$CRRSS_STRICT" = "1" ]; then
+            CHECK_FAILED=1
+        fi
+    else
+        echo -e "${GREEN}[CRRSS]${NC} ✓ All tests passed"
+    fi
+fi
+
 # Summary
 echo -e "${BLUE}========================================"
 echo -e "CRRSS Pre-Commit Summary"
 echo -e "========================================${NC}"
+echo -e "Build Profile:      $CRRSS_BUILD_PROFILE"
 echo -e "Files analyzed:     $NUM_FILES"
 echo -e "Total issues:       $TOTAL_ISSUES"
 echo -e "Critical issues:    $CRITICAL_ISSUES"
@@ -124,15 +205,19 @@ echo ""
 
 # Decide whether to allow commit
 if [ "$CRRSS_STRICT" = "1" ]; then
-    # Strict mode: fail on any critical issues
-    if [ "$CRITICAL_ISSUES" -gt 0 ]; then
-        echo -e "${RED}[CRRSS]${NC} Commit blocked: $CRITICAL_ISSUES critical issue(s) found"
+    # Strict mode: fail on any critical issues or check failures
+    if [ "$CRITICAL_ISSUES" -gt 0 ] || [ "$CHECK_FAILED" = "1" ]; then
+        echo -e "${RED}[CRRSS]${NC} Commit blocked:"
+        [ "$CRITICAL_ISSUES" -gt 0 ] && echo -e "  - $CRITICAL_ISSUES critical issue(s) found"
+        [ "$CHECK_FAILED" = "1" ] && echo -e "  - Additional checks failed"
         echo -e "${YELLOW}[CRRSS]${NC} Fix issues or bypass with: CRRSS_ENABLED=0 git commit"
         exit 1
     fi
-elif [ "$TOTAL_ISSUES" -gt 0 ]; then
+elif [ "$TOTAL_ISSUES" -gt 0 ] || [ "$CHECK_FAILED" = "1" ]; then
     # Warning mode: show issues but allow commit
-    echo -e "${YELLOW}[CRRSS]${NC} Warning: $TOTAL_ISSUES issue(s) found"
+    echo -e "${YELLOW}[CRRSS]${NC} Warning: Issues found"
+    [ "$TOTAL_ISSUES" -gt 0 ] && echo -e "  - $TOTAL_ISSUES code issue(s)"
+    [ "$CHECK_FAILED" = "1" ] && echo -e "  - Additional checks failed"
     echo -e "${YELLOW}[CRRSS]${NC} Consider fixing these issues before committing"
     echo -e "${YELLOW}[CRRSS]${NC} To enable strict mode: CRRSS_STRICT=1"
 fi
