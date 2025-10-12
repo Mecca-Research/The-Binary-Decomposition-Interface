@@ -1,0 +1,43 @@
+# CRRSS Configuration File
+# Code Review, Reliability, and Static Safety System
+
+[general]
+version = 1.0.0
+enable_strict_mode = true
+max_issues = 1000
+
+[profiles]
+# Enable/disable personality profiles
+msm = true   # Memory Safety Maniac
+stp = true   # Strict Typist Profile
+tdt = false  # Test-Driven Timmy
+rers = false # Runtime Error Replay System
+bpme = true  # Bug Prior Mapping Engine
+
+[msm]
+tracking_mode = detailed
+detect_leaks = true
+detect_use_after_free = true
+detect_double_free = true
+detect_null_deref = true
+detect_buffer_overflow = true
+max_tracked_allocations = 10000
+
+[stp]
+strictness_level = strict
+check_type_safety = true
+check_struct_alignment = true
+check_type_casts = true
+
+[bpme]
+enable_pattern_matching = true
+enable_ml_predictions = false
+confidence_threshold = 0.5
+max_predictions = 1000
+
+[output]
+report_format = text
+report_directory = /tmp/crrss_reports
+generate_html = false
+generate_json = false
+

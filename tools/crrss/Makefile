@@ -102,8 +102,9 @@ TEST_MEMORY_SRC := tests/test_memory.c
 TEST_MSM_SRC := tests/test_msm.c
 TEST_STP_SRC := tests/test_stp.c
 TEST_TDT_SRC := tests/test_tdt.c
+TEST_CLI_SRC := tests/test_cli.c
 
-ALL_TEST_SRCS := $(TEST_BPME_SRC) $(TEST_SCIV_SRC) $(TEST_MEMORY_SRC) $(TEST_MSM_SRC) $(TEST_STP_SRC) $(TEST_TDT_SRC)
+ALL_TEST_SRCS := $(TEST_BPME_SRC) $(TEST_SCIV_SRC) $(TEST_MEMORY_SRC) $(TEST_MSM_SRC) $(TEST_STP_SRC) $(TEST_TDT_SRC) $(TEST_CLI_SRC)
 
 # ============================================================================
 # Object Files
@@ -118,6 +119,7 @@ TEST_MEMORY_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_MEMORY_SRC))
 TEST_MSM_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_MSM_SRC))
 TEST_STP_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_STP_SRC))
 TEST_TDT_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_TDT_SRC))
+TEST_CLI_OBJ := $(patsubst %.c,$(OBJ_DIR)/%.o,$(TEST_CLI_SRC))
 
 # ============================================================================
 # Output Files
@@ -132,8 +134,9 @@ TEST_MEMORY := $(TEST_DIR)/test_memory
 TEST_MSM := $(TEST_DIR)/test_msm
 TEST_STP := $(TEST_DIR)/test_stp
 TEST_TDT := $(TEST_DIR)/test_tdt
+TEST_CLI := $(TEST_DIR)/test_cli
 
-ALL_TESTS := $(TEST_BPME) $(TEST_SCIV) $(TEST_MEMORY) $(TEST_MSM) $(TEST_STP) $(TEST_TDT)
+ALL_TESTS := $(TEST_BPME) $(TEST_SCIV) $(TEST_MEMORY) $(TEST_MSM) $(TEST_STP) $(TEST_TDT) $(TEST_CLI)
 
 # ============================================================================
 # Phony Targets
@@ -141,7 +144,7 @@ ALL_TESTS := $(TEST_BPME) $(TEST_SCIV) $(TEST_MEMORY) $(TEST_MSM) $(TEST_STP) $(
 
 .PHONY: all clean test install uninstall help info
 .PHONY: lib tool tests run-tests
-.PHONY: test-bpme test-sciv test-memory test-msm test-stp test-tdt
+.PHONY: test-bpme test-sciv test-memory test-msm test-stp test-tdt test-stp test-tdt
 .PHONY: check validate
 .PHONY: check-codebase analyze-bdi
 
@@ -213,6 +216,10 @@ $(TEST_TDT): $(TEST_TDT_OBJ) $(STATIC_LIB) | $(TEST_DIR)
 	@echo "==> Linking test: $@"
 	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -L$(LIB_DIR) -lcrrss $(LIBS)
 
+$(TEST_CLI): $(TEST_CLI_OBJ) $(STATIC_LIB) | $(TEST_DIR)
+	@echo "==> Linking test: $@"
+	@$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< -L$(LIB_DIR) -lcrrss $(LIBS)
+
 # ============================================================================
 # Testing Targets
 # ============================================================================
@@ -270,6 +277,10 @@ test-tdt: $(TEST_TDT)
 	@echo "==> Running TDT tests..."
 	@$(TEST_TDT)
 
+test-cli: $(TEST_CLI)
+	@echo "==> Running CLI tests..."
+	@$(TEST_CLI)
+
 check: run-tests
 
 # ============================================================================
@@ -279,13 +290,13 @@ check: run-tests
 validate: tool
 	@echo "==> Validating CRRSS build..."
 	@if [ -f $(CRRSS_TOOL) ]; then \
-                echo "✓ CRRSS tool exists"; \
-                ls -lh $(CRRSS_TOOL); \
-                echo "✓ Validation passed"; \
-        else \
-                echo "✗ Validation failed"; \
-                exit 1; \
-        fi
+	echo "✓ CRRSS tool exists"; \
+	ls -lh $(CRRSS_TOOL); \
+	echo "✓ Validation passed"; \
+	else \
+	echo "✗ Validation failed"; \
+	exit 1; \
+	fi
 
 # ============================================================================
 # BDI Codebase Analysis Targets
@@ -298,9 +309,9 @@ check-codebase: tool
 	@echo "Note: Requires CRRSS tool to be built."
 	@echo ""
 	@if [ ! -f $(CRRSS_TOOL) ]; then \
-                echo "Error: CRRSS tool not found. Run 'make tool' first."; \
-                exit 1; \
-        fi
+	echo "Error: CRRSS tool not found. Run 'make tool' first."; \
+	exit 1; \
+	fi
 	@echo "==> Analyzing moduler_kernel/ with MSM..."
 	@$(CRRSS_TOOL) msm -d ../../moduler_kernel/ --report crrss_bdi_analysis.txt --format text || echo "Note: Analysis may have found issues"
 	@echo ""
@@ -311,10 +322,10 @@ analyze-bdi: check-codebase
 # Quick analysis of specific file
 analyze-file: tool
 	@if [ -z "$(FILE)" ]; then \
-                echo "Error: Please specify FILE=<path>"; \
-                echo "Example: make analyze-file FILE=../../moduler_kernel/memory.c"; \
-                exit 1; \
-        fi
+	echo "Error: Please specify FILE=<path>"; \
+	echo "Example: make analyze-file FILE=../../moduler_kernel/memory.c"; \
+	exit 1; \
+	fi
 	@echo "==> Analyzing $(FILE) with CRRSS..."
 	@$(CRRSS_TOOL) msm -f $(FILE) --report crrss_file_analysis.txt --format text || echo "Analysis complete"
 	@echo ""
@@ -436,6 +447,7 @@ help: info
 -include $(TEST_MSM_OBJ:.o=.d)
 -include $(TEST_STP_OBJ:.o=.d)
 -include $(TEST_TDT_OBJ:.o=.d)
+-include $(TEST_CLI_OBJ:.o=.d)
 
 %.d: %.c
 	@$(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< -MF $@
