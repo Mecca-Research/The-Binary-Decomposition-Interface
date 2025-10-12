@@ -74,12 +74,14 @@ pbm_context_t* pbm_initialize(const pbm_config_t* config) {
         return NULL;
     }
     
+    // Mark as initialized before loading model (pbm_load_model checks this flag)
+    ctx->initialized = true;
+    
     // Load existing model if path provided
     if (config->model_path) {
         pbm_load_model(ctx, config->model_path);
     }
     
-    ctx->initialized = true;
     return ctx;
 }
 

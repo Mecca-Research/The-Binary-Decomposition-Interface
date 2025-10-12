@@ -36,7 +36,7 @@ void test_deps_statistics(void) {
     deps_statistics_t stats;
     crrss_status_t status = deps_get_statistics(ctx, &stats);
     
-    assert(status == CRRSS_STATUS_SUCCESS);
+    assert(status == CRRSS_SUCCESS);
     
     deps_shutdown(ctx);
     printf("PASSED\n");

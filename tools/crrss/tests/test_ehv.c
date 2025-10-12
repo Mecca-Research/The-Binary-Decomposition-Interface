@@ -43,14 +43,14 @@ void test_ehv_record_error(void) {
         ctx, "test.c", "test_func", 10,
         BUG_CATEGORY_MEMORY, BUG_PRIORITY_P0_CRITICAL
     );
-    assert(status == CRRSS_STATUS_SUCCESS);
+    assert(status == CRRSS_SUCCESS);
     
     // Record same error again (should increment frequency)
     status = ehv_record_error(
         ctx, "test.c", "test_func", 10,
         BUG_CATEGORY_MEMORY, BUG_PRIORITY_P0_CRITICAL
     );
-    assert(status == CRRSS_STATUS_SUCCESS);
+    assert(status == CRRSS_SUCCESS);
     
     ehv_shutdown(ctx);
     printf("PASSED\n");
@@ -77,7 +77,7 @@ void test_ehv_hotspots(void) {
     uint32_t count = 0;
     crrss_status_t status = ehv_identify_hotspots(ctx, hotspots, 10, &count);
     
-    assert(status == CRRSS_STATUS_SUCCESS);
+    assert(status == CRRSS_SUCCESS);
     assert(count > 0);
     
     ehv_shutdown(ctx);
@@ -101,7 +101,7 @@ void test_ehv_export(void) {
     crrss_status_t status = ehv_export_visualization(
         ctx, EHV_FORMAT_JSON, "/tmp/ehv_test.json"
     );
-    assert(status == CRRSS_STATUS_SUCCESS);
+    assert(status == CRRSS_SUCCESS);
     
     ehv_shutdown(ctx);
     printf("PASSED\n");
