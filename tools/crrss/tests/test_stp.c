@@ -780,7 +780,7 @@ static bool test_stp_query_by_priority() {
     uint32_t num_query = 0;
     
     crrss_status_t status = stp_query_issues_by_priority(
-        ctx, BUG_PRIORITY_P1_HIGH, query_issues, 100, &num_query
+        ctx, BUG_PRIORITY_P1_HIGH_HIGH, query_issues, 100, &num_query
     );
     
     ASSERT_SUCCESS(status);
