@@ -72,6 +72,60 @@ const char* tdt_test_type_to_string(tdt_test_type_t test_type) {
     }
 }
 
+// ==================== Helper Functions ====================
+
+/**
+ * @brief Free generation result data
+ * 
+ * @param result Generation result to free
+ */
+static void free_generation_result(tdt_generation_result_t* result) {
+    if (!result) {
+        return;
+    }
+    
+    // Free dynamically allocated test names
+    if (result->test_cases) {
+        for (uint32_t i = 0; i < result->test_case_count; i++) {
+            if (result->test_cases[i].test_name) {
+                free((void*)result->test_cases[i].test_name);
+                result->test_cases[i].test_name = NULL;
+            }
+        }
+        free(result->test_cases);
+        result->test_cases = NULL;
+    }
+    
+    // Free generated test files array
+    if (result->generated_test_files) {
+        free(result->generated_test_files);
+        result->generated_test_files = NULL;
+    }
+    
+    // Reset counters
+    result->test_case_count = 0;
+    result->max_test_cases = 0;
+    result->generated_file_count = 0;
+}
+
+/**
+ * @brief Store generation result in context
+ * 
+ * @param ctx TDT context
+ * @param result Generation result to store
+ */
+static void store_generation_result(tdt_context_t* ctx, const tdt_generation_result_t* result) {
+    if (!ctx || !result) {
+        return;
+    }
+    
+    // Free previous generation result
+    free_generation_result(&ctx->last_generation_result);
+    
+    // Copy the new result (shallow copy of pointers - we're transferring ownership)
+    memcpy(&ctx->last_generation_result, result, sizeof(tdt_generation_result_t));
+}
+
 // ==================== Initialization & Shutdown ====================
 
 tdt_context_t* tdt_init(const tdt_config_t* config) {
@@ -375,6 +429,9 @@ crrss_status_t tdt_generate_function_tests(
     result->success = true;
     ctx->stats.total_tests_generated += result->tests_generated;
     ctx->stats.functions_analyzed++;
+    
+    // Store generation result in context for proper cleanup
+    store_generation_result(ctx, result);
     
     return CRRSS_SUCCESS;
 }
