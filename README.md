@@ -442,6 +442,27 @@ BDI is currently a solo development effort ("Me, Myself and AI"), but the projec
 - Update documentation for significant changes
 - Ensure all tests pass before submitting changes
 
+### Keeping Your Checkout in Sync
+
+Large changes land frequently across the kernel, compiler, and tooling trees. To
+help contributors stay current and automatically run the baseline regression
+suite, use the helper script that lives in `tools/resync_and_test.sh`:
+
+```bash
+# Clone a fresh working tree (defaults to the repository's origin remote)
+./tools/resync_and_test.sh --destination .cache/bdi-latest
+
+# Or target a specific fork/branch without executing the test suite
+./tools/resync_and_test.sh \
+  --repo-url git@github.com:Mecca-Research/The-Binary-Decomposition-Interface.git \
+  --branch work --skip-tests
+```
+
+The script caches the checkout so subsequent runs simply fast-forward the
+existing tree before invoking `make -C tests run`. Point the destination at a
+scratch directory if you want to keep your main working tree untouched while you
+track upstream movement.
+
 ---
 
 ## 📄 License MIT
